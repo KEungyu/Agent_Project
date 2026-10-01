@@ -2,8 +2,11 @@ import { addItinerary, saveStay, saveTrip } from "@/app/actions";
 import type { Stay, TripBoard } from "@/lib/board/types";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import { formatDate, formatKst, toLocalInput } from "@/lib/time";
+import { DateField, DateTimeField } from "./DateField";
 import { SignTitle } from "./SignTitle";
+import { KoreaMap } from "./KoreaMap";
 import { TripRoute } from "./TripRoute";
+import type { LanguageCode } from "@/lib/i18n/languages";
 
 type Props = { board: TripBoard | null; m: Messages; language: string };
 
@@ -17,12 +20,13 @@ export function TripPanel({ board, m, language }: Props) {
         <SignTitle as="h3" ko="도시 일정" text={b.cities} />
         <TripRoute board={board} m={m} locale={language} />
         <form action={addItinerary} className="inline-form">
-          <input className="field" type="date" name="date" required aria-label={b.date} />
+          <DateField name="date" required language={language} labels={m.date} ariaLabel={b.date} />
           <input className="field" name="city" required placeholder={b.cityPlaceholder} aria-label={b.city} />
           <button type="submit" className="button-quiet">
             {b.addCity}
           </button>
         </form>
+        <KoreaMap itinerary={board?.itinerary ?? []} arrivalAirport={board?.arrival?.airport} language={language as LanguageCode} m={m} />
       </div>
 
       <div className="sign">
@@ -38,27 +42,28 @@ export function TripPanel({ board, m, language }: Props) {
           </summary>
           <form action={saveTrip} className="editor-form">
             <div className="grid-2">
-              <label className="label">
+              <div className="label">
                 {b.arrival}
-                <input className="field" type="datetime-local" name="arrival_datetime" defaultValue={toLocalInput(board?.arrival?.datetime)} />
-              </label>
+                <DateTimeField name="arrival_datetime" defaultValue={toLocalInput(board?.arrival?.datetime)} language={language} labels={m.date} ariaLabel={b.arrival} />
+              </div>
               <label className="label">
                 {b.airport}
                 <select className="field" name="arrival_airport" defaultValue={board?.arrival?.airport ?? "ICN"}>
-                  <option value="ICN">Incheon (ICN)</option>
-                  <option value="GMP">Gimpo (GMP)</option>
-                  <option value="PUS">Gimhae (PUS)</option>
-                  <option value="CJU">Jeju (CJU)</option>
+                  {(["ICN", "GMP", "PUS", "CJU"] as const).map((code) => (
+                    <option key={code} value={code}>
+                      {m.airports[code]} ({code})
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="label">
                 {b.flightNo}
                 <input className="field" name="arrival_flight_no" defaultValue={board?.arrival?.flight_no ?? ""} placeholder="KE908" />
               </label>
-              <label className="label">
+              <div className="label">
                 {b.departure}
-                <input className="field" type="datetime-local" name="departure_datetime" defaultValue={toLocalInput(board?.departure?.datetime)} />
-              </label>
+                <DateTimeField name="departure_datetime" defaultValue={toLocalInput(board?.departure?.datetime)} language={language} labels={m.date} ariaLabel={b.departure} />
+              </div>
             </div>
             <button type="submit" className="button">
               {b.saveFlights}
@@ -88,7 +93,7 @@ export function TripPanel({ board, m, language }: Props) {
             <EditIcon />
             {b.edit}
           </summary>
-              <StayForm stay={stay} b={b} />
+              <StayForm stay={stay} m={m} language={language} />
             </details>
           </article>
         ))}
@@ -97,7 +102,7 @@ export function TripPanel({ board, m, language }: Props) {
             <PlusIcon />
             {b.addStay}
           </summary>
-          <StayForm b={b} />
+          <StayForm m={m} language={language} />
         </details>
       </div>
     </section>
@@ -135,7 +140,8 @@ function FlightRow({
   );
 }
 
-function StayForm({ stay, b }: { stay?: Stay; b: Messages["board"] }) {
+function StayForm({ stay, m, language }: { stay?: Stay; m: Messages; language: string }) {
+  const b = m.board;
   return (
     <form action={saveStay} className="editor-form">
       {stay && <input type="hidden" name="stay_id" value={stay.id} />}
@@ -152,18 +158,18 @@ function StayForm({ stay, b }: { stay?: Stay; b: Messages["board"] }) {
           {b.guestName}
           <input className="field" name="guest_name" defaultValue={stay?.guest_name ?? ""} />
         </label>
-        <label className="label">
+        <div className="label">
           {b.expectedArrival}
-          <input className="field" type="datetime-local" name="expected_arrival" defaultValue={toLocalInput(stay?.expected_arrival)} />
-        </label>
-        <label className="label">
+          <DateTimeField name="expected_arrival" defaultValue={toLocalInput(stay?.expected_arrival)} language={language} labels={m.date} ariaLabel={b.expectedArrival} />
+        </div>
+        <div className="label">
           {b.checkIn}
-          <input className="field" type="date" name="check_in_date" defaultValue={stay?.check_in_date ?? ""} />
-        </label>
-        <label className="label">
+          <DateField name="check_in_date" defaultValue={stay?.check_in_date ?? ""} language={language} labels={m.date} ariaLabel={b.checkIn} />
+        </div>
+        <div className="label">
           {b.checkOut}
-          <input className="field" type="date" name="check_out_date" defaultValue={stay?.check_out_date ?? ""} />
-        </label>
+          <DateField name="check_out_date" defaultValue={stay?.check_out_date ?? ""} language={language} labels={m.date} ariaLabel={b.checkOut} />
+        </div>
         <label className="label">
           {b.hotelEmail}
           <input className="field" type="email" name="email" defaultValue={stay?.email ?? ""} />

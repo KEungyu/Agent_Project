@@ -1,6 +1,7 @@
 import type { TripBoard } from "@/lib/board/types";
 import type { Messages } from "@/lib/i18n/messages";
 import { cityKo } from "@/lib/i18n/places";
+import { localCityName } from "@/lib/map/route";
 import { formatDate, formatKst } from "@/lib/time";
 
 // 여행 일정을 노선도로 그린다: 입국 공항 → 도시들 → 출국 공항.
@@ -39,6 +40,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
 
   if (stops.length < 2) return <p className="empty-note">{m.board.noCities}</p>;
 
+  const localName = (name: string) => localCityName(name, locale);
   const segmentLabel = { none: m.board.transportNone, planned: m.board.transportPlanned, booked_by_user: m.board.transportBooked };
   return (
     <ol className="trip-route" style={{ "--stops": stops.length } as React.CSSProperties}>
@@ -51,7 +53,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
             {stop.kind === "airport" ? stop.name.slice(0, 3) : null}
           </span>
           {stop.kind === "airport" ? (
-            <span className="sr-only">{stop.name}</span>
+            <span className="sr-only">{m.airports[stop.name as keyof Messages["airports"]] ?? stop.name}</span>
           ) : (
             <span className="trip-name">
               {cityKo(stop.name) && (
@@ -59,7 +61,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
                   {cityKo(stop.name)}
                 </span>
               )}
-              <span>{stop.name}</span>
+              {localName(stop.name) !== cityKo(stop.name) && <span>{localName(stop.name)}</span>}
             </span>
           )}
           <span className="trip-meta">{stop.meta}</span>

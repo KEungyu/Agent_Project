@@ -2,6 +2,7 @@ import { updateBoard } from "../board/store";
 import type { Request, Stay, TripBoard } from "../board/types";
 import type { Db } from "../db/client";
 import { fmt, getMessages, type Messages } from "../i18n/messages";
+import { localCityName } from "../map/route";
 import { formatDate, formatKst, formatTimeKst, kstDate, kstMinutesOfDay } from "../time";
 
 // 먼저 챙겨주기 (ARCHITECTURE §7). 보드와 현재 시각만 보고 결정적으로 평가한다.
@@ -67,7 +68,7 @@ const RULES: Rule[] = [
         if (!previous || previous.city === item.city || item.transport.status !== "none") return [];
         const hours = hoursBetween(now, new Date(`${item.date}T00:00:00+09:00`));
         if (hours > 48 || hours < -24) return [];
-        return [{ target_id: `${item.date}-${item.city}`, values: { city: item.city, from: previous.city, date: formatDate(item.date, locale) } }];
+        return [{ target_id: `${item.date}-${item.city}`, values: { city: localCityName(item.city, locale), from: localCityName(previous.city, locale), date: formatDate(item.date, locale) } }];
       }),
   },
   {
