@@ -7,8 +7,10 @@ import { createClaudeClient, MissingApiKeyError } from "@/lib/agent/llm";
 import { runAgent } from "@/lib/agent/loop";
 import { createTools } from "@/lib/agent/registry";
 import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
-import { recordEvent } from "@/lib/board/store";
+import { recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
+import { isLanguageCode } from "@/lib/i18n/languages";
+import { getMessages } from "@/lib/i18n/messages";
 import { getMailer } from "@/lib/mail/mailer";
 import { approveAndSend, ApprovalError, requestChanges } from "@/lib/requests/approval";
 import { getRequest, TransitionError } from "@/lib/requests/state";
@@ -30,6 +32,16 @@ export async function addItinerary(form: FormData) {
   revalidatePath("/");
 }
 
+// 화면 언어이자 마중의 답변·역번역 언어. 레이아웃의 html lang도 바뀌므로 레이아웃까지 다시 그린다.
+export async function setLanguage(code: string) {
+  if (!isLanguageCode(code)) return;
+  const db = getDb();
+  const board = ensureBoard(db);
+  updateBoard(db, board.id, { user_language: code });
+  recordEvent(db, board.id, "user_action", { action: "set_language", language: code });
+  revalidatePath("/", "layout");
+}
+
 export type ChatResult =
   | { ok: true; reply: string; tools: { name: string; ok: boolean }[] }
   | { ok: false; error: string };
@@ -44,6 +56,7 @@ async function runChatTurn(text: string): Promise<ChatResult> {
       llm: createClaudeClient(),
       tools: createTools(),
       ctx: { db, boardId: board.id },
+      language: board.user_language,
       messages: [...getConversation(board.id), { role: "user", content: text }],
     });
     setConversation(board.id, result.messages);
@@ -57,7 +70,7 @@ async function runChatTurn(text: string): Promise<ChatResult> {
 
 export async function sendChat(message: string): Promise<ChatResult> {
   const text = message.trim();
-  if (!text) return { ok: false, error: "Please type a message." };
+  if (!text) return { ok: false, error: getMessages(ensureBoard(getDb()).user_language).chat.typeMessage };
   const result = await runChatTurn(text);
   revalidatePath("/");
   return result;

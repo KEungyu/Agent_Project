@@ -3,9 +3,21 @@
 import { useState, useTransition } from "react";
 import { approveAndSendAction, requestChangesAction } from "@/app/actions";
 import type { Draft } from "@/lib/board/types";
+import { fmt, type Messages } from "@/lib/i18n/messages";
 
-// 한국어 원문과 이용자 언어 역번역을 나란히 보여주고, 승인해야만 발송한다
-export function ApprovalCard({ requestId, draft, to }: { requestId: string; draft: Draft; to?: string }) {
+// 역명판처럼 한국어 원문을 크게, 이용자 언어 역번역을 그 아래에 둔다.
+// 되돌릴 수 없는 '승인하고 보내기'는 홀로 두고, '수정 요청'은 반대편 끝에 둔다.
+export function ApprovalCard({
+  requestId,
+  draft,
+  to,
+  m,
+}: {
+  requestId: string;
+  draft: Draft;
+  to?: string;
+  m: Messages["approval"];
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState(false);
@@ -25,53 +37,58 @@ export function ApprovalCard({ requestId, draft, to }: { requestId: string; draf
     });
 
   return (
-    <div className="approval">
-      <div className="approval-columns">
-        <div>
-          <p className="approval-label">Korean (what will be sent{to ? ` to ${to}` : ""})</p>
-          <p className="approval-subject" lang="ko">
-            {draft.subject_ko}
-          </p>
-          <p className="approval-body" lang="ko">
-            {draft.body_ko}
-          </p>
-        </div>
-        <div>
-          <p className="approval-label">Translation back into your language</p>
-          <p className="approval-body">{draft.back_translation}</p>
-        </div>
+    <section className="station-sign" aria-label={m.korean}>
+      <header className="station-sign-bar">
+        <span>{m.korean}</span>
+        {to && <span className="station-sign-to">{fmt(m.to, { to })}</span>}
+      </header>
+      <div className="station-sign-ko" lang="ko">
+        <p className="station-sign-subject">{draft.subject_ko}</p>
+        <p className="station-sign-body">{draft.body_ko}</p>
+      </div>
+      <div className="station-sign-translation">
+        <p className="station-sign-label">{m.translation}</p>
+        <p className="station-sign-body">{draft.back_translation}</p>
       </div>
 
       {editing ? (
-        <div className="approval-actions">
+        <div className="station-sign-actions station-sign-edit">
           <input
+            className="field"
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="What should change?"
-            aria-label="Requested changes"
+            placeholder={m.whatChange}
+            aria-label={m.whatChange}
+            autoFocus
           />
-          <button type="button" onClick={askForChanges} disabled={pending}>
-            Redraft
+          <button type="button" className="button" onClick={askForChanges} disabled={pending}>
+            {pending ? m.working : m.redraft}
           </button>
-          <button type="button" className="secondary" onClick={() => setEditing(false)} disabled={pending}>
-            Cancel
+          <button type="button" className="button-quiet" onClick={() => setEditing(false)} disabled={pending}>
+            {m.cancel}
           </button>
         </div>
       ) : (
-        <div className="approval-actions">
-          <button type="button" onClick={approve} disabled={pending}>
-            {pending ? "Working…" : "Approve and send"}
-          </button>
-          <button type="button" className="secondary" onClick={() => setEditing(true)} disabled={pending}>
-            Request changes
+        <div className="station-sign-actions">
+          <div className="station-sign-aside">
+            <button type="button" className="button-quiet" onClick={() => setEditing(true)} disabled={pending}>
+              {m.requestChanges}
+            </button>
+            <p className="approve-note">{m.notSent}</p>
+          </div>
+          <button type="button" className="button-approve" onClick={approve} disabled={pending}>
+            {pending ? m.working : m.approve}
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
       )}
       {error && (
-        <p className="approval-error" role="alert">
+        <p className="alert" role="alert">
           {error}
         </p>
       )}
-    </div>
+    </section>
   );
 }

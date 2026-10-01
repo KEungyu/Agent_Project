@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getBoard, recordEvent } from "../board/store";
+import { fmt, getMessages } from "../i18n/messages";
 import { checkConditions } from "../requests/conditions";
 import { composeDraft } from "../requests/drafting";
 import { createRequest, transition } from "../requests/state";
@@ -48,7 +49,8 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       keys: z.array(z.string()).min(1),
     }),
     run: ({ type_id, target_id, keys }, ctx) => {
-      const check = checkConditions(typeOf(types, type_id), boardOf(ctx), { targetId: target_id });
+      const board = boardOf(ctx);
+      const check = checkConditions(typeOf(types, type_id), board, { targetId: target_id });
       const alreadyKnown = keys.filter((key) => key in check.filled);
       if (alreadyKnown.length > 0) {
         recordEvent(ctx.db, ctx.boardId, "re_ask", { type_id, keys: alreadyKnown });
@@ -59,7 +61,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       const questions = check.missing.filter((slot) => keys.includes(slot.key));
       if (questions.length === 0) throw new Error(`None of these keys are missing for ${type_id}: ${keys.join(", ")}`);
       return {
-        reply: ["I need a few details first:", ...questions.map((slot) => `- ${slot.question}`)].join("\n"),
+        reply: [getMessages(board.user_language).agent.askIntro, ...questions.map((slot) => `- ${slot.question}`)].join("\n"),
         asked: questions.map((slot) => slot.key),
       };
     },
@@ -105,11 +107,10 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
       transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled } });
 
-      const where = board.stays.find((stay) => stay.id === check.target_id)?.name ?? "the business";
+      const messages = getMessages(board.user_language);
+      const where = board.stays.find((stay) => stay.id === check.target_id)?.name ?? messages.agent.theBusiness;
       return {
-        reply:
-          `I drafted a Korean message to ${where}. ` +
-          "Please compare the Korean text with the translation in the Requests panel, then approve it or ask for changes. Nothing has been sent yet.",
+        reply: fmt(messages.agent.drafted, { where }),
         request_id: request.id,
         subject_ko: draft.subject_ko,
         body_ko: draft.body_ko,

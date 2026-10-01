@@ -19,7 +19,7 @@ export const requestTypeSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9_]*$/, "소문자·숫자·밑줄만 쓴다"),
     version: z.number().int().positive(),
-    label: z.object({ ko: nonEmpty, en: nonEmpty }),
+    label: z.object({ ko: nonEmpty, en: nonEmpty }).catchall(nonEmpty),
     journey_stage: z.enum(["before_arrival", "airport", "intercity", "during_trip", "departure", "anytime"]),
     execution_level: z.enum(["안내", "준비", "대행"]),
     target: z.enum(["stay", "place"]),

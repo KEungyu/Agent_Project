@@ -1,4 +1,4 @@
-// 시각은 한국 시간(+09:00)을 붙인 ISO 문자열로 저장한다.
+// 시각은 한국 시간(+09:00)을 붙인 ISO 문자열로 저장하고, 표시는 한국 시간 기준으로 한다.
 
 // <input type="datetime-local"> 값("2026-10-20T00:40") → "2026-10-20T00:40+09:00"
 export function fromLocalInput(value: string): string | undefined {
@@ -10,10 +10,10 @@ export function toLocalInput(value: string | undefined): string {
   return value ? value.slice(0, 16) : "";
 }
 
-// 저장된 값 → 화면 표시 ("Oct 20, 00:40")
-export function formatKst(value: string | undefined): string {
+// 저장된 시각 → 이용자 언어로 "10월 20일 00:40" 형식
+export function formatKst(value: string | undefined, locale = "en"): string {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: "Asia/Seoul",
     month: "short",
     day: "numeric",
@@ -21,4 +21,12 @@ export function formatKst(value: string | undefined): string {
     minute: "2-digit",
     hourCycle: "h23",
   }).format(new Date(value));
+}
+
+// "2026-10-22" → 이용자 언어로 "10월 22일 (목)" 형식
+export function formatDate(value: string | undefined, locale = "en"): string {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(locale, { timeZone: "UTC", month: "short", day: "numeric", weekday: "short" }).format(
+    new Date(`${value}T00:00:00Z`),
+  );
 }

@@ -1,22 +1,21 @@
+import type { Messages } from "@/lib/i18n/messages";
 import type { RequestType } from "@/lib/request-types/schema";
 
-type Level = RequestType["execution_level"];
+export type Level = RequestType["execution_level"];
 
-// PRD §4 실행 단계. "확정"은 범위 밖이라 배지가 없다.
-const BADGES: Record<Level, { label: string; className: string; description: string }> = {
-  안내: { label: "Info", className: "badge badge-info", description: "Information and official links" },
-  준비: { label: "Prep", className: "badge badge-prep", description: "We prepare it in Korean; you finish on the official site" },
-  대행: { label: "We send it", className: "badge badge-act", description: "Majung sends the request after your approval and reads the reply" },
-};
+// PRD §4 실행 단계를 지하철 노선 색으로 부호화한다. "확정"은 범위 밖이라 배지가 없다.
+export const LEVEL_KEY: Record<Level, "info" | "prep" | "act"> = { 안내: "info", 준비: "prep", 대행: "act" };
+export const EXECUTION_LEVELS = Object.keys(LEVEL_KEY) as Level[];
 
-export const EXECUTION_LEVELS = Object.keys(BADGES) as Level[];
-
-export function ExecutionBadge({ level }: { level: Level }) {
-  const badge = BADGES[level];
+export function ExecutionBadge({ level, m }: { level: Level; m: Messages }) {
+  const key = LEVEL_KEY[level];
+  const badge = m.badges[key];
   return (
-    <span className={badge.className} title={badge.description}>
-      {badge.label}
-      <span className="badge-ko">{level}</span>
+    <span className={`line-pill line-${key}`} title={badge.description}>
+      <span lang="ko" className="line-pill-ko">
+        {level}
+      </span>
+      {badge.label !== level && <span className="line-pill-label">{badge.label}</span>}
     </span>
   );
 }

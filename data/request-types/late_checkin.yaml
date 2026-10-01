@@ -1,25 +1,79 @@
 id: late_checkin
 version: 1
-label: { ko: 늦은 체크인 문의, en: Late check-in inquiry }
+label:
+  ko: 늦은 체크인 문의
+  en: Late check-in inquiry
+  ja: 遅いチェックインの問い合わせ
+  zh-CN: 晚到入住咨询
+  zh-TW: 晚到入住詢問
+  vi: Hỏi về nhận phòng muộn
+  th: สอบถามการเช็กอินช้า
+  id: Tanya check-in larut malam
+  es: Consulta de llegada tardía
 journey_stage: before_arrival
 execution_level: 대행
 target: stay
 required_slots:
   - key: stay_name
     from_board: stays[target].name
-    ask: { en: "Which hotel are you staying at?" }
+    ask:
+      en: "Which hotel are you staying at?"
+      ja: "どのホテルに泊まりますか？"
+      zh-CN: "你住哪家酒店？"
+      zh-TW: "你住哪一家飯店？"
+      vi: "Bạn ở khách sạn nào?"
+      th: "คุณพักที่โรงแรมไหน"
+      id: "Kamu menginap di hotel mana?"
+      es: "¿En qué hotel te alojas?"
+      ko: "어느 숙소에 묵으시나요?"
   - key: guest_name
     from_board: stays[target].guest_name
-    ask: { en: "What name is the booking under?" }
+    ask:
+      en: "What name is the booking under?"
+      ja: "予約者のお名前は？"
+      zh-CN: "预订人姓名是什么？"
+      zh-TW: "訂房人姓名是什麼？"
+      vi: "Phòng được đặt dưới tên ai?"
+      th: "จองไว้ในชื่ออะไร"
+      id: "Pemesanan atas nama siapa?"
+      es: "¿A nombre de quién está la reserva?"
+      ko: "예약자 이름이 무엇인가요?"
   - key: booking_ref
     from_board: stays[target].booking_ref
-    ask: { en: "What is your booking number?" }
+    ask:
+      en: "What is your booking number?"
+      ja: "予約番号を教えてください。"
+      zh-CN: "你的预订号是多少？"
+      zh-TW: "你的訂房編號是多少？"
+      vi: "Mã đặt phòng của bạn là gì?"
+      th: "หมายเลขการจองของคุณคืออะไร"
+      id: "Berapa nomor pemesananmu?"
+      es: "¿Cuál es tu número de reserva?"
+      ko: "예약번호가 무엇인가요?"
   - key: check_in_date
     from_board: stays[target].check_in_date
-    ask: { en: "What is your check-in date?" }
+    ask:
+      en: "What is your check-in date?"
+      ja: "チェックイン日はいつですか？"
+      zh-CN: "你的入住日期是哪天？"
+      zh-TW: "你的入住日期是哪一天？"
+      vi: "Ngày nhận phòng của bạn là ngày nào?"
+      th: "คุณเช็กอินวันไหน"
+      id: "Kapan tanggal check-in kamu?"
+      es: "¿Cuál es tu fecha de entrada?"
+      ko: "체크인 날짜가 언제인가요?"
   - key: expected_arrival
     from_board: stays[target].expected_arrival
-    ask: { en: "What time do you expect to arrive at the hotel?" }
+    ask:
+      en: "What time do you expect to arrive at the hotel?"
+      ja: "ホテルには何時ごろ着く予定ですか？"
+      zh-CN: "你预计几点到达酒店？"
+      zh-TW: "你預計幾點抵達飯店？"
+      vi: "Bạn dự kiến đến khách sạn lúc mấy giờ?"
+      th: "คุณคาดว่าจะถึงโรงแรมกี่โมง"
+      id: "Jam berapa kamu perkiraan tiba di hotel?"
+      es: "¿A qué hora calculas llegar al hotel?"
+      ko: "숙소에는 몇 시쯤 도착하시나요?"
 optional_slots: [party_size, flight_no]
 channels:
   - { type: email, requires: [stay_email] }      # stays[target].email

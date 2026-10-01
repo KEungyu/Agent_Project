@@ -26,3 +26,6 @@ npm-debug.log*
 
 # 모의 발송함 (M9)
 data/outbox/
+
+# 디자인 점검 캡처 (매번 다시 생성)
+.impeccable/review/

@@ -1,7 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { recordEvent } from "../board/store";
 import type { LlmClient } from "./llm";
-import { SYSTEM_PROMPT } from "./prompt";
+import { getMessages } from "../i18n/messages";
+import { systemPrompt } from "./prompt";
 import { toApiTool, type AgentTool, type ToolContext } from "./tools";
 
 // ARCHITECTURE §2-3 종료 조건. 반복 감지는 직전에 성공한 호출과 같은 호출을 다시 할 때 멈춘다
@@ -17,13 +18,6 @@ export type StopReason =
   | "refusal"
   | "max_tokens";
 
-const STOP_MESSAGES: Record<Exclude<StopReason, "end_turn" | "awaiting_user">, string> = {
-  max_tool_calls: "I had to stop: this took more steps than allowed. Could you tell me more specifically what you need?",
-  repeated_call: "I had to stop: I was repeating the same step without progress. Could you rephrase your request?",
-  tool_error: "I had to stop: one of my tools kept failing. Please try again in a moment.",
-  refusal: "Sorry, I can't help with that request.",
-  max_tokens: "Sorry, my answer was cut off. Please try again.",
-};
 
 export type ToolCallLog = { name: string; input: unknown; ok: boolean; output: unknown };
 
@@ -40,6 +34,7 @@ type RunOptions = {
   ctx: Omit<ToolContext, "llm">;
   messages: Anthropic.Beta.BetaMessageParam[];
   system?: string;
+  language?: string; // 이용자 언어 코드 (중단 안내 문구와 기본 시스템 프롬프트에 쓴다)
   log?: (line: string) => void;
 };
 
@@ -48,9 +43,11 @@ export async function runAgent({
   tools,
   ctx,
   messages,
-  system = SYSTEM_PROMPT,
+  language,
+  system = systemPrompt(language),
   log = console.log,
 }: RunOptions): Promise<AgentRunResult> {
+  const stopMessages = getMessages(language).agent.stop;
   const history = [...messages];
   const apiTools = tools.map(toApiTool);
   const toolCalls: ToolCallLog[] = [];
@@ -72,13 +69,13 @@ export async function runAgent({
       .join("\n")
       .trim();
 
-    if (response.stop_reason === "refusal") return finish("refusal", text || STOP_MESSAGES.refusal);
+    if (response.stop_reason === "refusal") return finish("refusal", text || stopMessages.refusal);
 
     const uses = response.content.filter(
       (block): block is Anthropic.Beta.BetaToolUseBlock => block.type === "tool_use",
     );
     if (uses.length === 0) {
-      if (response.stop_reason === "max_tokens") return finish("max_tokens", text || STOP_MESSAGES.max_tokens);
+      if (response.stop_reason === "max_tokens") return finish("max_tokens", text || stopMessages.max_tokens);
       return finish("end_turn", text);
     }
 
@@ -121,7 +118,7 @@ export async function runAgent({
     // tool_use 뒤에는 항상 tool_result를 붙여 대화를 이어갈 수 있게 둔다
     history.push({ role: "user", content: results });
     if (stop === "awaiting_user") return finish(stop, [text, userPrompt].filter(Boolean).join("\n\n"));
-    if (stop) return finish(stop, STOP_MESSAGES[stop]);
+    if (stop) return finish(stop, stopMessages[stop]);
   }
 }
 

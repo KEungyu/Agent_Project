@@ -2,23 +2,13 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { LlmClient } from "../agent/llm";
 import type { Draft } from "../board/types";
+import { getLanguage } from "../i18n/languages";
 import type { RequestType } from "../request-types/schema";
 
 // 한국어 요청문 작성과 역번역 (ARCHITECTURE §3 draft_request_ko, back_translate)
 
 const CARD_NUMBER = /\b(?:\d[ -]?){13,19}\b/g;
 const MAX_ATTEMPTS = 2;
-
-const LANGUAGE_NAMES: Record<string, string> = {
-  en: "English",
-  ja: "Japanese",
-  zh: "Chinese",
-  es: "Spanish",
-  fr: "French",
-  de: "German",
-  vi: "Vietnamese",
-  th: "Thai",
-};
 
 const draftSchema = z.object({
   subject_ko: z.string(),
@@ -125,7 +115,7 @@ export async function writeDraft(
 
 // 초안을 쓴 호출과 분리해, 한국어 원문만 보고 번역한다 (이용자가 원문을 검증하는 수단)
 export async function backTranslate(llm: LlmClient, subjectKo: string, bodyKo: string, language: string) {
-  const name = LANGUAGE_NAMES[language] ?? language;
+  const name = getLanguage(language).englishName;
   const result = await llm.structured({
     system: `Translate the Korean email into ${name} faithfully, sentence by sentence. Do not add, remove, soften, or fix anything. Keep names and numbers unchanged.`,
     prompt: `Subject: ${subjectKo}\n\n${bodyKo}`,
