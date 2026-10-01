@@ -105,6 +105,8 @@ const en = {
     drafted:
       "I drafted a Korean message to {where}. Please compare the Korean text with the translation under Requests, then approve it or ask for changes. Nothing has been sent yet.",
     theBusiness: "the business",
+    phoneSoon: "Arrival is only {hours} hours away, so calling is faster than email. Read this aloud to {where}:",
+    phoneNoEmail: "{where} has no email on your board, so here is a script to call them:",
     stop: {
       max_tool_calls: "I had to stop: this took more steps than allowed. Could you tell me more specifically what you need?",
       repeated_call: "I had to stop: I was repeating the same step without progress. Could you rephrase your request?",
@@ -216,6 +218,8 @@ const ja: Messages = {
     drafted:
       "{where}宛ての韓国語メッセージを作成しました。「リクエスト」で韓国語と翻訳を見比べてから、承認するか修正を依頼してください。まだ何も送信していません。",
     theBusiness: "相手先",
+    phoneSoon: "到着まであと{hours}時間なので、メールより電話が早いです。{where}に電話して、これを読み上げてください：",
+    phoneNoEmail: "{where}のメールアドレスがボードにないため、電話用の台本を用意しました：",
     stop: {
       max_tool_calls: "手順が多すぎたため中断しました。必要なことをもう少し具体的に教えてください。",
       repeated_call: "同じ手順を繰り返していたため中断しました。言い方を変えてもう一度お願いします。",
@@ -324,6 +328,8 @@ const zhCN: Messages = {
     askIntro: "请先告诉我几项信息：",
     drafted: "我已起草了一封发给{where}的韩语消息。请在“请求”中对照韩语原文和译文，然后批准或要求修改。目前还没有发送任何内容。",
     theBusiness: "对方",
+    phoneSoon: "距离到达只有{hours}小时，打电话比邮件更快。请给{where}打电话并读出以下内容：",
+    phoneNoEmail: "看板上没有{where}的邮箱，所以准备了打电话用的稿子：",
     stop: {
       max_tool_calls: "步骤超出上限，已停止。能否更具体地说明你的需求？",
       repeated_call: "我在重复同一步骤却没有进展，已停止。请换个说法再试一次。",
@@ -432,6 +438,8 @@ const zhTW: Messages = {
     askIntro: "請先告訴我幾項資訊：",
     drafted: "我已起草一封寄給{where}的韓文訊息。請在「請求」中對照韓文原文和譯文，再核准或要求修改。目前還沒有發送任何內容。",
     theBusiness: "對方",
+    phoneSoon: "距離抵達只剩{hours}小時，打電話比寄信更快。請打給{where}並唸出以下內容：",
+    phoneNoEmail: "看板上沒有{where}的電子郵件，所以準備了打電話用的稿子：",
     stop: {
       max_tool_calls: "步驟超出上限，已停止。能否更具體說明你的需求？",
       repeated_call: "我在重複同一步驟卻沒有進展，已停止。請換個說法再試一次。",
@@ -541,6 +549,8 @@ const vi: Messages = {
     drafted:
       "Tôi đã soạn một tin nhắn tiếng Hàn gửi {where}. Hãy so sánh bản tiếng Hàn với bản dịch ở mục Yêu cầu, rồi duyệt hoặc yêu cầu sửa. Chưa có gì được gửi.",
     theBusiness: "bên nhận",
+    phoneSoon: "Chỉ còn {hours} giờ nữa là bạn đến, gọi điện sẽ nhanh hơn email. Hãy gọi cho {where} và đọc to nội dung này:",
+    phoneNoEmail: "Bảng chuyến đi chưa có email của {where}, nên đây là kịch bản để gọi điện:",
     stop: {
       max_tool_calls: "Tôi phải dừng: việc này cần nhiều bước hơn cho phép. Bạn có thể nói cụ thể hơn điều bạn cần không?",
       repeated_call: "Tôi phải dừng: tôi đang lặp lại cùng một bước mà không tiến triển. Bạn có thể diễn đạt lại không?",
@@ -650,6 +660,8 @@ const th: Messages = {
     drafted:
       "ฉันร่างข้อความภาษาเกาหลีถึง{where}แล้ว โปรดเทียบข้อความภาษาเกาหลีกับคำแปลในส่วนคำขอ แล้วอนุมัติหรือขอแก้ไข ยังไม่มีการส่งใดๆ",
     theBusiness: "ผู้ให้บริการ",
+    phoneSoon: "อีกเพียง {hours} ชั่วโมงคุณจะถึง โทรเร็วกว่าอีเมล โปรดโทรหา{where}แล้วอ่านข้อความนี้:",
+    phoneNoEmail: "บอร์ดไม่มีอีเมลของ{where} จึงเตรียมบทสำหรับโทรศัพท์ไว้ให้:",
     stop: {
       max_tool_calls: "ต้องหยุดก่อน: ขั้นตอนมากเกินกว่าที่กำหนด ช่วยบอกสิ่งที่ต้องการให้ชัดเจนขึ้นได้ไหม",
       repeated_call: "ต้องหยุดก่อน: ฉันทำขั้นตอนเดิมซ้ำโดยไม่คืบหน้า ช่วยลองพูดใหม่อีกครั้งได้ไหม",
@@ -759,6 +771,8 @@ const id: Messages = {
     drafted:
       "Saya sudah menyusun pesan berbahasa Korea untuk {where}. Bandingkan teks Korea dengan terjemahannya di bagian Permintaan, lalu setujui atau minta perubahan. Belum ada yang dikirim.",
     theBusiness: "pihak tujuan",
+    phoneSoon: "Kamu tiba {hours} jam lagi, jadi menelepon lebih cepat daripada email. Telepon {where} dan bacakan ini:",
+    phoneNoEmail: "Papan perjalanan tidak punya email {where}, jadi ini naskah untuk menelepon:",
     stop: {
       max_tool_calls: "Saya harus berhenti: langkahnya melebihi batas. Bisakah kamu jelaskan kebutuhanmu lebih spesifik?",
       repeated_call: "Saya harus berhenti: saya mengulang langkah yang sama tanpa kemajuan. Bisakah kamu ulangi dengan kata lain?",
@@ -868,6 +882,8 @@ const es: Messages = {
     drafted:
       "He redactado un mensaje en coreano para {where}. Compara el texto en coreano con la traducción en Solicitudes y apruébalo o pide cambios. Todavía no se ha enviado nada.",
     theBusiness: "el establecimiento",
+    phoneSoon: "Llegas en solo {hours} horas, así que llamar es más rápido que escribir. Llama a {where} y lee esto en voz alta:",
+    phoneNoEmail: "No hay correo de {where} en tu tablero, así que aquí tienes un guion para llamar:",
     stop: {
       max_tool_calls: "Tuve que detenerme: hacían falta más pasos de los permitidos. ¿Puedes concretar qué necesitas?",
       repeated_call: "Tuve que detenerme: repetía el mismo paso sin avanzar. ¿Puedes decirlo de otra forma?",
@@ -977,6 +993,8 @@ const ko: Messages = {
     drafted:
       "{where}에 보낼 한국어 메시지를 작성했습니다. 요청 칸에서 한국어 원문과 역번역을 비교한 뒤 승인하거나 수정을 요청하세요. 아직 아무것도 보내지 않았습니다.",
     theBusiness: "업체",
+    phoneSoon: "도착까지 {hours}시간밖에 남지 않아 메일보다 전화가 빠릅니다. {where}에 전화해 아래를 읽어 주세요:",
+    phoneNoEmail: "보드에 {where}의 이메일이 없어 전화용 스크립트를 준비했습니다:",
     stop: {
       max_tool_calls: "허용된 단계를 넘어 멈췄습니다. 필요한 내용을 조금 더 구체적으로 알려 주세요.",
       repeated_call: "같은 단계를 반복해 멈췄습니다. 다른 말로 다시 요청해 주세요.",

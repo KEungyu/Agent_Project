@@ -2,8 +2,9 @@ import { z } from "zod";
 import { getBoard, recordEvent } from "../board/store";
 import { fmt, getMessages } from "../i18n/messages";
 import { checkConditions } from "../requests/conditions";
+import { decideChannel, formatPhoneScript, makePhoneScript } from "../requests/channel";
 import { composeDraft } from "../requests/drafting";
-import { createRequest, transition } from "../requests/state";
+import { createRequest, setRequestChannel, transition } from "../requests/state";
 import type { RequestType } from "../request-types/schema";
 import { defineTool, type AgentTool, type ToolContext } from "./tools";
 
@@ -87,6 +88,14 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
         throw new Error(`Missing details: ${check.missing.map((slot) => slot.key).join(", ")}. Call ask_user first.`);
       }
 
+      const messages = getMessages(board.user_language);
+      const stay = board.stays.find((candidate) => candidate.id === check.target_id);
+      const where = stay?.name ?? messages.agent.theBusiness;
+      const decision = decideChannel(type, stay, check.filled, ctx.now?.() ?? new Date());
+      if (!decision.channel) {
+        throw new Error("No email or phone number for this business on the board. Ask the traveler for one and save it with board_update.");
+      }
+
       const open = board.requests.find(
         (request) =>
           request.type_id === type_id &&
@@ -104,11 +113,20 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
           "agent",
         );
 
-      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
-      transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled } });
+      if (decision.channel === "phone") {
+        // 앱은 전화를 걸지 않는다: 읽을 스크립트만 준비한다 (준비 단계, 승인·발송 없음)
+        const script = await makePhoneScript(ctx.llm, type, check.filled, board.user_language);
+        setRequestChannel(ctx.db, request.id, "phone");
+        const intro =
+          decision.reason === "deadline_soon"
+            ? fmt(messages.agent.phoneSoon, { hours: decision.hours_left ?? "", where })
+            : fmt(messages.agent.phoneNoEmail, { where });
+        return { reply: `${intro}\n\n${formatPhoneScript(script)}`, request_id: request.id, channel: "phone", reason: decision.reason };
+      }
 
-      const messages = getMessages(board.user_language);
-      const where = board.stays.find((stay) => stay.id === check.target_id)?.name ?? messages.agent.theBusiness;
+      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
+      transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled, channel: "email" } });
+
       return {
         reply: fmt(messages.agent.drafted, { where }),
         request_id: request.id,

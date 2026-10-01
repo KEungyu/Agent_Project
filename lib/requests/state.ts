@@ -118,6 +118,12 @@ export function getHistory(db: Db, requestId: string): HistoryEntry[] {
     }));
 }
 
+// 상태는 그대로 두고 채널만 기록한다 (전화 스크립트 경로: 앱이 보내지 않으므로 승인·발송 단계가 없다)
+export function setRequestChannel(db: Db, requestId: string, channel: Request["channel"]): Request {
+  db.update(requests).set({ channel, updated_at: now() }).where(eq(requests.id, requestId)).run();
+  return getRequest(db, requestId)!;
+}
+
 export function createRequest(db: Db, input: NewRequest, actor: Actor): Request {
   const at = now();
   const id = `req_${randomUUID()}`;

@@ -5,7 +5,8 @@ import type { StayFields } from "../board/types";
 import type { Db } from "../db/client";
 import type { LlmClient } from "./llm";
 
-export type ToolContext = { db: Db; boardId: string; llm: LlmClient };
+// now: 채널 판단 등 시각에 따른 판단을 테스트에서 고정하기 위해 바꿀 수 있다
+export type ToolContext = { db: Db; boardId: string; llm: LlmClient; now?: () => Date };
 
 export type AgentTool<Input = unknown> = {
   name: string;
