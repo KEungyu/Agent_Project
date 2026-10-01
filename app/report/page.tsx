@@ -35,9 +35,10 @@ export default async function ReportPage() {
     <header className="signbar" lang="ko">
       <div className="signbar-inner">
         <Link href="/" className="brand brand-link">
-          <span className="brand-roundel" aria-hidden="true">
-            마
-          </span>
+          <span className="brand-roundel brand-mascot" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 정적 마스코트 이미지 */}
+              <img src="/mascot/majung-head.png" width={44} height={44} alt="" />
+            </span>
           <span>
             <span className="brand-name">
               마중 <span lang="en">Majung</span>

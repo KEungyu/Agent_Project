@@ -18,13 +18,17 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLOListElement>(null);
+  // 처음 그린 대화는 그대로 두고, 이번에 새로 온 답변만 마스코트가 "방방" 튀며 말한다
+  const initialCount = useRef(initialLines.length);
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [lines.length, pending]);
 
-  function submit(form: FormData) {
-    send(String(form.get("message") ?? ""));
+  // form action은 React가 전환(transition)으로 감싸 보낸 메시지가 응답이 올 때까지 안 보인다. onSubmit으로 바로 보이게 한다
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    send(String(new FormData(event.currentTarget).get("message") ?? ""));
   }
 
   function send(raw: string) {
@@ -51,7 +55,17 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
       <ol ref={logRef} className="desk-log" aria-live="polite">
         {lines.length === 0 && (
           <li className="desk-empty">
-            <p>{m.empty}</p>
+            <div className="desk-greet">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 정적 마스코트 이미지 */}
+              <img className="greet-mascot" src="/mascot/majung.png" width={140} height={135} alt="Majung" />
+              <div className="greet-bubble">
+                <p className="greet-ko" lang="ko">
+                  안녕하세요, 마중이에요!
+                </p>
+                {m.hello !== "안녕하세요, 마중이에요!" && <p className="greet-hello">{m.hello}</p>}
+                <p className="greet-note">{m.empty}</p>
+              </div>
+            </div>
             <div className="desk-examples">
               {m.examples.map((example) => (
                 <button key={example} type="button" className="desk-example" onClick={() => send(example)} disabled={pending}>
@@ -67,12 +81,8 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
               <SafetyCard kind={line.safety} m={safety} />
             </li>
           ) : (
-          <li key={i} className={`say say-${line.role}`}>
-            {line.role === "assistant" && (
-              <span className="say-roundel" aria-hidden="true" lang="ko">
-                마
-              </span>
-            )}
+          <li key={i} className={`say say-${line.role} ${i >= initialCount.current ? "is-new" : ""}`}>
+            {(line.role === "assistant" || line.role === "error") && <MascotAvatar />}
             <div className="say-body">
               {line.tools && line.tools.length > 0 && (
                 <div className="exit-tiles">
@@ -90,9 +100,7 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
         )}
         {pending && (
           <li className="say say-assistant say-pending">
-            <span className="say-roundel" aria-hidden="true" lang="ko">
-              마
-            </span>
+            <MascotAvatar />
             <div className="say-body">
               <span className="working-line" aria-hidden="true" />
               <p className="muted">{m.working}</p>
@@ -100,7 +108,7 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
           </li>
         )}
       </ol>
-      <form action={submit} className="desk-input">
+      <form onSubmit={submit} className="desk-input">
         <input ref={inputRef} className="field" name="message" placeholder={m.placeholder} aria-label={m.placeholder} autoComplete="off" />
         <button type="submit" className="button" disabled={pending}>
           {m.send}
@@ -135,5 +143,18 @@ function SafetyCard({ kind, m }: { kind: "emergency" | "out_of_scope"; m: Messag
         ))}
       </ul>
     </div>
+  );
+}
+
+// 마스코트 얼굴. 새 답변이면 몸이 통통 튀고(방방) 머리 옆에 반짝이가 터진다.
+function MascotAvatar() {
+  return (
+    <span className="say-avatar-wrap" aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element -- 정적 마스코트 이미지 */}
+      <img className="say-avatar" src="/mascot/majung-head.png" width={40} height={40} alt="" />
+      <svg className="say-sparks" viewBox="0 0 24 24">
+        <path d="M5 9 2 6M12 5V1M19 9l3-3" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      </svg>
+    </span>
   );
 }

@@ -119,6 +119,8 @@ const en = {
     send: "Send",
     working: "Majung is working…",
     typeMessage: "Please type a message.",
+    unavailable: "I can't reach my AI service right now. Please try again in a minute. Nothing on your trip has changed.",
+    hello: "Hi, I'm Majung!",
     examples: ["Tell my hotel I arrive at 1:30 AM.", "What is on my trip board?"],
   },
   proactive: {
@@ -273,6 +275,8 @@ const ja: Messages = {
     send: "送信",
     working: "Majung が対応中…",
     typeMessage: "メッセージを入力してください。",
+    unavailable: "いまAIサービスに接続できません。少し待ってからもう一度お試しください。旅の情報は変わっていません。",
+    hello: "こんにちは、Majung です！",
     examples: ["ホテルに午前1時半に着くと伝えて。", "旅のボードに何が入っている？"],
   },
   proactive: {
@@ -425,6 +429,8 @@ const zhCN: Messages = {
     send: "发送",
     working: "Majung 正在处理…",
     typeMessage: "请输入消息。",
+    unavailable: "现在无法连接 AI 服务。请稍后再试，你的行程信息没有任何变化。",
+    hello: "你好，我是 Majung！",
     examples: ["告诉酒店我凌晨1点半到。", "我的行程看板上有什么？"],
   },
   proactive: {
@@ -576,6 +582,8 @@ const zhTW: Messages = {
     send: "發送",
     working: "Majung 正在處理…",
     typeMessage: "請輸入訊息。",
+    unavailable: "目前無法連線 AI 服務。請稍後再試，你的行程資訊沒有任何變動。",
+    hello: "你好，我是 Majung！",
     examples: ["告訴飯店我凌晨1點半到。", "我的行程看板上有什麼？"],
   },
   proactive: {
@@ -727,6 +735,8 @@ const vi: Messages = {
     send: "Gửi",
     working: "Majung đang xử lý…",
     typeMessage: "Vui lòng nhập tin nhắn.",
+    unavailable: "Hiện tôi không kết nối được dịch vụ AI. Vui lòng thử lại sau ít phút. Thông tin chuyến đi của bạn vẫn giữ nguyên.",
+    hello: "Xin chào, mình là Majung!",
     examples: ["Báo khách sạn là tôi đến lúc 1 giờ 30 sáng.", "Bảng chuyến đi của tôi có gì?"],
   },
   proactive: {
@@ -879,6 +889,8 @@ const th: Messages = {
     send: "ส่ง",
     working: "Majung กำลังดำเนินการ…",
     typeMessage: "กรุณาพิมพ์ข้อความ",
+    unavailable: "ตอนนี้เชื่อมต่อบริการ AI ไม่ได้ โปรดลองใหม่อีกครั้งในอีกสักครู่ ข้อมูลทริปของคุณไม่มีอะไรเปลี่ยน",
+    hello: "สวัสดี ฉันชื่อ Majung!",
     examples: ["บอกโรงแรมว่าฉันจะถึงตีหนึ่งครึ่ง", "บอร์ดทริปของฉันมีอะไรบ้าง"],
   },
   proactive: {
@@ -1031,6 +1043,8 @@ const id: Messages = {
     send: "Kirim",
     working: "Majung sedang bekerja…",
     typeMessage: "Silakan ketik pesan.",
+    unavailable: "Saat ini saya tidak bisa terhubung ke layanan AI. Coba lagi sebentar lagi. Tidak ada yang berubah pada perjalananmu.",
+    hello: "Halo, aku Majung!",
     examples: ["Beri tahu hotel saya tiba pukul 01.30.", "Apa saja yang ada di papan perjalananku?"],
   },
   proactive: {
@@ -1183,6 +1197,8 @@ const es: Messages = {
     send: "Enviar",
     working: "Majung está trabajando…",
     typeMessage: "Escribe un mensaje.",
+    unavailable: "Ahora mismo no puedo conectar con mi servicio de IA. Inténtalo de nuevo en un minuto. Tu viaje no ha cambiado.",
+    hello: "¡Hola, soy Majung!",
     examples: ["Avisa al hotel de que llego a la 1:30 de la madrugada.", "¿Qué hay en mi tablero de viaje?"],
   },
   proactive: {
@@ -1335,6 +1351,8 @@ const ko: Messages = {
     send: "보내기",
     working: "마중이 처리 중…",
     typeMessage: "메시지를 입력해 주세요.",
+    unavailable: "지금은 AI 서비스에 연결할 수 없어요. 잠시 후 다시 시도해 주세요. 여행 정보는 그대로예요.",
+    hello: "안녕하세요, 마중이에요!",
     examples: ["호텔에 새벽 1시 30분에 도착한다고 알려 줘.", "내 여행 보드에 뭐가 있어?"],
   },
   proactive: {

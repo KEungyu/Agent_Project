@@ -50,8 +50,9 @@ export default async function Home() {
       <header className="signbar">
         <div className="signbar-inner">
           <div className="brand">
-            <span className="brand-roundel" aria-hidden="true" lang="ko">
-              마
+            <span className="brand-roundel brand-mascot" aria-hidden="true">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 정적 마스코트 이미지 */}
+              <img src="/mascot/majung-head.png" width={44} height={44} alt="" />
             </span>
             <div>
               <p className="brand-name" lang="ko">

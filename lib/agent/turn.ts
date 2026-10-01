@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { recordEvent } from "../board/store";
 import type { Db } from "../db/client";
+import { getMessages } from "../i18n/messages";
 import { checkSafety } from "../safety/guard";
 import { getConversation, setConversation } from "./conversation";
 import { MissingApiKeyError, type LlmClient } from "./llm";
@@ -46,7 +47,11 @@ export async function runTurn({
     return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })) };
   } catch (error) {
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
-    if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
+    if (error instanceof Anthropic.APIError) {
+      // 여행자에게는 이용자 언어 안내와 다음 행동만 보이고, 원인(요금·인증 등)은 서버 로그에만 남긴다
+      console.error(`[agent] Claude API error ${error.status}: ${error.message}`);
+      return { ok: false, error: getMessages(language).chat.unavailable };
+    }
     throw error;
   }
 }
