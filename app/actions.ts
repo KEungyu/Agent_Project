@@ -5,13 +5,15 @@ import { revalidatePath } from "next/cache";
 import { createClaudeClient, MissingApiKeyError } from "@/lib/agent/llm";
 import { runTurn, type TurnResult } from "@/lib/agent/turn";
 import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
-import { recordEvent, updateBoard } from "@/lib/board/store";
+import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
 import { getMessages } from "@/lib/i18n/messages";
 import { getMailer } from "@/lib/mail/mailer";
 import { approveAndSend, ApprovalError, requestChanges, retranslateDraft } from "@/lib/requests/approval";
 import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from "@/lib/requests/replies";
+import { prepareFollowUp } from "@/lib/requests/followup";
+import type { FollowUpKind } from "@/lib/requests/followup-kinds";
 import { getRequest, TransitionError } from "@/lib/requests/state";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
@@ -148,4 +150,26 @@ export async function dismissAlertAction(ruleId: RuleId, targetId: string) {
   const db = getDb();
   dismissAlert(db, ensureBoard(db), ruleId, targetId, new Date());
   revalidatePath("/");
+}
+
+// 회신 이후 다음 행동. 조건 수락은 바로 완료, 나머지는 초안으로 돌리고 마중에게 후속 요청을 맡긴다.
+export async function followUpAction(requestId: string, kind: FollowUpKind): Promise<ChatResult | ApprovalResult> {
+  const db = getDb();
+  const board = ensureBoard(db);
+  try {
+    const request = getRequest(db, requestId);
+    if (!request) return { ok: false, error: "request not found" };
+    const m = getMessages(board.user_language);
+    const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
+    const where = (request.target_id && getStay(db, request.target_id)?.name) || m.agent.theBusiness;
+    const typeLabel = type?.label[board.user_language] ?? type?.label.en ?? request.type_id;
+    const { prompt } = prepareFollowUp(db, requestId, kind, { m, where, typeLabel });
+    if (!prompt) return { ok: true };
+    return await runChatTurn(prompt);
+  } catch (error) {
+    if (error instanceof TransitionError) return { ok: false, error: error.message };
+    throw error;
+  } finally {
+    revalidatePath("/");
+  }
 }

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { confirmReplyAction, submitReplyAction } from "@/app/actions";
+import { confirmReplyAction, followUpAction, submitReplyAction } from "@/app/actions";
 import type { Reply, ReplyClass, RequestStatus } from "@/lib/board/types";
 import type { Messages } from "@/lib/i18n/messages";
+import { followUpsFor, type FollowUpKind } from "@/lib/requests/followup-kinds";
 import { SAMPLE_REPLIES } from "@/lib/requests/sample-replies";
 
 const CLASSES: ReplyClass[] = ["done", "conditional", "declined", "info_requested"];
@@ -119,7 +120,50 @@ export function ReplyPanel({ requestId, status, reply, m }: Props) {
           )}
         </div>
       ) : (
-        interpretation?.confirmed_by_user && <p className="reply-confirmed">{r.confirmed}</p>
+        <>
+          {interpretation?.confirmed_by_user && <p className="reply-confirmed">{r.confirmed}</p>}
+          <FollowUps requestId={requestId} kinds={followUpsFor(status)} m={m} />
+        </>
+      )}
+    </div>
+  );
+}
+
+const FOLLOW_UP_LABEL: Record<FollowUpKind, keyof Messages["followup"]> = {
+  accept: "accept",
+  reply: "reply",
+  provide_info: "provideInfo",
+  phone: "phone",
+};
+
+// 회신 이후 다음 행동. 결과는 채팅과 요청 노선에 나타난다.
+function FollowUps({ requestId, kinds, m }: { requestId: string; kinds: FollowUpKind[]; m: Messages }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string>();
+  if (kinds.length === 0) return null;
+  return (
+    <div className="followups">
+      {kinds.map((kind, i) => (
+        <button
+          key={kind}
+          type="button"
+          className={i === 0 ? "button" : "button-quiet"}
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              if (kind !== "accept") document.getElementById("chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              const result = await followUpAction(requestId, kind);
+              setError(result.ok ? undefined : result.error);
+            })
+          }
+        >
+          {pending ? m.approval.working : m.followup[FOLLOW_UP_LABEL[kind]]}
+        </button>
+      ))}
+      {error && (
+        <p className="alert" role="alert">
+          {error}
+        </p>
       )}
     </div>
   );

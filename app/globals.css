@@ -1600,3 +1600,12 @@ ul {
 .safety-out_of_scope .safety-digits {
   color: var(--info-deep);
 }
+
+.followups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.followups > .alert {
+  flex-basis: 100%;
+}
