@@ -31,6 +31,9 @@
   --exit: #ffcd00;
   --alert: #c0161c;
   --alert-tint: #fbe5e5;
+  --board: #0d1014;
+  --board-rule: #2a3038;
+  --led: #f1f4f7;
 
   --radius: 6px;
   --shadow-sign: 0 1px 2px rgb(21 24 28 / 0.06), 0 1px 1px rgb(21 24 28 / 0.04);
@@ -182,16 +185,6 @@ ul {
   font-size: 13px;
   color: var(--on-dark-2);
   line-height: 1.4;
-}
-
-.legend {
-  display: flex;
-  gap: 8px;
-}
-@media (max-width: 960px) {
-  .legend {
-    display: none;
-  }
 }
 
 /* ── 노선 배지 (실행 단계) ───────────────────────────────── */
@@ -399,7 +392,7 @@ ul {
 }
 .platform-main {
   display: grid;
-  gap: 40px;
+  gap: 32px;
   min-width: 0;
 }
 @media (max-width: 1040px) {
@@ -1615,13 +1608,6 @@ ul {
   grid-template-columns: minmax(0, 1fr);
   max-width: 960px;
 }
-.report-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-}
 .report-table {
   width: 100%;
   border-collapse: collapse;
@@ -1651,7 +1637,7 @@ ul {
 .report-after {
   font-size: 19px;
   font-weight: 800;
-  color: var(--act-deep);
+  color: var(--arex-deep);
 }
 .report-note {
   margin-top: 14px;
@@ -1671,4 +1657,481 @@ ul {
 }a.button-quiet,
 a.button {
   text-decoration: none;
+}
+
+/* ── 도착 안내 전광판: 이번 / 다음 두 줄 ─────────────────── */
+
+.board {
+  display: grid;
+  gap: 10px;
+}
+.board-screen {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--board-rule);
+  border-radius: var(--radius);
+  background: var(--board);
+  color: var(--led);
+}
+.board-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--board-rule);
+}
+.board-welcome {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--on-dark-2);
+}
+.board-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.board-tz {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--on-dark-2);
+}
+.board-clock-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--led);
+  animation: live 2s ease-in-out infinite;
+}
+@keyframes live {
+  50% {
+    opacity: 0.25;
+  }
+}
+.board-rows {
+  display: grid;
+}
+.board-row {
+  --c: var(--led);
+  display: grid;
+  grid-template-columns: 14px 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 16px 20px;
+}
+.board-row + .board-row {
+  border-top: 1px solid var(--board-rule);
+}
+.board-line-act {
+  --c: var(--act);
+}
+.board-line-prep {
+  --c: var(--prep);
+}
+.board-line-info {
+  --c: var(--info);
+}
+.board-line-arex {
+  --c: var(--arex);
+}
+.board-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 3px var(--board), 0 0 0 4px var(--c);
+}
+.board-row-label {
+  display: grid;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--on-dark-2);
+}
+.board-row-label [lang="ko"] {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--led);
+}
+.board-title {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.board-row-text {
+  font-size: 17px;
+  font-weight: 700;
+}
+.board-detail {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--on-dark-2);
+}
+.board-row-time {
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.board-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.board-legend ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  /* 좁은 화면에서도 줄 이름은 제목 위가 아니라 왼쪽 좁은 칸에 둔다 */
+  .board-row {
+    grid-template-columns: 10px 48px minmax(0, 1fr);
+    gap: 4px 10px;
+    padding: 14px 16px;
+  }
+  .board-dot {
+    width: 10px;
+    height: 10px;
+  }
+  .board-row-time {
+    grid-column: 3;
+  }
+  .board-title {
+    font-size: 21px;
+  }
+  .board-row-time {
+    font-size: 19px;
+  }
+  .board-top {
+    padding: 10px 16px;
+  }
+}
+
+/* ── 넘김판 글자 ─────────────────────────────────────────── */
+
+.flap-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.flap-char {
+  display: inline-block;
+  transform-origin: 50% 0;
+}
+/* 글자가 바뀔 때와 언어를 바꿀 때만 넘어간다 (처음 접속할 때는 그대로) */
+.flap.is-changing .flap-char,
+html[data-lang-swap] .flap-char {
+  animation: flap-in 440ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 22ms);
+}
+@keyframes flap-in {
+  from {
+    transform: perspective(300px) rotateX(-95deg);
+    opacity: 0;
+  }
+  55% {
+    opacity: 1;
+  }
+}
+
+/* 언어를 바꿀 때만: 안내판 글자가 판이 넘어가듯 바뀐다 */
+html[data-lang-swap] .sign-title-text,
+html[data-lang-swap] .board-kicker span:not(.board-ko),
+html[data-lang-swap] .label,
+html[data-lang-swap] .route-label,
+html[data-lang-swap] .button,
+html[data-lang-swap] .button-ghost,
+html[data-lang-swap] .alert-message,
+html[data-lang-swap] .empty-note {
+  transform-origin: 50% 0;
+  animation: swap-in 560ms var(--ease-out) both;
+}
+@keyframes swap-in {
+  from {
+    transform: perspective(400px) rotateX(-85deg);
+    opacity: 0;
+  }
+}
+
+/* ── 승인·발송: 스크린도어가 닫히며 출발 ───────────────────── */
+
+.station-sign {
+  position: relative;
+}
+.door {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 50.5%;
+  background: var(--signbar);
+  box-shadow: inset 0 0 0 1px var(--signbar-rule);
+  pointer-events: none;
+  transition: transform 480ms var(--ease-out);
+}
+.door-left {
+  left: 0;
+  transform: translateX(-101%);
+}
+.door-right {
+  right: 0;
+  display: grid;
+  align-items: center;
+  transform: translateX(101%);
+}
+/* 두 패널이 맞닿는 이음선 (대행 = 2호선 초록) */
+.door::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--act);
+}
+.door-left::after {
+  right: 0;
+}
+.door-right::after {
+  left: 0;
+}
+.is-departing .door {
+  transform: translateX(0);
+}
+.door-label {
+  padding-left: 20px;
+  color: var(--on-dark);
+  font-size: 18px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 200ms 280ms;
+}
+.is-departing .door-label {
+  opacity: 1;
+}
+
+/* ── 하단 알림 ───────────────────────────────────────────── */
+
+.toaster {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 50;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 10px 10px;
+  border-radius: 999px;
+  background: var(--signbar);
+  color: var(--on-dark);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--shadow-lift);
+  animation: toast-in 360ms var(--ease-out) both;
+}
+.toast-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--act-deep);
+}
+.toast-icon svg {
+  width: 15px;
+  height: 15px;
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+/* ── 작은 아이콘 버튼 (수정·추가) ──────────────────────────── */
+
+.button-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.button-ghost:hover,
+.editor[open] > .button-ghost {
+  background: var(--ground);
+  color: var(--ink);
+}
+.ghost-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── 리포트: 막대가 자라나는 전/후 비교 ───────────────────── */
+
+.report-visual {
+  display: grid;
+  gap: 22px;
+}
+.bar-legend {
+  display: flex;
+  gap: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.bar-key::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+.bar-key-before::before {
+  background: var(--rule-strong);
+}
+.bar-key-after::before {
+  background: var(--arex);
+}
+.bars {
+  display: grid;
+  gap: 18px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 6px;
+}
+.bar-label {
+  grid-row: span 2;
+  font-weight: 700;
+}
+.bar-label span {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.bar-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.5em;
+  align-items: center;
+  gap: 12px;
+}
+.bar-track {
+  position: relative;
+  display: block;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--ground);
+}
+.bar-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(var(--w));
+  background: var(--rule-strong);
+  animation: bar-grow 900ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 120ms);
+}
+.bar-after .bar-fill {
+  background: var(--arex);
+  animation-delay: calc(var(--i, 0) * 120ms + 300ms);
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.bar-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-3);
+}
+.bar-after .bar-value {
+  color: var(--arex-deep);
+}
+@media (max-width: 640px) {
+  .bar-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bar-label {
+    grid-row: auto;
+  }
+  .report-headline-figures {
+    font-size: 32px;
+  }
+}
+
+.bar-reduction {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--arex-deep);
+  color: var(--on-dark);
+  font-size: 15px;
+  font-weight: 800;
+}
+.brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+.brand-link .brand-name,
+.brand-link .brand-tagline {
+  display: block;
+}
+.brand-link:hover .brand-tagline {
+  color: var(--on-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 560px) {
+  .report-rows thead {
+    display: none;
+  }
+  .report-rows tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 12px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .report-rows th,
+  .report-rows td {
+    padding: 4px 0;
+    border-top: 0;
+  }
+  .report-rows tbody th {
+    grid-column: 1 / -1;
+  }
+  .report-rows td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    color: var(--ink-2);
+  }
 }

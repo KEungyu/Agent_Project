@@ -32,7 +32,10 @@ export function TripPanel({ board, m, language }: Props) {
           <FlightRow code={board?.departure?.airport} label={b.departure} when={board?.departure?.datetime} extra={board?.departure?.flight_no} m={m} language={language} />
         </dl>
         <details className="editor">
-          <summary className="button-quiet">{b.edit}</summary>
+          <summary className="button-ghost">
+            <EditIcon />
+            {b.edit}
+          </summary>
           <form action={saveTrip} className="editor-form">
             <div className="grid-2">
               <label className="label">
@@ -81,13 +84,19 @@ export function TripPanel({ board, m, language }: Props) {
               )}
             </div>
             <details className="editor">
-              <summary className="button-quiet">{b.edit}</summary>
+              <summary className="button-ghost">
+            <EditIcon />
+            {b.edit}
+          </summary>
               <StayForm stay={stay} b={b} />
             </details>
           </article>
         ))}
         <details className="editor" open={!board?.stays.length}>
-          <summary className="button-quiet">{b.addStay}</summary>
+          <summary className="button-ghost">
+            <PlusIcon />
+            {b.addStay}
+          </summary>
           <StayForm b={b} />
         </details>
       </div>
@@ -168,5 +177,21 @@ function StayForm({ stay, b }: { stay?: Stay; b: Messages["board"] }) {
         {stay ? b.saveStay : b.addStay}
       </button>
     </form>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg className="ghost-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M10.5 2.5 13.5 5.5 6 13H3v-3z" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg className="ghost-icon" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
   );
 }

@@ -13,7 +13,13 @@ export function LanguagePicker({ current, title }: { current: Language; title: s
   const choose = (code: Language["code"]) => {
     panelRef.current?.hidePopover();
     if (code === current.code) return;
-    startTransition(() => setLanguage(code));
+    // 언어를 바꿀 때만 안내판 글자가 넘김판처럼 바뀐다 (처음 접속할 때는 연출하지 않는다)
+    const root = document.documentElement;
+    root.dataset.langSwap = "1";
+    startTransition(async () => {
+      await setLanguage(code);
+      setTimeout(() => delete root.dataset.langSwap, 1400);
+    });
   };
 
   return (

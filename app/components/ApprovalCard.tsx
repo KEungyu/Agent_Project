@@ -5,6 +5,7 @@ import { approveAndSendAction, requestChangesAction, retranslateAction } from "@
 import type { Draft } from "@/lib/board/types";
 import { getLanguage, type Language } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
+import { showToast } from "./Toaster";
 
 // 역명판처럼 한국어 원문을 크게, 이용자 언어 역번역을 그 아래에 둔다.
 // 되돌릴 수 없는 '승인하고 보내기'는 홀로 두고, '수정 요청'은 반대편 끝에 둔다.
@@ -28,12 +29,25 @@ export function ApprovalCard({
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState("");
+  const [departing, setDeparting] = useState(false);
 
-  const approve = () =>
+  // 스크린도어가 닫히는 동안 실제 발송이 함께 진행된다 (연출 때문에 발송을 늦추지 않는다)
+  const approve = () => {
+    setDeparting(true);
     startTransition(async () => {
-      const result = await approveAndSendAction(requestId);
-      setError(result.ok ? undefined : result.error);
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const [result] = await Promise.all([
+        approveAndSendAction(requestId),
+        new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 520)),
+      ]);
+      if (result.ok) {
+        showToast(fmt(m.sentToast, { to: to ?? "" }));
+      } else {
+        setDeparting(false);
+        setError(result.error);
+      }
     });
+  };
 
   const retranslate = () =>
     startTransition(async () => {
@@ -49,7 +63,11 @@ export function ApprovalCard({
     });
 
   return (
-    <section className="station-sign" aria-label={m.korean}>
+    <section className={`station-sign ${departing ? "is-departing" : ""}`} aria-label={m.korean} aria-busy={departing}>
+      <span className="door door-left" aria-hidden="true" />
+      <span className="door door-right" aria-hidden="true">
+        <span className="door-label">{m.sending}</span>
+      </span>
       <header className="station-sign-bar">
         <span>{m.korean}</span>
         {to && <span className="station-sign-to">{fmt(m.to, { to })}</span>}

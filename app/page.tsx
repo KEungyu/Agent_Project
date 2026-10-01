@@ -10,8 +10,10 @@ import { getLatestReply } from "@/lib/requests/replies";
 import { evaluateAlerts } from "@/lib/proactive/rules";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import { AlertList } from "./components/AlertList";
+import { ArrivalBoard } from "./components/ArrivalBoard";
+import { Toaster } from "./components/Toaster";
+import { buildHero } from "@/lib/hero";
 import { Chat, type ChatLine } from "./components/Chat";
-import { EXECUTION_LEVELS, ExecutionBadge } from "./components/ExecutionBadge";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { RequestList } from "./components/RequestList";
 import { TripPanel } from "./components/TripPanel";
@@ -38,7 +40,9 @@ export default async function Home() {
   const language = getLanguage(board?.user_language);
   const m = getMessages(language.code);
   const { types } = loadRequestTypes();
-  const alerts = board ? evaluateAlerts(board, new Date()) : [];
+  const now = new Date();
+  const alerts = board ? evaluateAlerts(board, now) : [];
+  const hero = buildHero(board, alerts, types, m, now);
   const chatLines = board ? toChatLines(getConversation(board.id)) : [];
 
   return (
@@ -56,21 +60,15 @@ export default async function Home() {
               <p className="brand-tagline">{m.tagline}</p>
             </div>
           </div>
-          <ul className="legend">
-            {EXECUTION_LEVELS.map((level) => (
-              <li key={level}>
-                <ExecutionBadge level={level} m={m} />
-              </li>
-            ))}
-          </ul>
           <a className="ask-link" href="#chat">
             {m.chat.title}
           </a>
           <LanguagePicker current={language} title={m.language} />
         </div>
       </header>
-      <main className="platform">
+      <main className="platform" key={language.code}>
         <div className="platform-main">
+          <ArrivalBoard model={hero} m={m} locale={language.code} />
           <AlertList alerts={alerts} m={m} />
           <TripPanel board={board} m={m} language={language.code} />
           <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
@@ -78,6 +76,7 @@ export default async function Home() {
         {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다. 언어가 바뀌어도 다시 그린다 */}
         <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} safety={m.safety} />
       </main>
+      <Toaster />
       <footer className="platform-footer" lang="ko">
         <Link href="/report">AI 적용 전/후 지표 보기</Link>
       </footer>

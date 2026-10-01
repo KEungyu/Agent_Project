@@ -9,6 +9,8 @@ import { ReplyPanel } from "./ReplyPanel";
 import { RouteStrip } from "./RouteStrip";
 import { SignTitle } from "./SignTitle";
 
+const FINISHED = new Set(["done", "declined"]);
+
 export function RequestList({
   requests,
   types,
@@ -31,9 +33,9 @@ export function RequestList({
         <p className="empty-note">{m.requests.empty}</p>
       ) : (
         <ul className="request-list">
-          {/* 승인을 기다리는 요청을 맨 위에 둔다 */}
+          {/* 진행 중인 요청을 끝난 요청보다 위에 둔다. 승인해도 자리가 바뀌지 않아 열차가 움직이는 모습이 보던 자리에서 보인다 */}
           {[...requests]
-            .sort((a, b) => Number(b.status === "pending_approval") - Number(a.status === "pending_approval"))
+            .sort((a, b) => Number(FINISHED.has(a.status)) - Number(FINISHED.has(b.status)))
             .map((request) => {
             const type = types.find((candidate) => candidate.id === request.type_id);
             const stay = stays.find((candidate) => candidate.id === request.target_id);

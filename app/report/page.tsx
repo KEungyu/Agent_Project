@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { BEFORE, boardReport } from "@/lib/metrics/report";
 import { STATUS_LABELS } from "@/lib/requests/state";
 import { loadRequestTypes } from "@/lib/request-types/loader";
+import { ReportBars, type Bar } from "./ReportBars";
 
 // 발표용 전/후 비교 화면 (PRD §5·§6). 발표가 한국어라 이 화면은 한국어로만 둔다.
 export default async function ReportPage() {
@@ -15,6 +16,13 @@ export default async function ReportPage() {
   const types = loadRequestTypes().types;
   const show = (value: number | null | undefined, unit = "") => (value === null || value === undefined ? "—" : `${value}${unit}`);
 
+  const bars: Bar[] = [
+    { label: "처리 단계 수", note: "이용자가 직접 한 조작", unit: "", before: BEFORE.steps, after: after?.steps ?? null },
+    { label: "능동 소요 시간", note: "회신 대기 시간 제외", unit: "분", before: BEFORE.activeMinutes, after: after?.activeMinutes ?? null, showReduction: true },
+    { label: "도구·앱 전환", note: "다른 앱·사이트로 이동", unit: "회", before: BEFORE.toolSwitches, after: after?.toolSwitches ?? null },
+    { label: "같은 정보 재질문", note: "보드에 있던 값을 다시 물음", unit: "회", before: BEFORE.reAsks, after: after?.reAsks ?? null },
+  ];
+
   const compare = [
     { label: "처리 단계 수", note: "이용자가 직접 한 조작", before: `${BEFORE.steps}`, after: show(after?.steps) },
     { label: "능동 소요 시간", note: "회신 대기 시간 제외", before: `약 ${BEFORE.activeMinutes}분`, after: show(after?.activeMinutes, "분") },
@@ -23,17 +31,36 @@ export default async function ReportPage() {
   ];
 
   return (
+    <>
+    <header className="signbar" lang="ko">
+      <div className="signbar-inner">
+        <Link href="/" className="brand brand-link">
+          <span className="brand-roundel" aria-hidden="true">
+            마
+          </span>
+          <span>
+            <span className="brand-name">
+              마중 <span lang="en">Majung</span>
+            </span>
+            <span className="brand-tagline">앱으로 돌아가기</span>
+          </span>
+        </Link>
+      </div>
+    </header>
     <main className="platform report" lang="ko">
       <div className="platform-main">
-        <header className="report-head">
-          <h1 className="sign-title sign-title-h2">
-            <span className="sign-title-ko">AI 적용 전/후 비교</span>
-            <span className="sign-title-text">늦은 체크인 문의 기준 · 완료된 요청 {rows.length}건</span>
-          </h1>
-          <Link href="/" className="button-quiet">
-            앱으로 돌아가기
-          </Link>
-        </header>
+        <h1 className="sign-title sign-title-h2">
+          <span className="sign-title-ko">AI 적용 전/후 비교</span>
+          <span className="sign-title-text">늦은 체크인 문의 기준 · 완료된 요청 {rows.length}건</span>
+        </h1>
+
+        <section className="sign">
+          <h2 className="sign-title sign-title-h3">
+            <span className="sign-title-ko">한눈에 보기</span>
+            <span className="sign-title-text">적용 전은 예상치, 적용 후는 앱 기록의 평균</span>
+          </h2>
+          <ReportBars bars={bars} />
+        </section>
 
         <section className="sign">
           <h2 className="sign-title sign-title-h3">
@@ -82,7 +109,7 @@ export default async function ReportPage() {
           {rows.length === 0 ? (
             <p className="empty-note">아직 완료된 요청이 없습니다.</p>
           ) : (
-            <table className="report-table">
+            <table className="report-table report-rows">
               <thead>
                 <tr>
                   <th scope="col">요청</th>
@@ -97,11 +124,11 @@ export default async function ReportPage() {
                 {rows.map((row) => (
                   <tr key={row.request_id}>
                     <th scope="row">{types.find((type) => type.id === row.type_id)?.label.ko ?? row.type_id}</th>
-                    <td>{STATUS_LABELS[row.status]}</td>
-                    <td>{row.steps}</td>
-                    <td>{row.activeMinutes}분</td>
-                    <td>{row.waitingMinutes}분</td>
-                    <td>{row.reAsks}</td>
+                    <td data-label="결과">{STATUS_LABELS[row.status]}</td>
+                    <td data-label="조작">{row.steps}</td>
+                    <td data-label="능동 시간">{row.activeMinutes}분</td>
+                    <td data-label="회신 대기">{row.waitingMinutes}분</td>
+                    <td data-label="재질문">{row.reAsks}</td>
                   </tr>
                 ))}
               </tbody>
@@ -110,5 +137,6 @@ export default async function ReportPage() {
         </section>
       </div>
     </main>
+    </>
   );
 }
