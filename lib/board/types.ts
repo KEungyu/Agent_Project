@@ -87,7 +87,13 @@ export type HistoryEntry = {
   note?: string;
 };
 
-export type EventKind = "user_action" | "tool_call" | "external_link" | "re_ask" | "state_change";
+export type EventKind =
+  | "user_action"
+  | "tool_call"
+  | "external_link"
+  | "re_ask"
+  | "state_change"
+  | "transition_rejected";
 export type BoardEvent = {
   id: number;
   board_id: string;

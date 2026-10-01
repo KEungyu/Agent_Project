@@ -19,7 +19,7 @@ type BoardPatch = Partial<
 const now = () => new Date().toISOString();
 
 // DB의 null을 빠진 필드로 바꾼다 (LLM 컨텍스트와 타입을 단순하게 유지)
-function withoutNulls<T extends Record<string, unknown>>(row: T) {
+export function withoutNulls<T extends Record<string, unknown>>(row: T) {
   return Object.fromEntries(Object.entries(row).filter(([, value]) => value !== null));
 }
 
