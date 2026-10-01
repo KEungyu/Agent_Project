@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import Link from "next/link";
 import { connection } from "next/server";
 import { getConversation } from "@/lib/agent/conversation";
 import { getCurrentBoard } from "@/lib/board/store";
@@ -77,6 +78,9 @@ export default async function Home() {
         {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다. 언어가 바뀌어도 다시 그린다 */}
         <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} safety={m.safety} />
       </main>
+      <footer className="platform-footer" lang="ko">
+        <Link href="/report">AI 적용 전/후 지표 보기</Link>
+      </footer>
     </>
   );
 }

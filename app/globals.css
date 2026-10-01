@@ -1609,3 +1609,66 @@ ul {
 .followups > .alert {
   flex-basis: 100%;
 }
+/* ── 전/후 비교 리포트 ───────────────────────────────────── */
+
+.report {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 960px;
+}
+.report-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.report-table th,
+.report-table td {
+  padding: 12px 10px;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+.report-table thead th {
+  border-top: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.report-table tbody th {
+  font-weight: 700;
+}
+.report-table tbody th span {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.report-after {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--act-deep);
+}
+.report-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.platform-footer {
+  max-width: 1240px;
+  margin: -48px auto 0;
+  padding: 0 16px 40px;
+  font-size: 13px;
+}
+.platform-footer a {
+  color: var(--ink-2);
+  text-underline-offset: 3px;
+}a.button-quiet,
+a.button {
+  text-decoration: none;
+}

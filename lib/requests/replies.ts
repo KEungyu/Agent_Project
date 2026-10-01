@@ -105,5 +105,7 @@ export function confirmReplyClass(db: Db, replyId: string, cls: ReplyClass): Req
     confirmed_by_user: true,
   };
   saveInterpretation(db, replyId, interpretation);
+  const request = getRequest(db, row.request_id)!;
+  recordEvent(db, request.board_id, "user_action", { action: "confirm_reply", class: cls }, row.request_id);
   return transition(db, row.request_id, cls, "user", { note: "reply class confirmed by user" });
 }
