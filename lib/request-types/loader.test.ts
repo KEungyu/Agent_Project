@@ -8,7 +8,7 @@ describe("loadRequestTypes", () => {
   it("data/request-types의 late_checkin이 검증을 통과한다", () => {
     const { types, errors } = loadRequestTypes();
     expect(errors).toEqual([]);
-    expect(types.map((type) => type.id)).toEqual(["late_checkin"]);
+    expect(types.map((type) => type.id)).toContain("late_checkin");
   });
 
   it("required_slots가 빠진 파일은 파일과 필드를 알려주며 실패한다", () => {
