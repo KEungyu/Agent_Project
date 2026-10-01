@@ -81,6 +81,7 @@ export type Interpretation = {
   summary: string;
   confidence: number;
   needs_user_check: boolean;
+  confirmed_by_user?: boolean; // 이용자가 분류를 확인했거나 직접 골랐다 (LLM을 못 쓴 경우 포함)
 };
 export type Reply = { id: string; request_id: string; received_at: string; raw_ko: string; interpretation?: Interpretation };
 

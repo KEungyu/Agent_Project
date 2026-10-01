@@ -10,7 +10,8 @@
     "validate:types": "tsx scripts/validate-request-types.ts",
     "db:generate": "drizzle-kit generate",
     "agent": "tsx scripts/agent-cli.ts",
-    "eval:drafts": "tsx scripts/eval-drafts.ts"
+    "eval:drafts": "tsx scripts/eval-drafts.ts",
+    "eval:replies": "tsx scripts/eval-replies.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
