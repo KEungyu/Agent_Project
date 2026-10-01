@@ -1,0 +1,42 @@
+id: late_checkin
+version: 1
+label: { ko: 늦은 체크인 문의, en: Late check-in inquiry }
+journey_stage: before_arrival
+execution_level: 대행
+target: stay
+required_slots:
+  - key: stay_name
+    from_board: stays[target].name
+    ask: { en: "Which hotel are you staying at?" }
+  - key: guest_name
+    from_board: stays[target].guest_name
+    ask: { en: "What name is the booking under?" }
+  - key: booking_ref
+    from_board: stays[target].booking_ref
+    ask: { en: "What is your booking number?" }
+  - key: check_in_date
+    from_board: stays[target].check_in_date
+    ask: { en: "What is your check-in date?" }
+  - key: expected_arrival
+    from_board: stays[target].expected_arrival
+    ask: { en: "What time do you expect to arrive at the hotel?" }
+optional_slots: [party_size, flight_no]
+channels:
+  - { type: email, requires: [stay_email] }      # stays[target].email
+  - { type: phone, requires: [stay_phone] }      # stays[target].phone
+channel_rule:
+  deadline_slot: expected_arrival
+  phone_if_hours_left_lt: 6
+message_guidelines:
+  tone: 정중한 합쇼체
+  must_include: [예약자명, 예약번호, 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법]
+  must_not_include: [여권번호, 카드번호, 생년월일]
+  max_chars: 600
+reply_hints:
+  conditional: [추가 요금, 도어락 비밀번호 사전 안내, 경비실·야간 담당자 호출]
+  declined: [체크인 불가, 마감 이후 출입 불가]
+  info_requested: [연락 가능한 전화번호, 정확한 도착 시각, 항공편명]
+follow_ups:
+  on_conditional: 조건을 이용자 언어로 설명하고 수락 여부를 묻는다. 답신이 필요하면 확인 회신 초안을 만든다
+  on_info_requested: 요구 정보를 보드에서 찾아 채우고, 없을 때만 이용자에게 묻는다
+  on_declined: [make_phone_script, ask_user_for_alternative]

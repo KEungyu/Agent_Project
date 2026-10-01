@@ -1,0 +1,21 @@
+# 검증 실패 확인용: required_slots가 빠져 있다
+id: missing_slots
+version: 1
+label: { ko: 잘못된 유형, en: Invalid type }
+journey_stage: before_arrival
+execution_level: 대행
+target: stay
+channels:
+  - { type: email, requires: [stay_email] }
+channel_rule:
+  deadline_slot: expected_arrival
+  phone_if_hours_left_lt: 6
+message_guidelines:
+  tone: 정중한 합쇼체
+  must_include: [예약자명]
+  must_not_include: []
+  max_chars: 600
+follow_ups:
+  on_conditional: 조건을 설명한다
+  on_info_requested: 요구 정보를 묻는다
+  on_declined: [ask_user_for_alternative]
