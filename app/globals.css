@@ -287,3 +287,68 @@ button:disabled {
   background: var(--error-bg);
   color: var(--error-text);
 }
+
+.request {
+  display: grid;
+  gap: 12px;
+}
+.request p {
+  margin: 0;
+}
+
+.approval {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.approval-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 520px) {
+  .approval-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.approval-label {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 4px !important;
+}
+.approval-subject {
+  font-weight: 600;
+  margin-bottom: 4px !important;
+}
+.approval-body {
+  white-space: pre-wrap;
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.approval-actions input {
+  flex: 1;
+  min-width: 0;
+}
+.approval-error {
+  color: var(--error-text);
+  background: var(--error-bg);
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+/* 한국어는 단어(어절) 단위로 줄바꿈한다 */
+[lang="ko"] {
+  word-break: keep-all;
+}

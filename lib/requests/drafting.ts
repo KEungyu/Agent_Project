@@ -100,12 +100,18 @@ Rules:
 Also return coverage: for each required item, the exact phrase copied from body_ko that covers it.`;
 }
 
-export async function writeDraft(llm: LlmClient, type: RequestType, slots: Record<string, string>) {
+export async function writeDraft(
+  llm: LlmClient,
+  type: RequestType,
+  slots: Record<string, string>,
+  revisionNote?: string,
+) {
   const facts = sanitizeSlots(slots);
   let problems: string[] = [];
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const prompt = [
       `Facts (JSON): ${JSON.stringify(facts)}`,
+      revisionNote ? `The traveler asked for these changes to the previous draft: ${revisionNote}` : "",
       problems.length ? `Your previous draft had these problems. Fix all of them:\n- ${problems.join("\n- ")}` : "",
     ]
       .filter(Boolean)
@@ -138,8 +144,9 @@ export async function composeDraft(
   type: RequestType,
   slots: Record<string, string>,
   language: string,
+  revisionNote?: string,
 ): Promise<{ draft: Draft; checks: string[] }> {
-  const { draft, checks } = await writeDraft(llm, type, slots);
+  const { draft, checks } = await writeDraft(llm, type, slots, revisionNote);
   const back_translation = await backTranslate(llm, draft.subject_ko, draft.body_ko, language);
   return {
     draft: {

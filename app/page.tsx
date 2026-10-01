@@ -28,6 +28,7 @@ export default async function Home() {
   await connection();
   const board = getCurrentBoard(getDb());
   const { types } = loadRequestTypes();
+  const chatLines = board ? toChatLines(getConversation(board.id)) : [];
 
   return (
     <main className="page">
@@ -45,9 +46,10 @@ export default async function Home() {
       <div className="layout">
         <div className="column">
           <TripPanel board={board} />
-          <RequestList requests={board?.requests ?? []} types={types} />
+          <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} />
         </div>
-        <Chat initialLines={board ? toChatLines(getConversation(board.id)) : []} />
+        {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다 */}
+        <Chat key={chatLines.length} initialLines={chatLines} />
       </div>
     </main>
   );

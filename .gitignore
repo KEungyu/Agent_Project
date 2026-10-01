@@ -23,3 +23,6 @@ next-env.d.ts
 # OS·로그
 .DS_Store
 npm-debug.log*
+
+# 모의 발송함 (M9)
+data/outbox/

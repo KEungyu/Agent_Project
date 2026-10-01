@@ -9,6 +9,9 @@ import { createTools } from "@/lib/agent/registry";
 import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
 import { recordEvent } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
+import { getMailer } from "@/lib/mail/mailer";
+import { approveAndSend, ApprovalError, requestChanges } from "@/lib/requests/approval";
+import { getRequest, TransitionError } from "@/lib/requests/state";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -31,10 +34,7 @@ export type ChatResult =
   | { ok: true; reply: string; tools: { name: string; ok: boolean }[] }
   | { ok: false; error: string };
 
-export async function sendChat(message: string): Promise<ChatResult> {
-  const text = message.trim();
-  if (!text) return { ok: false, error: "Please type a message." };
-
+async function runChatTurn(text: string): Promise<ChatResult> {
   const db = getDb();
   const board = ensureBoard(db);
   recordEvent(db, board.id, "user_action", { action: "chat" });
@@ -47,11 +47,49 @@ export async function sendChat(message: string): Promise<ChatResult> {
       messages: [...getConversation(board.id), { role: "user", content: text }],
     });
     setConversation(board.id, result.messages);
-    revalidatePath("/");
     return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })) };
   } catch (error) {
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
     throw error;
   }
+}
+
+export async function sendChat(message: string): Promise<ChatResult> {
+  const text = message.trim();
+  if (!text) return { ok: false, error: "Please type a message." };
+  const result = await runChatTurn(text);
+  revalidatePath("/");
+  return result;
+}
+
+export type ApprovalResult = { ok: true } | { ok: false; error: string };
+
+export async function approveAndSendAction(requestId: string): Promise<ApprovalResult> {
+  try {
+    approveAndSend(getDb(), requestId, getMailer());
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApprovalError || error instanceof TransitionError) return { ok: false, error: error.message };
+    throw error;
+  } finally {
+    revalidatePath("/");
+  }
+}
+
+// 초안으로 되돌린 뒤, 수정 메모를 채팅으로 에이전트에게 넘겨 다시 쓰게 한다
+export async function requestChangesAction(requestId: string, note: string): Promise<ChatResult> {
+  const db = getDb();
+  try {
+    requestChanges(db, requestId, note.trim());
+  } catch (error) {
+    if (error instanceof TransitionError) return { ok: false, error: error.message };
+    throw error;
+  }
+  const request = getRequest(db, requestId)!;
+  const result = await runChatTurn(
+    `Please redraft my ${request.type_id} message (request ${request.id}) with these changes: ${note.trim() || "make it clearer"}`,
+  );
+  revalidatePath("/");
+  return result;
 }

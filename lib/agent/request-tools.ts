@@ -75,8 +75,9 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       type_id: typeId,
       target_id: z.string().optional(),
       provided: z.record(z.string(), z.string()).optional(),
+      revision_note: z.string().optional().describe("the traveler's requested changes when redrafting"),
     }),
-    run: async ({ type_id, target_id, provided }, ctx) => {
+    run: async ({ type_id, target_id, provided, revision_note }, ctx) => {
       const type = typeOf(types, type_id);
       const board = boardOf(ctx);
       const check = checkConditions(type, board, { targetId: target_id, provided });
@@ -101,7 +102,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
           "agent",
         );
 
-      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language);
+      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
       transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled } });
 
       const where = board.stays.find((stay) => stay.id === check.target_id)?.name ?? "the business";
