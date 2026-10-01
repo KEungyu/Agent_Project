@@ -4,27 +4,12 @@ import { z } from "zod";
 import { seedDemoBoard } from "../board/demo";
 import { listEvents } from "../board/store";
 import { openDb } from "../db/client";
-import { createClaudeClient, MissingApiKeyError, type LlmClient } from "./llm";
+import { createClaudeClient, MissingApiKeyError, type LlmRequest } from "./llm";
 import { runAgent } from "./loop";
+import { fakeLlm, message, text, toolUse } from "./testing";
 import { boardGet, defineTool } from "./tools";
 
-type Block = Anthropic.Beta.BetaContentBlock;
-
-function message(content: object[], stop_reason: string): Anthropic.Beta.BetaMessage {
-  return { content: content as Block[], stop_reason } as Anthropic.Beta.BetaMessage;
-}
-const toolUse = (id: string, name: string, input: object = {}) => ({ type: "tool_use", id, name, input });
-const text = (value: string) => ({ type: "text", text: value });
-
-// 정해진 응답을 순서대로 돌려주는 가짜 LLM
-function scriptedLlm(...responses: ((req: Parameters<LlmClient["create"]>[0]) => Anthropic.Beta.BetaMessage)[]) {
-  const create = vi.fn(async (req: Parameters<LlmClient["create"]>[0]) => {
-    const next = responses.shift();
-    if (!next) throw new Error("no more scripted responses");
-    return next(req);
-  });
-  return { create };
-}
+const scriptedLlm = (...turns: ((req: LlmRequest) => Anthropic.Beta.BetaMessage)[]) => fakeLlm(turns);
 
 function setup() {
   const db = openDb(":memory:");

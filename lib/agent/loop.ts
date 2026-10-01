@@ -37,7 +37,7 @@ export type AgentRunResult = {
 type RunOptions = {
   llm: LlmClient;
   tools: AgentTool[];
-  ctx: ToolContext;
+  ctx: Omit<ToolContext, "llm">;
   messages: Anthropic.Beta.BetaMessageParam[];
   system?: string;
   log?: (line: string) => void;
@@ -96,7 +96,7 @@ export async function runAgent({
         continue;
       }
 
-      const call = await executeTool(tools, use, ctx);
+      const call = await executeTool(tools, use, { ...ctx, llm });
       toolCalls.push(call);
       lastOkCallKey = call.ok ? key : undefined;
       recordEvent(ctx.db, ctx.boardId, "tool_call", { tool: use.name, ok: call.ok });

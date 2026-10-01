@@ -3,8 +3,9 @@ import { z } from "zod";
 import { addStay, getBoard, updateBoard, updateStay } from "../board/store";
 import type { StayFields } from "../board/types";
 import type { Db } from "../db/client";
+import type { LlmClient } from "./llm";
 
-export type ToolContext = { db: Db; boardId: string };
+export type ToolContext = { db: Db; boardId: string; llm: LlmClient };
 
 export type AgentTool<Input = unknown> = {
   name: string;

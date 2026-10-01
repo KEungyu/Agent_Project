@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { getBoard, recordEvent } from "../board/store";
 import { checkConditions } from "../requests/conditions";
+import { composeDraft } from "../requests/drafting";
+import { createRequest, transition } from "../requests/state";
 import type { RequestType } from "../request-types/schema";
 import { defineTool, type AgentTool, type ToolContext } from "./tools";
 
@@ -63,5 +65,58 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
     },
   });
 
-  return [checkConditionsTool, askUser];
+  const draftRequest = defineTool({
+    name: "draft_request",
+    description:
+      "Write the Korean message for a request, translate it back into the traveler's language, and show both to the traveler for approval. " +
+      "Call only after check_conditions reports nothing missing. Nothing is sent by this tool; sending happens only after the traveler approves.",
+    endsTurn: true,
+    input: z.object({
+      type_id: typeId,
+      target_id: z.string().optional(),
+      provided: z.record(z.string(), z.string()).optional(),
+    }),
+    run: async ({ type_id, target_id, provided }, ctx) => {
+      const type = typeOf(types, type_id);
+      const board = boardOf(ctx);
+      const check = checkConditions(type, board, { targetId: target_id, provided });
+      if (check.missing.length > 0) {
+        throw new Error(`Missing details: ${check.missing.map((slot) => slot.key).join(", ")}. Call ask_user first.`);
+      }
+
+      const open = board.requests.find(
+        (request) =>
+          request.type_id === type_id &&
+          request.target_id === check.target_id &&
+          (request.status === "draft" || request.status === "pending_approval"),
+      );
+      if (open?.status === "pending_approval") {
+        throw new Error(`A draft is already waiting for the traveler's approval (request ${open.id}).`);
+      }
+      const request =
+        open ??
+        createRequest(
+          ctx.db,
+          { boardId: ctx.boardId, typeId: type_id, targetId: check.target_id, slots: check.filled },
+          "agent",
+        );
+
+      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language);
+      transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled } });
+
+      const where = board.stays.find((stay) => stay.id === check.target_id)?.name ?? "the business";
+      return {
+        reply:
+          `I drafted a Korean message to ${where}. ` +
+          "Please compare the Korean text with the translation in the Requests panel, then approve it or ask for changes. Nothing has been sent yet.",
+        request_id: request.id,
+        subject_ko: draft.subject_ko,
+        body_ko: draft.body_ko,
+        back_translation: draft.back_translation,
+        checks,
+      };
+    },
+  });
+
+  return [checkConditionsTool, askUser, draftRequest];
 }

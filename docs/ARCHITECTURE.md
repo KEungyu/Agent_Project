@@ -146,6 +146,8 @@
 | `interpret_photo` | 메뉴판·안내문 사진 해석 | 이미지 | 이용자 언어 설명 | 안내 | 아니오 | P3 |
 | `search_places` | 테마·지역별 장소 검색 (TourAPI) [확인 필요] | 테마, 지역 | 장소 카드 | 안내 | 아니오 | P3 |
 
+> **구현 메모 (M7·M8)**: `draft_request_ko` → `back_translate` → `request_approval`은 에이전트에게 **`draft_request` 도구 하나**로 노출한다. LLM이 역번역이나 승인 단계를 건너뛸 수 없게 하려는 것이다. 역번역은 초안 작성과 분리된 LLM 호출이 한국어 원문만 보고 수행한다. `ask_user`와 `draft_request`는 실행 후 루프를 멈추고(`awaiting_user`) 이용자의 답이나 승인을 기다린다.
+
 ### 승인 게이트 (코드에서 강제)
 `send_email`은 LLM의 판단과 관계없이 다음을 모두 확인한 뒤에만 발송한다.
 1. 요청 상태가 `승인 대기`다.

@@ -1,13 +1,13 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { seedDemoBoard } from "../board/demo";
 import { getBoard, listEvents } from "../board/store";
 import { openDb } from "../db/client";
 import { checkConditions } from "../requests/conditions";
 import { loadRequestTypes } from "../request-types/loader";
-import type { LlmClient } from "./llm";
 import { runAgent } from "./loop";
 import { createTools } from "./registry";
+import { fakeLlm, message, schemaHas, toolUse } from "./testing";
 
 const lateCheckin = loadRequestTypes().types.find((type) => type.id === "late_checkin")!;
 
@@ -21,16 +21,8 @@ function setup({ withoutArrival = false } = {}) {
   return { db, boardId: seeded.id, stayId: seeded.stays[0].id };
 }
 
-const toolUse = (id: string, name: string, input: object) => ({ type: "tool_use", id, name, input });
-const reply = (content: object[], stop_reason: string) =>
-  ({ content, stop_reason }) as unknown as Anthropic.Beta.BetaMessage;
-const scripted = (...responses: Anthropic.Beta.BetaMessage[]): LlmClient => ({
-  create: vi.fn(async () => {
-    const next = responses.shift();
-    if (!next) throw new Error("no more scripted responses");
-    return next;
-  }),
-});
+const reply = message;
+const scripted = (...turns: Anthropic.Beta.BetaMessage[]) => fakeLlm(turns);
 
 describe("check_conditions / ask_user", () => {
   it("보드에 예약번호가 있으면 질문 목록에 예약번호가 없다", () => {
@@ -110,6 +102,32 @@ describe("check_conditions / ask_user", () => {
     expect(JSON.stringify(result.toolCalls[0].output)).toContain("booking_ref=BK123456");
     expect(result.stopReason).toBe("end_turn");
     expect(listEvents(db, boardId).filter((event) => event.kind === "re_ask")).toHaveLength(1);
+  });
+
+  it("draft_request는 초안·역번역을 만들고 요청을 승인 대기로 둔 채 멈춘다 (발송하지 않음)", async () => {
+    const { db, boardId } = setup();
+    const draftOutput = (slots: Record<string, string>) => {
+      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 10월 19일, 도착 예정 시각 새벽 1시 30분. 늦은 체크인 가능 여부 문의. 프런트 마감 후 출입 방법 문의.`;
+      const items = lateCheckin.message_guidelines.must_include;
+      return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: items.map((item) => ({ item, quote: item })) };
+    };
+    const llm = fakeLlm(
+      [message([toolUse("t1", "draft_request", { type_id: "late_checkin" })], "tool_use")],
+      (request) =>
+        schemaHas(request, "coverage")
+          ? draftOutput(JSON.parse(request.prompt.replace("Facts (JSON): ", "")))
+          : { subject: "Late check-in inquiry", body: "Guest Emma Smith ..." },
+    );
+
+    const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId }, messages: [{ role: "user", content: "go" }], log: () => {} });
+
+    expect(result.stopReason).toBe("awaiting_user");
+    expect(result.reply).toContain("Nothing has been sent yet");
+    const [request] = getBoard(db, boardId)!.requests;
+    expect(request).toMatchObject({ type_id: "late_checkin", status: "pending_approval" });
+    expect(request.draft?.back_translation).toContain("Late check-in inquiry");
+    expect(request.draft?.hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(request.sent).toBeUndefined();
   });
 
   it("board_update는 형식이 틀린 시각을 거부한다", async () => {
