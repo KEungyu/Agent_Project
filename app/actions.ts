@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getConversation, setConversation } from "@/lib/agent/conversation";
 import { createClaudeClient, MissingApiKeyError } from "@/lib/agent/llm";
 import { runAgent } from "@/lib/agent/loop";
-import { DEFAULT_TOOLS } from "@/lib/agent/tools";
+import { createTools } from "@/lib/agent/registry";
 import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
 import { recordEvent } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
@@ -42,7 +42,7 @@ export async function sendChat(message: string): Promise<ChatResult> {
   try {
     const result = await runAgent({
       llm: createClaudeClient(),
-      tools: DEFAULT_TOOLS,
+      tools: createTools(),
       ctx: { db, boardId: board.id },
       messages: [...getConversation(board.id), { role: "user", content: text }],
     });

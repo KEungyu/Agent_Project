@@ -2,7 +2,7 @@
 //   --demo  메모리 DB에 시연용 보드(Emma)를 만들어 실행한다. 없으면 data/majung.db의 보드를 쓴다.
 import { getCurrentBoard } from "../lib/board/store";
 import { seedDemoBoard } from "../lib/board/demo";
-import { DEFAULT_TOOLS } from "../lib/agent/tools";
+import { createTools } from "../lib/agent/registry";
 import { createClaudeClient, MissingApiKeyError } from "../lib/agent/llm";
 import { runAgent } from "../lib/agent/loop";
 import { openDb } from "../lib/db/client";
@@ -41,7 +41,7 @@ try {
 
 runAgent({
   llm,
-  tools: DEFAULT_TOOLS,
+  tools: createTools(),
   ctx: { db, boardId: board.id },
   messages: [{ role: "user", content: message }],
 }).then((result) => console.log(`\n${result.reply}`));

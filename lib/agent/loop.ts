@@ -8,9 +8,16 @@ import { toApiTool, type AgentTool, type ToolContext } from "./tools";
 // (실패한 호출의 재시도는 maxConsecutiveErrors가 맡는다).
 export const LOOP_LIMITS = { maxToolCalls: 8, maxConsecutiveErrors: 2 };
 
-export type StopReason = "end_turn" | "max_tool_calls" | "repeated_call" | "tool_error" | "refusal" | "max_tokens";
+export type StopReason =
+  | "end_turn"
+  | "awaiting_user" // 질문·승인 등 이용자 답을 기다리며 일시 정지
+  | "max_tool_calls"
+  | "repeated_call"
+  | "tool_error"
+  | "refusal"
+  | "max_tokens";
 
-const STOP_MESSAGES: Record<Exclude<StopReason, "end_turn">, string> = {
+const STOP_MESSAGES: Record<Exclude<StopReason, "end_turn" | "awaiting_user">, string> = {
   max_tool_calls: "I had to stop: this took more steps than allowed. Could you tell me more specifically what you need?",
   repeated_call: "I had to stop: I was repeating the same step without progress. Could you rephrase your request?",
   tool_error: "I had to stop: one of my tools kept failing. Please try again in a moment.",
@@ -76,6 +83,7 @@ export async function runAgent({
     }
 
     const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
+    let userPrompt = "";
     // 잘린 입력으로 도구를 실행하지 않는다
     let stop: StopReason | undefined = response.stop_reason === "max_tokens" ? "max_tokens" : undefined;
 
@@ -103,10 +111,16 @@ export async function runAgent({
       const streak = call.ok ? 0 : (errorStreak.get(use.name) ?? 0) + 1;
       errorStreak.set(use.name, streak);
       if (streak >= LOOP_LIMITS.maxConsecutiveErrors) stop = "tool_error";
+
+      if (call.ok && tools.find((tool) => tool.name === use.name)?.endsTurn) {
+        stop = "awaiting_user";
+        userPrompt = (call.output as { reply: string }).reply;
+      }
     }
 
     // tool_use 뒤에는 항상 tool_result를 붙여 대화를 이어갈 수 있게 둔다
     history.push({ role: "user", content: results });
+    if (stop === "awaiting_user") return finish(stop, [text, userPrompt].filter(Boolean).join("\n\n"));
     if (stop) return finish(stop, STOP_MESSAGES[stop]);
   }
 }
