@@ -1,5 +1,6 @@
 // 사용법: npm run agent -- [--demo] "메시지"
 //   --demo  메모리 DB에 시연용 보드(Emma)를 만들어 실행한다. 없으면 data/majung.db의 보드를 쓴다.
+import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentBoard } from "../lib/board/store";
 import { seedDemoBoard } from "../lib/board/demo";
 import { createTools } from "../lib/agent/registry";
@@ -44,4 +45,10 @@ runAgent({
   tools: createTools(),
   ctx: { db, boardId: board.id },
   messages: [{ role: "user", content: message }],
-}).then((result) => console.log(`\n${result.reply}`));
+})
+  .then((result) => console.log(`\n${result.reply}`))
+  .catch((error) => {
+    if (!(error instanceof Anthropic.APIError)) throw error;
+    console.error(`Claude API 오류 ${error.status}: ${error.message}`);
+    process.exit(1);
+  });

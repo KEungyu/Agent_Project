@@ -1,5 +1,6 @@
 // 사용법: npm run eval:drafts
 // 실제 Claude로 늦은 체크인 초안 3개를 만들고 점검 결과를 출력한다 (BACKLOG M8 완료 기준).
+import Anthropic from "@anthropic-ai/sdk";
 import { createClaudeClient, MissingApiKeyError } from "../lib/agent/llm";
 import { composeDraft } from "../lib/requests/drafting";
 import { loadRequestTypes } from "../lib/request-types/loader";
@@ -33,6 +34,10 @@ async function main() {
       console.log(`\n[역번역]\n${draft.back_translation}`);
       console.log(`\n[점검] ${checks.join("  ")}`);
     } catch (error) {
+      if (error instanceof Anthropic.APIError) {
+        console.error(`Claude API 오류 ${error.status}: ${error.message}`);
+        process.exit(1);
+      }
       failures++;
       console.log(`✗ ${(error as Error).message}`);
     }
