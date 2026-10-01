@@ -13,7 +13,10 @@ import { isLanguageCode } from "@/lib/i18n/languages";
 import { getMessages } from "@/lib/i18n/messages";
 import { getMailer } from "@/lib/mail/mailer";
 import { approveAndSend, ApprovalError, requestChanges, retranslateDraft } from "@/lib/requests/approval";
+import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from "@/lib/requests/replies";
 import { getRequest, TransitionError } from "@/lib/requests/state";
+import { loadRequestTypes } from "@/lib/request-types/loader";
+import type { ReplyClass } from "@/lib/board/types";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -116,6 +119,44 @@ export async function retranslateAction(requestId: string): Promise<ApprovalResu
   } catch (error) {
     if (error instanceof MissingApiKeyError || error instanceof ApprovalError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
+    throw error;
+  } finally {
+    revalidatePath("/");
+  }
+}
+
+export type ReplyResult = { ok: true; manual: boolean } | { ok: false; error: string };
+
+// 회신을 저장하고 해석한다. LLM을 쓸 수 없으면 저장만 하고 이용자가 직접 분류하게 한다(manual).
+export async function submitReplyAction(requestId: string, rawKo: string): Promise<ReplyResult> {
+  const db = getDb();
+  try {
+    const reply = addReply(db, requestId, rawKo);
+    const request = getRequest(db, requestId)!;
+    const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
+    if (!type) return { ok: true, manual: true };
+    try {
+      const interpretation = await interpretReply(createClaudeClient(), type, reply.raw_ko, ensureBoard(db).user_language);
+      applyInterpretation(db, reply, interpretation);
+      return { ok: true, manual: interpretation.needs_user_check };
+    } catch (error) {
+      if (error instanceof MissingApiKeyError || error instanceof Anthropic.APIError) return { ok: true, manual: true };
+      throw error;
+    }
+  } catch (error) {
+    if (error instanceof TransitionError) return { ok: false, error: error.message };
+    throw error;
+  } finally {
+    revalidatePath("/");
+  }
+}
+
+export async function confirmReplyAction(replyId: string, cls: ReplyClass): Promise<ApprovalResult> {
+  try {
+    confirmReplyClass(getDb(), replyId, cls);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof TransitionError) return { ok: false, error: error.message };
     throw error;
   } finally {
     revalidatePath("/");

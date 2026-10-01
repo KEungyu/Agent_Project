@@ -1,10 +1,11 @@
-import type { Request, Stay } from "@/lib/board/types";
+import type { Reply, Request, Stay } from "@/lib/board/types";
 import { getLanguage } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { RequestType } from "@/lib/request-types/schema";
 import { formatKst } from "@/lib/time";
 import { ApprovalCard } from "./ApprovalCard";
 import { ExecutionBadge, LEVEL_KEY } from "./ExecutionBadge";
+import { ReplyPanel } from "./ReplyPanel";
 import { RouteStrip } from "./RouteStrip";
 import { SignTitle } from "./SignTitle";
 
@@ -12,12 +13,14 @@ export function RequestList({
   requests,
   types,
   stays,
+  latestReplies,
   m,
   language,
 }: {
   requests: Request[];
   types: RequestType[];
   stays: Stay[];
+  latestReplies: Record<string, Reply | null>;
   m: Messages;
   language: string;
 }) {
@@ -51,6 +54,9 @@ export function RequestList({
                 <RouteStrip status={request.status} line={line} m={m} />
                 {request.status === "pending_approval" && request.draft && (
                   <ApprovalCard requestId={request.id} draft={request.draft} to={stay?.email} m={m.approval} language={getLanguage(language)} />
+                )}
+                {(request.status === "awaiting_reply" || latestReplies[request.id]) && (
+                  <ReplyPanel requestId={request.id} status={request.status} reply={latestReplies[request.id] ?? null} m={m} />
                 )}
                 {request.sent && (
                   <p className="request-sent">

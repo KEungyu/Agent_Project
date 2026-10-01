@@ -5,6 +5,7 @@ import { getCurrentBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { getLanguage } from "@/lib/i18n/languages";
 import { getMessages } from "@/lib/i18n/messages";
+import { getLatestReply } from "@/lib/requests/replies";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import { Chat, type ChatLine } from "./components/Chat";
 import { EXECUTION_LEVELS, ExecutionBadge } from "./components/ExecutionBadge";
@@ -28,7 +29,9 @@ function toChatLines(messages: Anthropic.Beta.BetaMessageParam[]): ChatLine[] {
 export default async function Home() {
   // SQLite는 동기 API라 요청마다 새로 읽도록 렌더링을 요청 시점으로 미룬다
   await connection();
-  const board = getCurrentBoard(getDb());
+  const db = getDb();
+  const board = getCurrentBoard(db);
+  const latestReplies = Object.fromEntries((board?.requests ?? []).map((request) => [request.id, getLatestReply(db, request.id)]));
   const language = getLanguage(board?.user_language);
   const m = getMessages(language.code);
   const { types } = loadRequestTypes();
@@ -65,7 +68,7 @@ export default async function Home() {
       <main className="platform">
         <div className="platform-main">
           <TripPanel board={board} m={m} language={language.code} />
-          <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} m={m} language={language.code} />
+          <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
         </div>
         {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다. 언어가 바뀌어도 다시 그린다 */}
         <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} />

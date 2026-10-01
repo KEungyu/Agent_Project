@@ -1389,3 +1389,118 @@ ul {
     --pad: 16px;
   }
 }
+
+/* ── 회신: 입력, 해석 결과, 이용자 분류 ──────────────────── */
+
+.reply-box {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+.reply-textarea {
+  min-height: 104px;
+  resize: vertical;
+  line-height: 1.6;
+}
+.reply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+.reply-sample {
+  flex: 1 1 220px;
+  width: auto;
+  color: var(--ink-2);
+}
+.reply-result {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+.reply-original > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.reply-original > p {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--ground);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+.reply-meaning p:last-child {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.reply-list ul {
+  display: grid;
+  gap: 6px;
+}
+.reply-list li {
+  position: relative;
+  padding-left: 18px;
+}
+.reply-list li::before {
+  content: "";
+  position: absolute;
+  top: 0.55em;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ink-2);
+  border-radius: 50%;
+}
+.reply-choice {
+  display: grid;
+  gap: 10px;
+  font-weight: 600;
+}
+.reply-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.reply-class {
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 2px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--sign);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 140ms var(--ease-out), background-color 140ms var(--ease-out);
+}
+.reply-class:hover {
+  background: var(--ground);
+}
+.reply-class-done:hover {
+  border-color: var(--act-deep);
+}
+.reply-class-conditional:hover {
+  border-color: var(--prep-deep);
+}
+.reply-class-declined:hover {
+  border-color: var(--alert);
+}
+.reply-class-info_requested:hover {
+  border-color: var(--info-deep);
+}
+.reply-class:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+.reply-confirmed {
+  font-size: 12px;
+  color: var(--ink-3);
+}
