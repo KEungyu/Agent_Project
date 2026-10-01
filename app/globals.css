@@ -1504,3 +1504,39 @@ ul {
   font-size: 12px;
   color: var(--ink-3);
 }
+
+/* ── 먼저 챙길 일 ────────────────────────────────────────── */
+
+.alerts > .sign-title-h3 {
+  border-bottom: 4px solid var(--exit);
+}
+.alert-rows {
+  display: grid;
+}
+.alert-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+.alert-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.alert-message {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.alert-actions {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .alert-row {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}

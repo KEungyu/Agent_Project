@@ -6,7 +6,9 @@ import { getDb } from "@/lib/db/client";
 import { getLanguage } from "@/lib/i18n/languages";
 import { getMessages } from "@/lib/i18n/messages";
 import { getLatestReply } from "@/lib/requests/replies";
+import { evaluateAlerts } from "@/lib/proactive/rules";
 import { loadRequestTypes } from "@/lib/request-types/loader";
+import { AlertList } from "./components/AlertList";
 import { Chat, type ChatLine } from "./components/Chat";
 import { EXECUTION_LEVELS, ExecutionBadge } from "./components/ExecutionBadge";
 import { LanguagePicker } from "./components/LanguagePicker";
@@ -35,6 +37,7 @@ export default async function Home() {
   const language = getLanguage(board?.user_language);
   const m = getMessages(language.code);
   const { types } = loadRequestTypes();
+  const alerts = board ? evaluateAlerts(board, new Date()) : [];
   const chatLines = board ? toChatLines(getConversation(board.id)) : [];
 
   return (
@@ -67,6 +70,7 @@ export default async function Home() {
       </header>
       <main className="platform">
         <div className="platform-main">
+          <AlertList alerts={alerts} m={m} />
           <TripPanel board={board} m={m} language={language.code} />
           <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
         </div>

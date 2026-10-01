@@ -100,6 +100,16 @@ const en = {
     typeMessage: "Please type a message.",
     examples: ["Tell my hotel I arrive at 1:30 AM.", "What is on my trip board?"],
   },
+  proactive: {
+    title: "Heads-up",
+    handle: "Handle it",
+    dismiss: "Dismiss",
+    r1: { message: "Your arrival at {stay} is {time}, but late check-in isn't confirmed yet.", action: "Please ask {stay} about late check-in. I arrive at {time}." },
+    r2: { message: "You go to {city} on {date}, but there is no transport yet.", action: "Help me plan transport from {from} to {city} on {date}." },
+    r3: { message: "{stay} hasn't replied yet and you arrive in {hours} hours. A phone call may be faster.", action: "{stay} hasn't replied. Can you give me a phone script instead?" },
+    r4: { message: "You check out of {stay} at {checkout} but fly at {flight}. Need a place for your bags?", action: "Ask {stay} if I can leave my bags after check-out until {until}." },
+    r5: { message: "You land at {time}. Late-night airport trains and buses may not be running, so check how you will get into the city.", action: "How can I get from {airport} to my hotel at {time}?" },
+  },
   agent: {
     askIntro: "I need a few details first:",
     drafted:
@@ -213,6 +223,16 @@ const ja: Messages = {
     typeMessage: "メッセージを入力してください。",
     examples: ["ホテルに午前1時半に着くと伝えて。", "旅のボードに何が入っている？"],
   },
+  proactive: {
+    title: "先に確認しておくこと",
+    handle: "対応する",
+    dismiss: "閉じる",
+    r1: { message: "{stay}への到着は{time}ですが、遅いチェックインがまだ確認できていません。", action: "{stay}に遅いチェックインを問い合わせてください。到着は{time}です。" },
+    r2: { message: "{date}に{city}へ移動しますが、まだ交通手段がありません。", action: "{date}に{from}から{city}へ行く交通手段を一緒に考えてください。" },
+    r3: { message: "{stay}からまだ返信がなく、到着まであと{hours}時間です。電話の方が早いかもしれません。", action: "{stay}から返信がありません。代わりに電話用の台本をください。" },
+    r4: { message: "{stay}のチェックアウトは{checkout}、フライトは{flight}です。荷物を預ける場所が必要ですか？", action: "チェックアウト後、{until}まで荷物を預けられるか{stay}に聞いてください。" },
+    r5: { message: "到着は{time}です。深夜は空港鉄道やバスが運行していない場合があります。市内への移動手段を確認しましょう。", action: "{time}に{airport}からホテルまでどう行けばいいですか？" },
+  },
   agent: {
     askIntro: "まず、いくつか教えてください：",
     drafted:
@@ -324,6 +344,16 @@ const zhCN: Messages = {
     typeMessage: "请输入消息。",
     examples: ["告诉酒店我凌晨1点半到。", "我的行程看板上有什么？"],
   },
+  proactive: {
+    title: "先帮你留意",
+    handle: "去处理",
+    dismiss: "关闭",
+    r1: { message: "你{time}到达{stay}，但晚到入住还没有确认。", action: "请向{stay}咨询晚到入住，我{time}到。" },
+    r2: { message: "你{date}要去{city}，但还没有安排交通。", action: "帮我规划{date}从{from}到{city}的交通。" },
+    r3: { message: "{stay}还没有回复，而你{hours}小时后就到了。打电话可能更快。", action: "{stay}还没回复，请给我一份打电话用的稿子。" },
+    r4: { message: "你{checkout}从{stay}退房，航班是{flight}。需要寄存行李吗？", action: "请问{stay}退房后能否寄存行李到{until}。" },
+    r5: { message: "你{time}落地。深夜机场铁路和巴士可能已停运，请先确认进城方式。", action: "{time}从{airport}到酒店怎么走？" },
+  },
   agent: {
     askIntro: "请先告诉我几项信息：",
     drafted: "我已起草了一封发给{where}的韩语消息。请在“请求”中对照韩语原文和译文，然后批准或要求修改。目前还没有发送任何内容。",
@@ -434,6 +464,16 @@ const zhTW: Messages = {
     typeMessage: "請輸入訊息。",
     examples: ["告訴飯店我凌晨1點半到。", "我的行程看板上有什麼？"],
   },
+  proactive: {
+    title: "先幫你留意",
+    handle: "去處理",
+    dismiss: "關閉",
+    r1: { message: "你{time}抵達{stay}，但晚到入住還沒有確認。", action: "請向{stay}詢問晚到入住，我{time}到。" },
+    r2: { message: "你{date}要去{city}，但還沒有安排交通。", action: "幫我規劃{date}從{from}到{city}的交通。" },
+    r3: { message: "{stay}還沒有回覆，而你{hours}小時後就到了。打電話可能比較快。", action: "{stay}還沒回覆，請給我一份打電話用的稿子。" },
+    r4: { message: "你{checkout}從{stay}退房，班機是{flight}。需要寄放行李嗎？", action: "請問{stay}退房後能不能寄放行李到{until}。" },
+    r5: { message: "你{time}落地。深夜機場捷運和巴士可能已停駛，請先確認進市區的方式。", action: "{time}從{airport}到飯店要怎麼去？" },
+  },
   agent: {
     askIntro: "請先告訴我幾項資訊：",
     drafted: "我已起草一封寄給{where}的韓文訊息。請在「請求」中對照韓文原文和譯文，再核准或要求修改。目前還沒有發送任何內容。",
@@ -543,6 +583,16 @@ const vi: Messages = {
     working: "Majung đang xử lý…",
     typeMessage: "Vui lòng nhập tin nhắn.",
     examples: ["Báo khách sạn là tôi đến lúc 1 giờ 30 sáng.", "Bảng chuyến đi của tôi có gì?"],
+  },
+  proactive: {
+    title: "Việc cần lưu ý",
+    handle: "Xử lý",
+    dismiss: "Bỏ qua",
+    r1: { message: "Bạn đến {stay} lúc {time}, nhưng việc nhận phòng muộn chưa được xác nhận.", action: "Hãy hỏi {stay} về việc nhận phòng muộn. Tôi đến lúc {time}." },
+    r2: { message: "Bạn đi {city} vào {date} nhưng chưa có phương tiện.", action: "Giúp tôi tìm phương tiện từ {from} đến {city} vào {date}." },
+    r3: { message: "{stay} chưa trả lời và {hours} giờ nữa bạn sẽ đến. Gọi điện có thể nhanh hơn.", action: "{stay} chưa trả lời. Hãy cho tôi kịch bản gọi điện." },
+    r4: { message: "Bạn trả phòng ở {stay} lúc {checkout} nhưng bay lúc {flight}. Bạn có cần chỗ gửi hành lý không?", action: "Hỏi {stay} xem tôi có thể gửi hành lý sau khi trả phòng đến {until} không." },
+    r5: { message: "Bạn hạ cánh lúc {time}. Tàu và xe buýt sân bay có thể không chạy vào đêm khuya, hãy kiểm tra cách vào thành phố.", action: "Làm sao để đi từ {airport} về khách sạn lúc {time}?" },
   },
   agent: {
     askIntro: "Trước tiên tôi cần vài thông tin:",
@@ -655,6 +705,16 @@ const th: Messages = {
     typeMessage: "กรุณาพิมพ์ข้อความ",
     examples: ["บอกโรงแรมว่าฉันจะถึงตีหนึ่งครึ่ง", "บอร์ดทริปของฉันมีอะไรบ้าง"],
   },
+  proactive: {
+    title: "เรื่องที่ควรเตรียม",
+    handle: "จัดการ",
+    dismiss: "ปิด",
+    r1: { message: "คุณจะถึง{stay}เวลา {time} แต่ยังไม่ได้ยืนยันการเช็กอินช้า", action: "ช่วยสอบถาม{stay}เรื่องเช็กอินช้า ฉันจะถึงเวลา {time}" },
+    r2: { message: "คุณจะไป{city}วันที่ {date} แต่ยังไม่มีการเดินทาง", action: "ช่วยวางแผนการเดินทางจาก{from}ไป{city}วันที่ {date}" },
+    r3: { message: "{stay}ยังไม่ตอบ และอีก {hours} ชั่วโมงคุณจะถึง โทรอาจเร็วกว่า", action: "{stay}ยังไม่ตอบ ขอบทสำหรับโทรศัพท์แทน" },
+    r4: { message: "คุณเช็กเอาต์จาก{stay}เวลา {checkout} แต่บินเวลา {flight} ต้องการที่ฝากกระเป๋าไหม", action: "ช่วยถาม{stay}ว่าฝากกระเป๋าหลังเช็กเอาต์ถึง {until} ได้ไหม" },
+    r5: { message: "คุณลงเครื่องเวลา {time} รถไฟและรถบัสสนามบินอาจไม่วิ่งตอนดึก ตรวจสอบวิธีเข้าเมืองไว้ก่อน", action: "จาก{airport}ไปโรงแรมเวลา {time} ไปอย่างไรดี" },
+  },
   agent: {
     askIntro: "ขอข้อมูลบางอย่างก่อน:",
     drafted:
@@ -765,6 +825,16 @@ const id: Messages = {
     working: "Majung sedang bekerja…",
     typeMessage: "Silakan ketik pesan.",
     examples: ["Beri tahu hotel saya tiba pukul 01.30.", "Apa saja yang ada di papan perjalananku?"],
+  },
+  proactive: {
+    title: "Perlu diperhatikan",
+    handle: "Urus sekarang",
+    dismiss: "Tutup",
+    r1: { message: "Kamu tiba di {stay} pukul {time}, tetapi check-in larut malam belum dikonfirmasi.", action: "Tolong tanyakan check-in larut malam ke {stay}. Saya tiba pukul {time}." },
+    r2: { message: "Kamu ke {city} pada {date}, tetapi belum ada transportasi.", action: "Bantu saya merencanakan transportasi dari {from} ke {city} pada {date}." },
+    r3: { message: "{stay} belum membalas dan kamu tiba {hours} jam lagi. Menelepon mungkin lebih cepat.", action: "{stay} belum membalas. Beri saya naskah untuk menelepon." },
+    r4: { message: "Kamu check-out dari {stay} pukul {checkout}, tetapi terbang pukul {flight}. Perlu tempat menitip tas?", action: "Tanyakan ke {stay} apakah saya bisa menitip tas setelah check-out sampai {until}." },
+    r5: { message: "Kamu mendarat pukul {time}. Kereta dan bus bandara mungkin tidak beroperasi larut malam, jadi cek cara ke kota.", action: "Bagaimana cara dari {airport} ke hotel pukul {time}?" },
   },
   agent: {
     askIntro: "Saya perlu beberapa detail dulu:",
@@ -877,6 +947,16 @@ const es: Messages = {
     typeMessage: "Escribe un mensaje.",
     examples: ["Avisa al hotel de que llego a la 1:30 de la madrugada.", "¿Qué hay en mi tablero de viaje?"],
   },
+  proactive: {
+    title: "Antes de que se te pase",
+    handle: "Gestionarlo",
+    dismiss: "Descartar",
+    r1: { message: "Llegas a {stay} a las {time}, pero la llegada tardía aún no está confirmada.", action: "Consulta a {stay} sobre la llegada tardía. Llego a las {time}." },
+    r2: { message: "Vas a {city} el {date}, pero todavía no tienes transporte.", action: "Ayúdame a planear el transporte de {from} a {city} el {date}." },
+    r3: { message: "{stay} aún no ha respondido y llegas en {hours} horas. Llamar puede ser más rápido.", action: "{stay} no ha respondido. Dame un guion para llamar." },
+    r4: { message: "Dejas {stay} a las {checkout}, pero tu vuelo es a las {flight}. ¿Necesitas dónde dejar el equipaje?", action: "Pregunta a {stay} si puedo dejar el equipaje después de la salida hasta las {until}." },
+    r5: { message: "Aterrizas a las {time}. Puede que los trenes y autobuses del aeropuerto no funcionen de madrugada; revisa cómo llegar a la ciudad.", action: "¿Cómo voy de {airport} al hotel a las {time}?" },
+  },
   agent: {
     askIntro: "Primero necesito algunos datos:",
     drafted:
@@ -987,6 +1067,16 @@ const ko: Messages = {
     working: "마중이 처리 중…",
     typeMessage: "메시지를 입력해 주세요.",
     examples: ["호텔에 새벽 1시 30분에 도착한다고 알려 줘.", "내 여행 보드에 뭐가 있어?"],
+  },
+  proactive: {
+    title: "먼저 챙길 일",
+    handle: "처리하기",
+    dismiss: "닫기",
+    r1: { message: "{stay}에 {time} 도착 예정인데 늦은 체크인이 아직 확인되지 않았어요.", action: "{stay}에 늦은 체크인을 문의해 줘. {time}에 도착해." },
+    r2: { message: "{date}에 {city}로 가는데 아직 교통편이 없어요.", action: "{date}에 {from}에서 {city}로 가는 교통편을 같이 정리해 줘." },
+    r3: { message: "{stay}에서 아직 회신이 없고 도착까지 {hours}시간 남았어요. 전화가 더 빠를 수 있어요.", action: "{stay}에서 답이 없어. 전화 스크립트를 만들어 줘." },
+    r4: { message: "{stay} 체크아웃은 {checkout}인데 비행기는 {flight}이에요. 짐 맡길 곳이 필요한가요?", action: "{stay}에 체크아웃 후 {until}까지 짐을 맡길 수 있는지 물어봐 줘." },
+    r5: { message: "{time}에 도착해요. 심야에는 공항철도와 버스가 운행하지 않을 수 있으니 시내 이동 방법을 확인하세요.", action: "{time}에 {airport}에서 숙소까지 어떻게 가?" },
   },
   agent: {
     askIntro: "먼저 몇 가지를 알려 주세요:",

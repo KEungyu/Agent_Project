@@ -30,3 +30,22 @@ export function formatDate(value: string | undefined, locale = "en"): string {
     new Date(`${value}T00:00:00Z`),
   );
 }
+
+// 저장된 시각 → 한국 시간 "HH:MM"
+export function formatTimeKst(value: string | undefined, locale = "en"): string {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat(locale, { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(
+    new Date(value),
+  );
+}
+
+// 저장된 시각 → 한국 시간 기준 하루 중 분 (0~1439)
+export function kstMinutesOfDay(value: string): number {
+  const date = new Date(value);
+  return (date.getUTCHours() * 60 + date.getUTCMinutes() + 9 * 60) % (24 * 60);
+}
+
+// 저장된 시각 → 한국 시간 기준 날짜 "YYYY-MM-DD"
+export function kstDate(value: string): string {
+  return new Date(new Date(value).getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+}

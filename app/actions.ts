@@ -17,6 +17,7 @@ import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from
 import { getRequest, TransitionError } from "@/lib/requests/state";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
+import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -161,4 +162,10 @@ export async function confirmReplyAction(replyId: string, cls: ReplyClass): Prom
   } finally {
     revalidatePath("/");
   }
+}
+
+export async function dismissAlertAction(ruleId: RuleId, targetId: string) {
+  const db = getDb();
+  dismissAlert(db, ensureBoard(db), ruleId, targetId, new Date());
+  revalidatePath("/");
 }
