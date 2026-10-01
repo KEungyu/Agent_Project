@@ -1,0 +1,694 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-01T06:31:29.322100+00:00",
+  "title": "Design System: 마중 Majung",
+  "extensions": {
+    "colorMeta": {
+      "ground": {
+        "role": "neutral",
+        "displayName": "Platform Concrete",
+        "canonical": "#e8ebee",
+        "tonalRamp": [
+          "#21262c",
+          "#3b454f",
+          "#556372",
+          "#6f8295",
+          "#92a1af",
+          "#b6bfc9",
+          "#d6dbe1",
+          "#f0f2f4"
+        ]
+      },
+      "ground-deep": {
+        "role": "neutral",
+        "displayName": "Deep Concrete",
+        "canonical": "#dce0e4",
+        "tonalRamp": [
+          "#21262b",
+          "#3c454e",
+          "#576370",
+          "#728292",
+          "#94a1ad",
+          "#b7bfc7",
+          "#d7dbe0",
+          "#f1f2f4"
+        ]
+      },
+      "sign": {
+        "role": "neutral",
+        "displayName": "Sign White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#454545",
+          "#636363",
+          "#828282",
+          "#a1a1a1",
+          "#bfbfbf",
+          "#dbdbdb",
+          "#f2f2f2"
+        ]
+      },
+      "signbar": {
+        "role": "neutral",
+        "displayName": "Signage Charcoal",
+        "canonical": "#23272d",
+        "tonalRamp": [
+          "#21252b",
+          "#3c434d",
+          "#576170",
+          "#727f92",
+          "#959eac",
+          "#b7bec7",
+          "#d7dae0",
+          "#f1f2f4"
+        ]
+      },
+      "signbar-2": {
+        "role": "neutral",
+        "displayName": "Raised Charcoal",
+        "canonical": "#31363d",
+        "tonalRamp": [
+          "#22262a",
+          "#3d444c",
+          "#59626e",
+          "#748090",
+          "#969fab",
+          "#b8bec6",
+          "#d7dbdf",
+          "#f1f2f4"
+        ]
+      },
+      "signbar-rule": {
+        "role": "neutral",
+        "displayName": "Charcoal Hairline",
+        "canonical": "#4a5058",
+        "tonalRamp": [
+          "#23262a",
+          "#3f444b",
+          "#5b626c",
+          "#77818d",
+          "#989fa9",
+          "#babec5",
+          "#d8dbde",
+          "#f1f2f3"
+        ]
+      },
+      "signbar-hover": {
+        "role": "neutral",
+        "displayName": "Charcoal Hover",
+        "canonical": "#3b4149",
+        "tonalRamp": [
+          "#22262a",
+          "#3e444c",
+          "#59626e",
+          "#75808f",
+          "#979fab",
+          "#b8bec6",
+          "#d8dbdf",
+          "#f1f2f4"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#15181c",
+        "tonalRamp": [
+          "#21252c",
+          "#3b434f",
+          "#556172",
+          "#708094",
+          "#939fae",
+          "#b6bec8",
+          "#d6dbe0",
+          "#f0f2f4"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "#4a5058",
+        "tonalRamp": [
+          "#23262a",
+          "#3f444b",
+          "#5b626c",
+          "#77818d",
+          "#989fa9",
+          "#babec5",
+          "#d8dbde",
+          "#f1f2f3"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Tertiary Ink",
+        "canonical": "#626973",
+        "tonalRamp": [
+          "#232629",
+          "#3f444a",
+          "#5c626b",
+          "#78808c",
+          "#999fa8",
+          "#babec4",
+          "#d8dbde",
+          "#f1f2f3"
+        ]
+      },
+      "on-dark": {
+        "role": "neutral",
+        "displayName": "On-Dark White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#454545",
+          "#636363",
+          "#828282",
+          "#a1a1a1",
+          "#bfbfbf",
+          "#dbdbdb",
+          "#f2f2f2"
+        ]
+      },
+      "on-dark-2": {
+        "role": "neutral",
+        "displayName": "On-Dark Gray",
+        "canonical": "#b8bec6",
+        "tonalRamp": [
+          "#22262a",
+          "#3d444c",
+          "#59626e",
+          "#748090",
+          "#969fab",
+          "#b8bec6",
+          "#d7dbdf",
+          "#f1f2f4"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#d4d9de",
+        "tonalRamp": [
+          "#21262b",
+          "#3c454e",
+          "#566371",
+          "#728292",
+          "#94a1ad",
+          "#b7bfc8",
+          "#d7dbe0",
+          "#f1f2f4"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "canonical": "#aab1ba",
+        "tonalRamp": [
+          "#22262a",
+          "#3e444c",
+          "#59626e",
+          "#75808f",
+          "#979faa",
+          "#b9bec6",
+          "#d8dbdf",
+          "#f1f2f4"
+        ]
+      },
+      "act": {
+        "role": "secondary",
+        "displayName": "Line 2 Green",
+        "canonical": "#00a84d",
+        "tonalRamp": [
+          "#004c23",
+          "#008a3f",
+          "#00c75b",
+          "#05ff78",
+          "#42ff99",
+          "#80ffba",
+          "#b8ffd8",
+          "#e5fff1"
+        ]
+      },
+      "act-deep": {
+        "role": "secondary",
+        "displayName": "Line 2 Deep Green",
+        "canonical": "#00813b",
+        "tonalRamp": [
+          "#004c23",
+          "#008a3f",
+          "#00c75b",
+          "#05ff77",
+          "#42ff99",
+          "#80ffba",
+          "#b8ffd8",
+          "#e5fff1"
+        ]
+      },
+      "act-hover": {
+        "role": "secondary",
+        "displayName": "Line 2 Pressed Green",
+        "canonical": "#006b31",
+        "tonalRamp": [
+          "#004c23",
+          "#008a3f",
+          "#00c75b",
+          "#05ff78",
+          "#42ff99",
+          "#80ffba",
+          "#b8ffd8",
+          "#e5fff1"
+        ]
+      },
+      "act-tint": {
+        "role": "secondary",
+        "displayName": "Line 2 Tint",
+        "canonical": "#e2f3e9",
+        "tonalRamp": [
+          "#163623",
+          "#286140",
+          "#3a8d5c",
+          "#4eb679",
+          "#7ac89a",
+          "#a5dabb",
+          "#ccead9",
+          "#edf8f1"
+        ]
+      },
+      "prep": {
+        "role": "secondary",
+        "displayName": "Line 3 Orange",
+        "canonical": "#ef7c1c",
+        "tonalRamp": [
+          "#472305",
+          "#813f09",
+          "#ba5c0d",
+          "#ef7816",
+          "#f3994f",
+          "#f7ba88",
+          "#fad9bc",
+          "#fdf1e7"
+        ]
+      },
+      "prep-deep": {
+        "role": "secondary",
+        "displayName": "Line 3 Deep Orange",
+        "canonical": "#a5500a",
+        "tonalRamp": [
+          "#482304",
+          "#823f08",
+          "#bc5b0b",
+          "#f17713",
+          "#f4994d",
+          "#f8ba87",
+          "#fbd8bc",
+          "#fef1e7"
+        ]
+      },
+      "prep-tint": {
+        "role": "secondary",
+        "displayName": "Line 3 Tint",
+        "canonical": "#fdeedf",
+        "tonalRamp": [
+          "#482604",
+          "#824508",
+          "#bb630c",
+          "#f08214",
+          "#f4a14d",
+          "#f8bf87",
+          "#fbdbbc",
+          "#fef2e7"
+        ]
+      },
+      "info": {
+        "role": "secondary",
+        "displayName": "Line 4 Sky",
+        "canonical": "#00a5de",
+        "tonalRamp": [
+          "#00394c",
+          "#00668a",
+          "#0094c7",
+          "#05bfff",
+          "#42cfff",
+          "#80deff",
+          "#b8edff",
+          "#e5f8ff"
+        ]
+      },
+      "info-deep": {
+        "role": "secondary",
+        "displayName": "Line 4 Deep Sky",
+        "canonical": "#006c94",
+        "tonalRamp": [
+          "#00384c",
+          "#00648a",
+          "#0091c7",
+          "#05bbff",
+          "#42ccff",
+          "#80ddff",
+          "#b8ecff",
+          "#e5f8ff"
+        ]
+      },
+      "info-tint": {
+        "role": "secondary",
+        "displayName": "Line 4 Tint",
+        "canonical": "#e0f1f9",
+        "tonalRamp": [
+          "#0c3040",
+          "#165673",
+          "#207ca7",
+          "#2ea0d6",
+          "#61b8e0",
+          "#94cfea",
+          "#c3e4f3",
+          "#eaf5fb"
+        ]
+      },
+      "arex": {
+        "role": "primary",
+        "displayName": "AREX Deep Blue",
+        "canonical": "#0065b3",
+        "tonalRamp": [
+          "#002b4c",
+          "#004e8a",
+          "#0070c7",
+          "#0592ff",
+          "#42adff",
+          "#80c7ff",
+          "#b8e0ff",
+          "#e5f4ff"
+        ]
+      },
+      "arex-deep": {
+        "role": "primary",
+        "displayName": "AREX Night Blue",
+        "canonical": "#004f8c",
+        "tonalRamp": [
+          "#002b4c",
+          "#004e8a",
+          "#0070c7",
+          "#0592ff",
+          "#42adff",
+          "#80c7ff",
+          "#b8e0ff",
+          "#e5f4ff"
+        ]
+      },
+      "exit": {
+        "role": "tertiary",
+        "displayName": "Exit Yellow",
+        "canonical": "#ffcd00",
+        "tonalRamp": [
+          "#4c3d00",
+          "#8a6f00",
+          "#c7a000",
+          "#ffce05",
+          "#ffda42",
+          "#ffe680",
+          "#fff1b8",
+          "#fffae5"
+        ]
+      },
+      "alert": {
+        "role": "tertiary",
+        "displayName": "Signal Red",
+        "canonical": "#c0161c",
+        "tonalRamp": [
+          "#45080a",
+          "#7c0e12",
+          "#b2141a",
+          "#e51f26",
+          "#ec565b",
+          "#f28d90",
+          "#f8bfc1",
+          "#fce8e9"
+        ]
+      },
+      "alert-tint": {
+        "role": "tertiary",
+        "displayName": "Signal Red Tint",
+        "canonical": "#fbe5e5",
+        "tonalRamp": [
+          "#420a0a",
+          "#771212",
+          "#ac1b1b",
+          "#de2626",
+          "#e65b5b",
+          "#ee9090",
+          "#f5c1c1",
+          "#fce9e9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Section sign titles, Korean only, user language beneath at 14px/500."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Station-name sign subject and desk title."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel titles on charcoal signage bars."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text and chat speech."
+      },
+      "body-korean-draft": {
+        "displayName": "Korean Draft",
+        "purpose": "Korean body of a message awaiting approval, 68ch max."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, station names, meta, badge labels."
+      },
+      "exit-code": {
+        "displayName": "Exit Code",
+        "purpose": "Tool names inside exit tiles only."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-sign",
+        "value": "0 1px 2px rgb(21 24 28 / 0.06), 0 1px 1px rgb(21 24 28 / 0.04)",
+        "purpose": "Resting sign panels, requests, the desk."
+      },
+      {
+        "name": "shadow-lift",
+        "value": "0 14px 36px rgb(21 24 28 / 0.18), 0 2px 6px rgb(21 24 28 / 0.08)",
+        "purpose": "Language popover."
+      },
+      {
+        "name": "focus-request",
+        "value": "0 10px 28px rgb(21 24 28 / 0.12)",
+        "purpose": "Request awaiting approval (untokenized literal in CSS)."
+      },
+      {
+        "name": "train",
+        "value": "0 2px 6px rgb(21 24 28 / 0.25)",
+        "purpose": "Route-strip train marker."
+      },
+      {
+        "name": "focus-ring-field",
+        "value": "0 0 0 3px rgb(0 101 179 / 0.28)",
+        "purpose": "Field focus ring."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "All transitions."
+      },
+      {
+        "name": "control",
+        "value": "140ms",
+        "purpose": "Buttons, fields, options hover/press."
+      },
+      {
+        "name": "popover",
+        "value": "160ms",
+        "purpose": "Language panel fade and 6px drop; header controls."
+      },
+      {
+        "name": "train",
+        "value": "520ms",
+        "purpose": "Train marker and done-track slide to next station."
+      },
+      {
+        "name": "working",
+        "value": "1.4s infinite",
+        "purpose": "AREX segment sliding along the working track."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0ms, no animation",
+        "purpose": "prefers-reduced-motion: train jumps."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "stack-inputs",
+        "value": "560px"
+      },
+      {
+        "name": "vertical-trip-line",
+        "value": "640px"
+      },
+      {
+        "name": "hide-legend",
+        "value": "960px"
+      },
+      {
+        "name": "single-column",
+        "value": "1040px"
+      },
+      {
+        "name": "container",
+        "value": "1240px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Charcoal signage control for ordinary submits (Send, Save, Add).",
+      "html": "<button class=\"ds-btn\">Send</button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 18px;border:0;border-radius:var(--radius,6px);background:var(--signbar,#23272d);color:var(--on-dark,#fff);font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:background-color 140ms cubic-bezier(0.16,1,0.3,1),transform 140ms cubic-bezier(0.16,1,0.3,1)}.ds-btn:hover{background:#3b4149}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:3px solid var(--arex,#0065b3);outline-offset:2px}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "White stroked control for secondary actions and editor toggles.",
+      "html": "<button class=\"ds-btn-quiet\">Request changes</button>",
+      "css": ".ds-btn-quiet{display:inline-flex;align-items:center;min-height:42px;padding:8px 14px;border:1px solid var(--rule-strong,#aab1ba);border-radius:var(--radius,6px);background:var(--sign,#fff);color:var(--ink,#15181c);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 140ms cubic-bezier(0.16,1,0.3,1),border-color 140ms cubic-bezier(0.16,1,0.3,1)}.ds-btn-quiet:hover{border-color:var(--ink-3,#626973);background:var(--ground,#e8ebee)}.ds-btn-quiet:active{transform:translateY(1px)}.ds-btn-quiet:focus-visible{outline:3px solid var(--arex,#0065b3);outline-offset:2px}"
+    },
+    {
+      "name": "Approve Bar",
+      "kind": "button",
+      "refersTo": "button-approve",
+      "description": "The lone full-width green bar for the one irreversible action.",
+      "html": "<button class=\"ds-btn-approve\">Approve and send <svg viewBox=\"0 0 18 18\" width=\"18\" height=\"18\" aria-hidden=\"true\"><path d=\"M3 9h11M10 5l4 4-4 4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"/></svg></button>",
+      "css": ".ds-btn-approve{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:12px 22px;border:0;border-radius:var(--radius,6px);background:var(--act-deep,#00813b);color:var(--on-dark,#fff);font:inherit;font-size:16px;font-weight:700;cursor:pointer;transition:background-color 140ms cubic-bezier(0.16,1,0.3,1),transform 140ms cubic-bezier(0.16,1,0.3,1)}.ds-btn-approve:hover{background:#006b31}.ds-btn-approve:active{transform:translateY(1px)}.ds-btn-approve:focus-visible{outline:3px solid var(--arex,#0065b3);outline-offset:2px}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Text input with AREX focus ring.",
+      "html": "<input class=\"ds-field\" placeholder=\"Type a message\">",
+      "css": ".ds-field{width:100%;min-height:42px;padding:8px 12px;border:1px solid var(--rule-strong,#aab1ba);border-radius:var(--radius,6px);background:var(--sign,#fff);color:var(--ink,#15181c);font:inherit;font-size:15px;font-weight:500;transition:border-color 140ms cubic-bezier(0.16,1,0.3,1),box-shadow 140ms cubic-bezier(0.16,1,0.3,1)}.ds-field::placeholder{color:var(--ink-3,#626973)}.ds-field:hover{border-color:var(--ink-3,#626973)}.ds-field:focus-visible{outline:none;border-color:var(--arex-deep,#004f8c);box-shadow:0 0 0 3px rgb(0 101 179 / 0.28)}"
+    },
+    {
+      "name": "Execution Line Pill",
+      "kind": "chip",
+      "refersTo": "line-pill-act",
+      "description": "Line-color badge carrying the Korean execution term and its translation.",
+      "html": "<span class=\"ds-pill ds-pill-act\"><span class=\"ds-pill-ko\" lang=\"ko\">대행</span>We send it</span> <span class=\"ds-pill ds-pill-prep\"><span class=\"ds-pill-ko\" lang=\"ko\">준비</span>Prep</span> <span class=\"ds-pill ds-pill-info\"><span class=\"ds-pill-ko\" lang=\"ko\">안내</span>Info</span>",
+      "css": ".ds-pill{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:3px 11px 3px 4px;border-radius:999px;font-size:13px;font-weight:600;line-height:1;white-space:nowrap}.ds-pill-ko{display:grid;place-items:center;min-width:34px;height:20px;padding:0 6px;border-radius:999px;background:var(--sign,#fff);font-size:12px;font-weight:800}.ds-pill-act{background:var(--act-deep,#00813b);color:var(--on-dark,#fff)}.ds-pill-act .ds-pill-ko{color:var(--act-deep,#00813b)}.ds-pill-prep{background:var(--prep,#ef7c1c);color:var(--ink,#15181c)}.ds-pill-prep .ds-pill-ko{color:var(--prep-deep,#a5500a)}.ds-pill-info{background:var(--info,#00a5de);color:var(--ink,#15181c)}.ds-pill-info .ds-pill-ko{color:var(--info-deep,#006c94)}"
+    },
+    {
+      "name": "Exit Tile",
+      "kind": "chip",
+      "refersTo": "exit-tile",
+      "description": "Yellow tool-call tile, shown only for calls that ran.",
+      "html": "<span class=\"ds-exit\">get_board</span> <span class=\"ds-exit ds-exit-error\">draft_message</span>",
+      "css": ".ds-exit{display:inline-block;padding:2px 7px;border-radius:3px;background:var(--exit,#ffcd00);color:var(--ink,#15181c);font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;font-weight:700}.ds-exit-error{background:var(--alert-tint,#fbe5e5);color:var(--alert,#c0161c)}"
+    },
+    {
+      "name": "Sign Panel",
+      "kind": "card",
+      "refersTo": "sign-panel",
+      "description": "White sign with a full-bleed charcoal bilingual title bar.",
+      "html": "<section class=\"ds-sign\"><h3 class=\"ds-sign-bar\"><span lang=\"ko\">항공편</span><span>Flights</span></h3><div class=\"ds-sign-row\"><span>Arrival in Korea</span><b>Oct 20, 00:40</b></div></section>",
+      "css": ".ds-sign{overflow:hidden;padding:0 20px 20px;border:1px solid var(--rule,#d4d9de);border-radius:var(--radius,6px);background:var(--sign,#fff);box-shadow:0 1px 2px rgb(21 24 28 / 0.06),0 1px 1px rgb(21 24 28 / 0.04);color:var(--ink,#15181c)}.ds-sign-bar{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:0 -20px 18px;padding:12px 20px;background:var(--signbar,#23272d);font-size:13px;font-weight:500;color:var(--on-dark-2,#b8bec6)}.ds-sign-bar [lang=ko]{font-size:17px;font-weight:800;letter-spacing:-0.01em;color:var(--on-dark,#fff)}.ds-sign-row{display:flex;justify-content:space-between;gap:16px;font-size:14px;color:var(--ink-2,#4a5058)}.ds-sign-row b{color:var(--ink,#15181c);font-size:15px;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Route Strip",
+      "kind": "custom",
+      "refersTo": "route-strip",
+      "description": "A request's line with a sliding train marker at its current station.",
+      "html": "<div class=\"ds-route\"><div class=\"ds-route-track\"><span class=\"ds-route-done\"></span><span class=\"ds-route-train\"></span></div><ol class=\"ds-route-stops\"><li class=\"p\"><i></i>Draft</li><li class=\"c\"><i></i>Waiting for approval</li><li><i></i>Sent</li><li><i></i>Waiting for reply</li><li><i></i>Done</li></ol></div>",
+      "css": ".ds-route{--c:var(--act,#00a84d);--pos:0.25;position:relative;font-size:12px}.ds-route-track{container-type:inline-size;position:absolute;top:9px;left:10%;right:10%;height:4px;border-radius:2px;background:var(--rule,#d4d9de)}.ds-route-done{position:absolute;inset:0;border-radius:2px;background:var(--c);transform:scaleX(var(--pos));transform-origin:left}.ds-route-train{position:absolute;top:50%;left:0;z-index:2;width:30px;height:18px;border:3px solid #fff;border-radius:9px;background:var(--c);box-shadow:0 2px 6px rgb(21 24 28 / 0.25);transform:translate(calc(var(--pos) * 100cqi - 50%),-50%);transition:transform 520ms cubic-bezier(0.16,1,0.3,1)}.ds-route-stops{position:relative;display:grid;grid-template-columns:repeat(5,1fr);margin:0;padding:0;list-style:none}.ds-route-stops li{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;color:var(--ink-3,#626973)}.ds-route-stops i{position:relative;z-index:1;width:14px;height:14px;margin-top:4px;border:3px solid var(--rule-strong,#aab1ba);border-radius:50%;background:#fff;box-sizing:border-box}.ds-route-stops .p i{border-color:var(--c);background:var(--c)}.ds-route-stops .c{color:var(--ink,#15181c);font-weight:700}"
+    },
+    {
+      "name": "Language Button",
+      "kind": "nav",
+      "refersTo": "lang-button",
+      "description": "Flag plus native-name pill in the charcoal header.",
+      "html": "<div style=\"background:#23272d;padding:12px\"><button class=\"ds-lang\"><svg width=\"20\" height=\"14\" viewBox=\"0 0 20 14\" aria-hidden=\"true\"><rect width=\"20\" height=\"14\" rx=\"2\" fill=\"#fff\"/><circle cx=\"10\" cy=\"7\" r=\"3.5\" fill=\"#c0161c\"/></svg>English<svg width=\"12\" height=\"12\" viewBox=\"0 0 12 12\" aria-hidden=\"true\"><path d=\"M3 4.5l3 3 3-3\" fill=\"none\" stroke=\"#b8bec6\" stroke-width=\"1.5\"/></svg></button></div>",
+      "css": ".ds-lang{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 12px 6px 10px;border:1px solid var(--signbar-rule,#4a5058);border-radius:999px;background:var(--signbar-2,#31363d);color:var(--on-dark,#fff);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 160ms cubic-bezier(0.16,1,0.3,1),border-color 160ms cubic-bezier(0.16,1,0.3,1)}.ds-lang:hover{background:#3b4149;border-color:var(--on-dark-2,#b8bec6)}.ds-lang:focus-visible{outline:3px solid var(--arex,#0065b3);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Seoul Metro Platform",
+    "overview": "Majung reads like the Seoul Metro wayfinding system. The page is a platform: a cool concrete-gray ground carrying white sign panels, each headed by a charcoal signage bar. Every request is a line ridden station by station to its end, the trip itself is drawn as a line with cities as stations, and every sign carries Korean and the visitor's language together, Korean bold on top, translation beneath.\n\nLine colors are codes, not decoration. Line 2 green means 대행 (We send it), Line 3 orange means 준비 (Prep), Line 4 sky means 안내 (Info), AREX deep blue is Majung the agent and the trip line, and the yellow exit-number tile marks a tool call that actually ran. Each color appears at full strength where it codes something and nowhere else. Density is calm and legible enough for a phone at 1:30 AM and a classroom projector; hierarchy comes from scale and weight contrast within a single family, not from color or ornament.\n\nThe system refuses the default travel-app dashboard of rounded white cards with a floating chat bubble: panels are square-shouldered signs, the chat is a fixed information desk, and the one irreversible action (approving a send) sits alone on a full-width green bar.",
+    "keyCharacteristics": [
+      "Concrete-gray ground, white sign panels, charcoal signage bar on every panel title.",
+      "Bilingual stacks everywhere: Korean (800 weight) first, user language (500 weight, ink-2) beside or beneath.",
+      "Line color as code at full strength; never decorative, never tinted into backgrounds except selection and hover states of the AREX/Info family.",
+      "Roundels (station-number circles) for airports, the agent, and the brand.",
+      "One signature motion: the train marker slides along a request's route strip to its next station."
+    ],
+    "rules": [
+      {
+        "name": "The Line Code Rule",
+        "body": "A line color appears only where it codes its meaning: green for 대행, orange for 준비, sky for 안내, AREX for the agent and the trip, yellow for a tool call that ran. No line color is used as generic accent or decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The AREX Is Not Line 4 Rule",
+        "body": "AREX deep blue and Line 4 sky are distinct and must stay distinct: the agent is never drawn in sky, and Info is never drawn in AREX blue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Honest Exit Rule",
+        "body": "Yellow exit tiles appear only for tool calls that actually executed; a failed call shows in alert-tint, and no tile is drawn for an intended or hypothetical call.",
+        "section": "colors"
+      },
+      {
+        "name": "The Bilingual Stack Rule",
+        "body": "Every sign title is Korean first at 800 weight, the user's language second at 500 weight in ink-2 (on-dark-2 on charcoal). On the Korean UI the second line is omitted, never duplicated.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Times, dates, booking numbers and flight data use tabular figures.",
+        "section": "typography"
+      },
+      {
+        "name": "The Keep-All Rule",
+        "body": "Korean text never breaks mid-word (word-break: keep-all); Thai runs at line-height 1.7.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Platform Rule",
+        "body": "Signs rest flat; only floating or awaiting-action surfaces lift.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** head every sign panel with a full-bleed charcoal bar carrying Korean and the user's language.",
+      "**Do** use line colors only as codes: act for 대행, prep for 준비, info for 안내, AREX for the agent and trip, exit yellow for executed tool calls.",
+      "**Do** keep AREX (#0065b3) and Line 4 sky (#00a5de) visually separate in every new surface.",
+      "**Do** isolate an irreversible action on its own full-width act-deep bar, with secondary actions above it.",
+      "**Do** use deep line variants (act-deep, prep-deep, info-deep, arex-deep) whenever line-colored text or a fill carrying white text sits on white.",
+      "**Do** draw sequences as lines with station dots and roundels, vertical on narrow screens.",
+      "**Do** use tabular figures for times, dates and reference numbers."
+    ],
+    "donts": [
+      "**Don't** introduce a second display face or a decorative script; Pretendard carries every role.",
+      "**Don't** use a line color as a generic accent, background wash, or decorative stripe.",
+      "**Don't** draw a multi-color line stripe in the header; the header carries one AREX rule.",
+      "**Don't** show a 확정 (confirmed) badge or any badge without its Korean term.",
+      "**Don't** draw an exit tile for a tool call that did not run.",
+      "**Don't** use emoji for flags; flags are authored SVG with a 1px hairline ring and 2px radius."
+    ]
+  }
+}
