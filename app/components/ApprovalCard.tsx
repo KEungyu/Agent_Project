@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { approveAndSendAction, requestChangesAction } from "@/app/actions";
+import { approveAndSendAction, requestChangesAction, retranslateAction } from "@/app/actions";
 import type { Draft } from "@/lib/board/types";
+import { getLanguage, type Language } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 
 // 역명판처럼 한국어 원문을 크게, 이용자 언어 역번역을 그 아래에 둔다.
@@ -12,12 +13,17 @@ export function ApprovalCard({
   draft,
   to,
   m,
+  language,
 }: {
   requestId: string;
   draft: Draft;
   to?: string;
   m: Messages["approval"];
+  language: Language;
 }) {
+  // 역번역이 지금 화면 언어와 다르면 어떤 언어인지 밝히고 다시 번역할 수 있게 한다
+  const translatedIn = getLanguage(draft.back_translation_language ?? "en");
+  const stale = translatedIn.code !== language.code;
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   const [editing, setEditing] = useState(false);
@@ -26,6 +32,12 @@ export function ApprovalCard({
   const approve = () =>
     startTransition(async () => {
       const result = await approveAndSendAction(requestId);
+      setError(result.ok ? undefined : result.error);
+    });
+
+  const retranslate = () =>
+    startTransition(async () => {
+      const result = await retranslateAction(requestId);
       setError(result.ok ? undefined : result.error);
     });
 
@@ -47,7 +59,17 @@ export function ApprovalCard({
         <p className="station-sign-body">{draft.body_ko}</p>
       </div>
       <div className="station-sign-translation">
-        <p className="station-sign-label">{m.translation}</p>
+        <div className="station-sign-label-row">
+          <p className="station-sign-label">
+            {m.translation}
+            {stale && <span className="translated-in"> · {fmt(m.translatedInto, { language: translatedIn.nativeName })}</span>}
+          </p>
+          {stale && (
+            <button type="button" className="button-quiet button-small" onClick={retranslate} disabled={pending}>
+              {pending ? m.working : fmt(m.retranslate, { language: language.nativeName })}
+            </button>
+          )}
+        </div>
         <p className="station-sign-body">{draft.back_translation}</p>
       </div>
 

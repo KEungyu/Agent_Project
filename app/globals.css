@@ -1030,8 +1030,25 @@ ul {
   font-size: 15px;
   line-height: 1.65;
 }
-.station-sign-label {
+.station-sign-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
   margin-bottom: 6px;
+}
+.translated-in {
+  font-weight: 600;
+  color: var(--prep-deep);
+}
+.button-small {
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.station-sign-label {
+  margin-bottom: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--ink-2);
@@ -1079,7 +1096,6 @@ ul {
   display: flex;
   flex-direction: column;
   max-height: calc(100dvh - 32px);
-  min-height: 440px;
   border: 1px solid var(--rule);
   border-radius: var(--radius);
   background: var(--sign);

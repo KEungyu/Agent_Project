@@ -71,6 +71,8 @@ const en = {
     cancel: "Cancel",
     working: "Working…",
     notSent: "Nothing is sent until you approve.",
+    translatedInto: "Translated into {language}",
+    retranslate: "Translate into {language}",
   },
   sent: {
     sentTo: "Sent to {to} · {time}",
@@ -170,6 +172,8 @@ const ja: Messages = {
     cancel: "キャンセル",
     working: "処理中…",
     notSent: "承認するまで何も送信されません。",
+    translatedInto: "{language}に翻訳済み",
+    retranslate: "{language}に翻訳し直す",
   },
   sent: { sentTo: "{to} に送信 · {time}", demo: "デモモード：実際には届きません" },
   chat: {
@@ -264,6 +268,8 @@ const zhCN: Messages = {
     cancel: "取消",
     working: "处理中…",
     notSent: "在你批准之前不会发送任何内容。",
+    translatedInto: "已译成{language}",
+    retranslate: "改译成{language}",
   },
   sent: { sentTo: "已发送至 {to} · {time}", demo: "演示模式：并未真正送达" },
   chat: {
@@ -357,6 +363,8 @@ const zhTW: Messages = {
     cancel: "取消",
     working: "處理中…",
     notSent: "在你核准之前不會發送任何內容。",
+    translatedInto: "已譯成{language}",
+    retranslate: "改譯成{language}",
   },
   sent: { sentTo: "已發送至 {to} · {time}", demo: "示範模式：並未真正送達" },
   chat: {
@@ -450,6 +458,8 @@ const vi: Messages = {
     cancel: "Hủy",
     working: "Đang xử lý…",
     notSent: "Không có gì được gửi cho đến khi bạn duyệt.",
+    translatedInto: "Đã dịch sang {language}",
+    retranslate: "Dịch sang {language}",
   },
   sent: { sentTo: "Đã gửi đến {to} · {time}", demo: "Chế độ demo: không thực sự được gửi đi" },
   chat: {
@@ -544,6 +554,8 @@ const th: Messages = {
     cancel: "ยกเลิก",
     working: "กำลังดำเนินการ…",
     notSent: "จะไม่มีการส่งใดๆ จนกว่าคุณจะอนุมัติ",
+    translatedInto: "แปลเป็น{language}แล้ว",
+    retranslate: "แปลเป็น{language}",
   },
   sent: { sentTo: "ส่งถึง {to} · {time}", demo: "โหมดสาธิต: ไม่ได้ส่งจริง" },
   chat: {
@@ -638,6 +650,8 @@ const id: Messages = {
     cancel: "Batal",
     working: "Memproses…",
     notSent: "Tidak ada yang dikirim sebelum kamu setujui.",
+    translatedInto: "Diterjemahkan ke {language}",
+    retranslate: "Terjemahkan ke {language}",
   },
   sent: { sentTo: "Terkirim ke {to} · {time}", demo: "Mode demo: tidak benar-benar terkirim" },
   chat: {
@@ -732,6 +746,8 @@ const es: Messages = {
     cancel: "Cancelar",
     working: "Procesando…",
     notSent: "No se envía nada hasta que lo apruebes.",
+    translatedInto: "Traducido al {language}",
+    retranslate: "Traducir al {language}",
   },
   sent: { sentTo: "Enviado a {to} · {time}", demo: "Modo demo: no se entregó realmente" },
   chat: {
@@ -826,6 +842,8 @@ const ko: Messages = {
     cancel: "취소",
     working: "처리 중…",
     notSent: "승인하기 전에는 아무것도 보내지 않습니다.",
+    translatedInto: "{language}로 번역됨",
+    retranslate: "{language}로 다시 번역",
   },
   sent: { sentTo: "{to}에 발송 · {time}", demo: "시연 모드: 실제로 전달되지 않음" },
   chat: {

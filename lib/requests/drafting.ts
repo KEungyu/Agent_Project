@@ -143,6 +143,7 @@ export async function composeDraft(
       subject_ko: draft.subject_ko,
       body_ko: draft.body_ko,
       back_translation,
+      back_translation_language: language,
       hash: hashDraft(draft.subject_ko, draft.body_ko),
     },
     checks,

@@ -1,4 +1,5 @@
 import type { Request, Stay } from "@/lib/board/types";
+import { getLanguage } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { RequestType } from "@/lib/request-types/schema";
 import { formatKst } from "@/lib/time";
@@ -49,7 +50,7 @@ export function RequestList({
                 </div>
                 <RouteStrip status={request.status} line={line} m={m} />
                 {request.status === "pending_approval" && request.draft && (
-                  <ApprovalCard requestId={request.id} draft={request.draft} to={stay?.email} m={m.approval} />
+                  <ApprovalCard requestId={request.id} draft={request.draft} to={stay?.email} m={m.approval} language={getLanguage(language)} />
                 )}
                 {request.sent && (
                   <p className="request-sent">

@@ -46,7 +46,13 @@ export type RequestStatus =
 export type Channel = "email" | "phone";
 export type Actor = "user" | "agent" | "system";
 
-export type Draft = { subject_ko: string; body_ko: string; back_translation: string; hash: string };
+export type Draft = {
+  subject_ko: string;
+  body_ko: string;
+  back_translation: string;
+  back_translation_language?: string; // 역번역 언어 코드. 없으면 영어로 본다
+  hash: string;
+};
 export type Approval = { approved_at: string; approved_by: "user"; draft_hash: string };
 export type Sent = { at: string; message_id: string; mode: "mock" | "real"; to: string };
 

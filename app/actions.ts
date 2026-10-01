@@ -12,7 +12,7 @@ import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
 import { getMessages } from "@/lib/i18n/messages";
 import { getMailer } from "@/lib/mail/mailer";
-import { approveAndSend, ApprovalError, requestChanges } from "@/lib/requests/approval";
+import { approveAndSend, ApprovalError, requestChanges, retranslateDraft } from "@/lib/requests/approval";
 import { getRequest, TransitionError } from "@/lib/requests/state";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
@@ -105,4 +105,19 @@ export async function requestChangesAction(requestId: string, note: string): Pro
   );
   revalidatePath("/");
   return result;
+}
+
+export async function retranslateAction(requestId: string): Promise<ApprovalResult> {
+  const db = getDb();
+  const board = ensureBoard(db);
+  try {
+    await retranslateDraft(db, createClaudeClient(), requestId, board.user_language);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof MissingApiKeyError || error instanceof ApprovalError) return { ok: false, error: error.message };
+    if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
+    throw error;
+  } finally {
+    revalidatePath("/");
+  }
 }

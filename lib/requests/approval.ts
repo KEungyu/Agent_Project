@@ -3,8 +3,9 @@ import { getStay, recordEvent } from "../board/store";
 import type { Request } from "../board/types";
 import type { Db } from "../db/client";
 import { requests } from "../db/schema";
+import type { LlmClient } from "../agent/llm";
 import type { Mailer } from "../mail/mailer";
-import { hashDraft } from "./drafting";
+import { backTranslate, hashDraft } from "./drafting";
 import { getRequest, transition } from "./state";
 
 // 승인과 발송 (ARCHITECTURE §3 승인 게이트). 발송은 이용자가 화면에서 승인할 때만 일어나며, LLM에게는 발송 도구가 없다.
@@ -66,4 +67,16 @@ export function requestChanges(db: Db, requestId: string, note: string): Request
   const request = load(db, requestId);
   recordEvent(db, request.board_id, "user_action", { action: "request_changes" }, requestId);
   return transition(db, requestId, "draft", "user", { note: note || undefined });
+}
+
+// 이용자가 언어를 바꾸면 승인 대기 초안의 역번역을 그 언어로 다시 만든다.
+// 한국어 원문은 그대로라 승인용 해시도 바뀌지 않는다.
+export async function retranslateDraft(db: Db, llm: LlmClient, requestId: string, language: string): Promise<Request> {
+  const request = load(db, requestId);
+  if (request.status !== "pending_approval" || !request.draft) throw new ApprovalError("승인 대기 중인 초안이 아니다");
+  const back_translation = await backTranslate(llm, request.draft.subject_ko, request.draft.body_ko, language);
+  const draft = { ...request.draft, back_translation, back_translation_language: language };
+  db.update(requests).set({ draft }).where(eq(requests.id, requestId)).run();
+  recordEvent(db, request.board_id, "user_action", { action: "retranslate", language }, requestId);
+  return load(db, requestId);
 }

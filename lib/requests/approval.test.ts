@@ -6,7 +6,8 @@ import { seedDemoBoard } from "../board/demo";
 import { listEvents } from "../board/store";
 import { openDb } from "../db/client";
 import { createMockMailer, getMailer } from "../mail/mailer";
-import { approveAndSend, approveRequest, requestChanges, sendApproved } from "./approval";
+import { fakeLlm } from "../agent/testing";
+import { approveAndSend, approveRequest, requestChanges, retranslateDraft, sendApproved } from "./approval";
 import { hashDraft } from "./drafting";
 import { createRequest, getHistory, getRequest, transition } from "./state";
 
@@ -70,6 +71,22 @@ describe("approval gate", () => {
     const request = requestChanges(db, requestId, "Please also ask about parking");
     expect(request.status).toBe("draft");
     expect(getHistory(db, requestId).at(-1)).toMatchObject({ to: "draft", actor: "user", note: "Please also ask about parking" });
+  });
+
+  it("언어를 바꿔 역번역을 다시 만들어도 한국어 원문과 해시는 그대로이고 승인·발송이 된다", async () => {
+    const { db, requestId, mailer } = setup();
+    const before = getRequest(db, requestId)!.draft!;
+    const prompts: string[] = [];
+    const llm = fakeLlm([], (request) => {
+      prompts.push(request.system);
+      return { subject: "遅いチェックインの問い合わせ", body: "こんにちは。" };
+    });
+
+    const after = (await retranslateDraft(db, llm, requestId, "ja")).draft!;
+    expect(prompts[0]).toContain("Japanese");
+    expect(after).toMatchObject({ body_ko: before.body_ko, hash: before.hash, back_translation_language: "ja" });
+    expect(after.back_translation).toContain("こんにちは");
+    expect(approveAndSend(db, requestId, mailer).status).toBe("awaiting_reply");
   });
 
   it("MAIL_MODE=real은 아직 지원하지 않는다", () => {
