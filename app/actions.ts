@@ -2,10 +2,8 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
-import { getConversation, setConversation } from "@/lib/agent/conversation";
 import { createClaudeClient, MissingApiKeyError } from "@/lib/agent/llm";
-import { runAgent } from "@/lib/agent/loop";
-import { createTools } from "@/lib/agent/registry";
+import { runTurn, type TurnResult } from "@/lib/agent/turn";
 import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
 import { recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
@@ -46,30 +44,12 @@ export async function setLanguage(code: string) {
   revalidatePath("/", "layout");
 }
 
-export type ChatResult =
-  | { ok: true; reply: string; tools: { name: string; ok: boolean }[] }
-  | { ok: false; error: string };
+export type ChatResult = TurnResult;
 
 async function runChatTurn(text: string): Promise<ChatResult> {
   const db = getDb();
   const board = ensureBoard(db);
-  recordEvent(db, board.id, "user_action", { action: "chat" });
-
-  try {
-    const result = await runAgent({
-      llm: createClaudeClient(),
-      tools: createTools(),
-      ctx: { db, boardId: board.id },
-      language: board.user_language,
-      messages: [...getConversation(board.id), { role: "user", content: text }],
-    });
-    setConversation(board.id, result.messages);
-    return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })) };
-  } catch (error) {
-    if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
-    if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
-    throw error;
-  }
+  return runTurn({ db, boardId: board.id, language: board.user_language, text, createLlm: createClaudeClient });
 }
 
 export async function sendChat(message: string): Promise<ChatResult> {

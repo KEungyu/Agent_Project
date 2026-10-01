@@ -5,10 +5,15 @@ import { sendChat } from "@/app/actions";
 import type { Messages } from "@/lib/i18n/messages";
 import { SignTitle } from "./SignTitle";
 
-export type ChatLine = { role: "user" | "assistant" | "error"; text: string; tools?: { name: string; ok: boolean }[] };
+export type ChatLine = {
+  role: "user" | "assistant" | "error" | "safety";
+  text: string;
+  tools?: { name: string; ok: boolean }[];
+  safety?: "emergency" | "out_of_scope";
+};
 
 // 안내 데스크: 마중에게 묻는 창. 도구 호출은 지하철 출구 번호판처럼 노란 표로 보여준다.
-export function Chat({ initialLines, m }: { initialLines: ChatLine[]; m: Messages["chat"] }) {
+export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m: Messages["chat"]; safety: Messages["safety"] }) {
   const [lines, setLines] = useState<ChatLine[]>(initialLines);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,7 +36,11 @@ export function Chat({ initialLines, m }: { initialLines: ChatLine[]; m: Message
       const result = await sendChat(message);
       setLines((current) => [
         ...current,
-        result.ok ? { role: "assistant", text: result.reply, tools: result.tools } : { role: "error", text: result.error },
+        !result.ok
+          ? { role: "error", text: result.error }
+          : "safety" in result
+            ? { role: "safety", text: "", safety: result.safety }
+            : { role: "assistant", text: result.reply, tools: result.tools },
       ]);
     });
   }
@@ -52,7 +61,12 @@ export function Chat({ initialLines, m }: { initialLines: ChatLine[]; m: Message
             </div>
           </li>
         )}
-        {lines.map((line, i) => (
+        {lines.map((line, i) =>
+          line.role === "safety" && line.safety ? (
+            <li key={i} className="say-safety">
+              <SafetyCard kind={line.safety} m={safety} />
+            </li>
+          ) : (
           <li key={i} className={`say say-${line.role}`}>
             {line.role === "assistant" && (
               <span className="say-roundel" aria-hidden="true" lang="ko">
@@ -72,7 +86,8 @@ export function Chat({ initialLines, m }: { initialLines: ChatLine[]; m: Message
               <p>{line.text}</p>
             </div>
           </li>
-        ))}
+          ),
+        )}
         {pending && (
           <li className="say say-assistant say-pending">
             <span className="say-roundel" aria-hidden="true" lang="ko">
@@ -92,5 +107,33 @@ export function Chat({ initialLines, m }: { initialLines: ChatLine[]; m: Message
         </button>
       </form>
     </section>
+  );
+}
+
+// 긴급이면 112·119·1330, 행정 질문이면 1345. 번호는 휴대폰에서 바로 걸 수 있게 tel: 링크로 둔다.
+function SafetyCard({ kind, m }: { kind: "emergency" | "out_of_scope"; m: Messages["safety"] }) {
+  const numbers =
+    kind === "emergency"
+      ? [
+          { tel: "119", label: m.n119 },
+          { tel: "112", label: m.n112 },
+          { tel: "1330", label: m.n1330 },
+        ]
+      : [{ tel: "1345", label: m.n1345 }];
+  return (
+    <div className={`safety-card safety-${kind}`} role={kind === "emergency" ? "alert" : undefined}>
+      <p className="safety-title">{kind === "emergency" ? m.emergencyTitle : m.outTitle}</p>
+      <p className="safety-note">{kind === "emergency" ? m.emergencyNote : m.outNote}</p>
+      <ul className="safety-numbers">
+        {numbers.map((number) => (
+          <li key={number.tel}>
+            <a href={`tel:${number.tel}`} className="safety-number">
+              <span className="safety-digits">{number.tel}</span>
+              <span>{number.label}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

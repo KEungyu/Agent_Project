@@ -110,6 +110,16 @@ const en = {
     r4: { message: "You check out of {stay} at {checkout} but fly at {flight}. Need a place for your bags?", action: "Ask {stay} if I can leave my bags after check-out until {until}." },
     r5: { message: "You land at {time}. Late-night airport trains and buses may not be running, so check how you will get into the city.", action: "How can I get from {airport} to my hotel at {time}?" },
   },
+  safety: {
+    emergencyTitle: "Emergency: call now",
+    emergencyNote: "Majung cannot call or act for you in an emergency. Call one of these numbers directly.",
+    n119: "Fire · Ambulance",
+    n112: "Police",
+    n1330: "Korea Travel Helpline (interpretation)",
+    outTitle: "Not something Majung handles",
+    outNote: "Visas, immigration and alien registration are outside what Majung does. Please ask the official center:",
+    n1345: "Immigration Contact Center",
+  },
   agent: {
     askIntro: "I need a few details first:",
     drafted:
@@ -233,6 +243,16 @@ const ja: Messages = {
     r4: { message: "{stay}のチェックアウトは{checkout}、フライトは{flight}です。荷物を預ける場所が必要ですか？", action: "チェックアウト後、{until}まで荷物を預けられるか{stay}に聞いてください。" },
     r5: { message: "到着は{time}です。深夜は空港鉄道やバスが運行していない場合があります。市内への移動手段を確認しましょう。", action: "{time}に{airport}からホテルまでどう行けばいいですか？" },
   },
+  safety: {
+    emergencyTitle: "緊急：すぐに電話を",
+    emergencyNote: "緊急時、Majung は電話や代行ができません。次の番号に直接電話してください。",
+    n119: "消防・救急",
+    n112: "警察",
+    n1330: "韓国観光案内電話（通訳）",
+    outTitle: "Majung では対応できない内容です",
+    outNote: "ビザ・出入国・外国人登録は Majung の対象外です。公式窓口に問い合わせてください：",
+    n1345: "出入国・外国人案内センター",
+  },
   agent: {
     askIntro: "まず、いくつか教えてください：",
     drafted:
@@ -354,6 +374,16 @@ const zhCN: Messages = {
     r4: { message: "你{checkout}从{stay}退房，航班是{flight}。需要寄存行李吗？", action: "请问{stay}退房后能否寄存行李到{until}。" },
     r5: { message: "你{time}落地。深夜机场铁路和巴士可能已停运，请先确认进城方式。", action: "{time}从{airport}到酒店怎么走？" },
   },
+  safety: {
+    emergencyTitle: "紧急情况：请立即拨打",
+    emergencyNote: "紧急情况下 Majung 无法替你打电话或处理。请直接拨打以下号码。",
+    n119: "消防 · 急救",
+    n112: "警察",
+    n1330: "韩国旅游咨询热线（翻译）",
+    outTitle: "这不在 Majung 的服务范围内",
+    outNote: "签证、出入境和外国人登记不在 Majung 的服务范围内。请咨询官方中心：",
+    n1345: "出入境外国人咨询中心",
+  },
   agent: {
     askIntro: "请先告诉我几项信息：",
     drafted: "我已起草了一封发给{where}的韩语消息。请在“请求”中对照韩语原文和译文，然后批准或要求修改。目前还没有发送任何内容。",
@@ -474,6 +504,16 @@ const zhTW: Messages = {
     r4: { message: "你{checkout}從{stay}退房，班機是{flight}。需要寄放行李嗎？", action: "請問{stay}退房後能不能寄放行李到{until}。" },
     r5: { message: "你{time}落地。深夜機場捷運和巴士可能已停駛，請先確認進市區的方式。", action: "{time}從{airport}到飯店要怎麼去？" },
   },
+  safety: {
+    emergencyTitle: "緊急狀況：請立即撥打",
+    emergencyNote: "緊急狀況下 Majung 無法替你打電話或處理。請直接撥打以下號碼。",
+    n119: "消防 · 救護",
+    n112: "警察",
+    n1330: "韓國旅遊諮詢專線（翻譯）",
+    outTitle: "這不在 Majung 的服務範圍內",
+    outNote: "簽證、出入境和外國人登錄不在 Majung 的服務範圍內。請洽詢官方中心：",
+    n1345: "出入境外國人諮詢中心",
+  },
   agent: {
     askIntro: "請先告訴我幾項資訊：",
     drafted: "我已起草一封寄給{where}的韓文訊息。請在「請求」中對照韓文原文和譯文，再核准或要求修改。目前還沒有發送任何內容。",
@@ -593,6 +633,16 @@ const vi: Messages = {
     r3: { message: "{stay} chưa trả lời và {hours} giờ nữa bạn sẽ đến. Gọi điện có thể nhanh hơn.", action: "{stay} chưa trả lời. Hãy cho tôi kịch bản gọi điện." },
     r4: { message: "Bạn trả phòng ở {stay} lúc {checkout} nhưng bay lúc {flight}. Bạn có cần chỗ gửi hành lý không?", action: "Hỏi {stay} xem tôi có thể gửi hành lý sau khi trả phòng đến {until} không." },
     r5: { message: "Bạn hạ cánh lúc {time}. Tàu và xe buýt sân bay có thể không chạy vào đêm khuya, hãy kiểm tra cách vào thành phố.", action: "Làm sao để đi từ {airport} về khách sạn lúc {time}?" },
+  },
+  safety: {
+    emergencyTitle: "Khẩn cấp: gọi ngay",
+    emergencyNote: "Trong trường hợp khẩn cấp, Majung không thể gọi điện hay hành động thay bạn. Hãy gọi trực tiếp các số sau.",
+    n119: "Cứu hỏa · Cấp cứu",
+    n112: "Cảnh sát",
+    n1330: "Tổng đài du lịch Hàn Quốc (phiên dịch)",
+    outTitle: "Majung không xử lý việc này",
+    outNote: "Thị thực, xuất nhập cảnh và đăng ký người nước ngoài nằm ngoài phạm vi của Majung. Hãy hỏi trung tâm chính thức:",
+    n1345: "Trung tâm tư vấn xuất nhập cảnh",
   },
   agent: {
     askIntro: "Trước tiên tôi cần vài thông tin:",
@@ -715,6 +765,16 @@ const th: Messages = {
     r4: { message: "คุณเช็กเอาต์จาก{stay}เวลา {checkout} แต่บินเวลา {flight} ต้องการที่ฝากกระเป๋าไหม", action: "ช่วยถาม{stay}ว่าฝากกระเป๋าหลังเช็กเอาต์ถึง {until} ได้ไหม" },
     r5: { message: "คุณลงเครื่องเวลา {time} รถไฟและรถบัสสนามบินอาจไม่วิ่งตอนดึก ตรวจสอบวิธีเข้าเมืองไว้ก่อน", action: "จาก{airport}ไปโรงแรมเวลา {time} ไปอย่างไรดี" },
   },
+  safety: {
+    emergencyTitle: "ฉุกเฉิน: โทรทันที",
+    emergencyNote: "ในกรณีฉุกเฉิน Majung ไม่สามารถโทรหรือดำเนินการแทนคุณได้ โปรดโทรหาหมายเลขเหล่านี้โดยตรง",
+    n119: "ดับเพลิง · รถพยาบาล",
+    n112: "ตำรวจ",
+    n1330: "สายด่วนท่องเที่ยวเกาหลี (ล่าม)",
+    outTitle: "เรื่องนี้ Majung ไม่ได้ดูแล",
+    outNote: "วีซ่า การเข้าเมือง และการลงทะเบียนชาวต่างชาติอยู่นอกขอบเขตของ Majung โปรดสอบถามศูนย์ทางการ:",
+    n1345: "ศูนย์ข้อมูลตรวจคนเข้าเมือง",
+  },
   agent: {
     askIntro: "ขอข้อมูลบางอย่างก่อน:",
     drafted:
@@ -835,6 +895,16 @@ const id: Messages = {
     r3: { message: "{stay} belum membalas dan kamu tiba {hours} jam lagi. Menelepon mungkin lebih cepat.", action: "{stay} belum membalas. Beri saya naskah untuk menelepon." },
     r4: { message: "Kamu check-out dari {stay} pukul {checkout}, tetapi terbang pukul {flight}. Perlu tempat menitip tas?", action: "Tanyakan ke {stay} apakah saya bisa menitip tas setelah check-out sampai {until}." },
     r5: { message: "Kamu mendarat pukul {time}. Kereta dan bus bandara mungkin tidak beroperasi larut malam, jadi cek cara ke kota.", action: "Bagaimana cara dari {airport} ke hotel pukul {time}?" },
+  },
+  safety: {
+    emergencyTitle: "Darurat: telepon sekarang",
+    emergencyNote: "Dalam keadaan darurat, Majung tidak bisa menelepon atau bertindak untukmu. Hubungi langsung nomor berikut.",
+    n119: "Pemadam kebakaran · Ambulans",
+    n112: "Polisi",
+    n1330: "Layanan Informasi Wisata Korea (penerjemah)",
+    outTitle: "Ini di luar layanan Majung",
+    outNote: "Visa, imigrasi, dan pendaftaran warga asing di luar cakupan Majung. Silakan tanyakan ke pusat resmi:",
+    n1345: "Pusat Layanan Imigrasi",
   },
   agent: {
     askIntro: "Saya perlu beberapa detail dulu:",
@@ -957,6 +1027,16 @@ const es: Messages = {
     r4: { message: "Dejas {stay} a las {checkout}, pero tu vuelo es a las {flight}. ¿Necesitas dónde dejar el equipaje?", action: "Pregunta a {stay} si puedo dejar el equipaje después de la salida hasta las {until}." },
     r5: { message: "Aterrizas a las {time}. Puede que los trenes y autobuses del aeropuerto no funcionen de madrugada; revisa cómo llegar a la ciudad.", action: "¿Cómo voy de {airport} al hotel a las {time}?" },
   },
+  safety: {
+    emergencyTitle: "Emergencia: llama ya",
+    emergencyNote: "En una emergencia, Majung no puede llamar ni actuar por ti. Llama directamente a estos números.",
+    n119: "Bomberos · Ambulancia",
+    n112: "Policía",
+    n1330: "Línea de turismo de Corea (interpretación)",
+    outTitle: "Esto no lo gestiona Majung",
+    outNote: "Los visados, la inmigración y el registro de extranjeros quedan fuera de lo que hace Majung. Consulta al centro oficial:",
+    n1345: "Centro de información de inmigración",
+  },
   agent: {
     askIntro: "Primero necesito algunos datos:",
     drafted:
@@ -1077,6 +1157,16 @@ const ko: Messages = {
     r3: { message: "{stay}에서 아직 회신이 없고 도착까지 {hours}시간 남았어요. 전화가 더 빠를 수 있어요.", action: "{stay}에서 답이 없어. 전화 스크립트를 만들어 줘." },
     r4: { message: "{stay} 체크아웃은 {checkout}인데 비행기는 {flight}이에요. 짐 맡길 곳이 필요한가요?", action: "{stay}에 체크아웃 후 {until}까지 짐을 맡길 수 있는지 물어봐 줘." },
     r5: { message: "{time}에 도착해요. 심야에는 공항철도와 버스가 운행하지 않을 수 있으니 시내 이동 방법을 확인하세요.", action: "{time}에 {airport}에서 숙소까지 어떻게 가?" },
+  },
+  safety: {
+    emergencyTitle: "긴급 상황: 바로 전화하세요",
+    emergencyNote: "긴급 상황에서 마중은 전화를 걸거나 대신 처리할 수 없습니다. 아래 번호로 직접 전화하세요.",
+    n119: "화재 · 구급",
+    n112: "경찰",
+    n1330: "관광통역안내전화",
+    outTitle: "마중이 다루지 않는 업무입니다",
+    outNote: "비자·출입국·외국인등록은 마중의 범위 밖입니다. 공식 창구에 문의하세요:",
+    n1345: "외국인종합안내센터",
   },
   agent: {
     askIntro: "먼저 몇 가지를 알려 주세요:",

@@ -75,7 +75,7 @@ export default async function Home() {
           <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
         </div>
         {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다. 언어가 바뀌어도 다시 그린다 */}
-        <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} />
+        <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} safety={m.safety} />
       </main>
     </>
   );

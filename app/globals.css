@@ -1540,3 +1540,63 @@ ul {
     justify-items: start;
   }
 }
+
+/* ── 안전 카드: 긴급(112·119·1330) / 범위 밖(1345) ──────── */
+
+.say-safety {
+  align-self: stretch;
+}
+.safety-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--alert);
+  border-radius: var(--radius);
+  background: var(--alert-tint);
+}
+.safety-out_of_scope {
+  border-color: var(--info-deep);
+  background: var(--info-tint);
+}
+.safety-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--alert);
+}
+.safety-out_of_scope .safety-title {
+  color: var(--info-deep);
+}
+.safety-note {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.safety-numbers {
+  display: grid;
+  gap: 8px;
+}
+.safety-number {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--sign);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+.safety-number:hover {
+  background: var(--ground);
+}
+.safety-digits {
+  min-width: 3.2em;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--alert);
+}
+.safety-out_of_scope .safety-digits {
+  color: var(--info-deep);
+}
