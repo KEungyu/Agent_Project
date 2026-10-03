@@ -68,6 +68,9 @@ const en = {
     bookedAs: "Booked · {mode}",
     planned: "Majungi has it ready. Book whenever you like.",
     goodTrip: "Have a great trip!",
+    noDirect: "There's no direct route. You can go through another city:",
+    via: "Via {city}",
+    change: "Change in {city}",
   },
   airportTips: {
     title: "Airport tips",
@@ -190,6 +193,17 @@ const en = {
     title: "Requests",
     empty: "No requests yet. Ask Majungi in the chat, for example: “Tell my hotel I arrive at 1:30 AM.”",
     round: "Round {n}",
+    call: {
+      title: "Call {where}",
+      soon: "Short on time? A call gets a faster answer.",
+      noEmail: "There's no email on file, so call them with this script.",
+      callNow: "Call",
+      show: "Show the call script",
+      making: "Majungi is writing the call script…",
+      lines: "Read these out, one by one",
+      replies: "They might say",
+      failed: "Couldn't make the script. Please try again.",
+    },
   },
   status: {
     draft: "Draft",
@@ -409,6 +423,9 @@ const en = {
       tooFar: "That's too far for a taxi. Try the KTX or a bus.",
       failed: "Couldn't check right now. Please try again in a moment.",
     },
+    rateOn: "Rate on {date}",
+    rateApprox: "Approximate rate",
+    rateSource: "Rates by Exchange Rate API",
   },
   checklist: {
     title: "Trip checklist",
@@ -446,8 +463,8 @@ const en = {
     drafted:
       "I wrote a Korean message to {where}. Check the Korean and the translation under Requests, then send it or ask for changes. Nothing's been sent yet.",
     theBusiness: "the business",
-    phoneSoon: "You arrive in just {hours} hours, so a call is faster than email. Call {where} and read this out:",
-    phoneNoEmail: "There's no email for {where} on your board, so here's what to say when you call:",
+    phoneSoon: "You arrive in just {hours} hours. I wrote the email to {where}, but a call is faster: there's a call script on the request card too.",
+    phoneNoEmail: "There's no email for {where} on your board, so a call it is. The call script is on the request card.",
     stop: {
       max_tool_calls: "That got a bit long, so I stopped. Could you tell me a little more specifically what you need?",
       repeated_call: "I was going in circles, so I stopped. Could you say it another way?",
@@ -525,6 +542,9 @@ const ja: Messages = {
     bookedAs: "予約済み · {mode}",
     planned: "マジュンイが準備しておきました。都合のいいときに予約してください。",
     goodTrip: "いい旅を！",
+    noDirect: "直通の交通手段がありません。ほかの都市を経由して行けます：",
+    via: "{city}経由",
+    change: "{city}で乗り換え",
   },
   airportTips: {
     title: "空港のお役立ち情報",
@@ -647,6 +667,17 @@ const ja: Messages = {
     title: "リクエスト",
     empty: "リクエストはまだありません。チャットでマジュンイに頼んでみてください。例：「ホテルに夜中の1時半に着くって伝えて」",
     round: "{n}回目",
+    call: {
+      title: "{where}に電話",
+      soon: "時間がないなら、電話のほうが早く返事をもらえます。",
+      noEmail: "メールが登録されていないので、この台本で電話してください。",
+      callNow: "電話する",
+      show: "電話の台本を見る",
+      making: "マジュンイが台本を作成中…",
+      lines: "順番に読み上げてください",
+      replies: "相手はこう答えるかも",
+      failed: "台本を作れませんでした。もう一度お試しください。",
+    },
   },
   status: {
     draft: "作成中",
@@ -863,6 +894,9 @@ const ja: Messages = {
       tooFar: "タクシーには遠すぎます。KTXやバスがおすすめです。",
       failed: "今は確認できません。少ししてからもう一度どうぞ。",
     },
+    rateOn: "{date}のレート",
+    rateApprox: "おおよそのレート",
+    rateSource: "レート提供：Exchange Rate API",
   },
   checklist: {
     title: "旅のチェックリスト",
@@ -898,10 +932,10 @@ const ja: Messages = {
   agent: {
     askIntro: "まず、これだけ教えてください：",
     drafted:
-      "{where}あての韓国語メッセージを書いておきました。下のリクエスト欄で韓国語と訳を確認して、送るか直してほしいところを教えてください。まだ何も送っていません。",
+      "{where}あての韓国語メッセージを書いておきました。リクエスト欄で韓国語と訳を確認して、送るか直してほしいところを教えてください。まだ何も送っていません。",
     theBusiness: "お店",
-    phoneSoon: "到着まであと{hours}時間しかないので、メールより電話が早いです。{where}に電話して、これを読み上げてください：",
-    phoneNoEmail: "旅のボードに{where}のメールがないので、電話で話す内容を用意しました：",
+    phoneSoon: "到着まであと{hours}時間です。{where}へのメールを書きましたが、電話のほうが早いです。依頼カードに電話の台本もあります。",
+    phoneNoEmail: "旅のボードに{where}のメールがないので、電話にしましょう。依頼カードに電話の台本があります。",
     stop: {
       max_tool_calls: "長くなってしまったので一度止めました。してほしいことを、もう少し具体的に教えてください。",
       repeated_call: "同じことを繰り返してしまったので止めました。別の言い方でもう一度お願いします。",
@@ -977,6 +1011,9 @@ const zhCN: Messages = {
     bookedAs: "已订好 · {mode}",
     planned: "Majungi 已经帮你准备好了，方便的时候订就行。",
     goodTrip: "旅途愉快！",
+    noDirect: "没有直达的交通，可以经过其他城市：",
+    via: "经{city}",
+    change: "在{city}换乘",
   },
   airportTips: {
     title: "机场小贴士",
@@ -1099,6 +1136,17 @@ const zhCN: Messages = {
     title: "请求",
     empty: "还没有请求。在聊天里跟 Majungi 说一声试试，比如：“帮我告诉酒店我凌晨一点半到。”",
     round: "第 {n} 次",
+    call: {
+      title: "打电话给{where}",
+      soon: "时间不够？打电话能更快得到答复。",
+      noEmail: "没有对方的邮箱，就照着这份稿子打电话吧。",
+      callNow: "打电话",
+      show: "查看通话稿",
+      making: "Majungi 正在写通话稿…",
+      lines: "按顺序读出来",
+      replies: "对方可能会说",
+      failed: "通话稿没写出来，请再试一次。",
+    },
   },
   status: {
     draft: "草稿",
@@ -1315,6 +1363,9 @@ const zhCN: Messages = {
       tooFar: "太远了，不适合打车。可以坐 KTX 或大巴。",
       failed: "现在查不了，请稍后再试。",
     },
+    rateOn: "{date} 汇率",
+    rateApprox: "大致汇率",
+    rateSource: "汇率来源：Exchange Rate API",
   },
   checklist: {
     title: "行前清单",
@@ -1350,10 +1401,10 @@ const zhCN: Messages = {
   agent: {
     askIntro: "先告诉我这几点：",
     drafted:
-      "我写好了一封发给{where}的韩语消息。在下面的“请求”里对照韩语原文和翻译，没问题就发送，想改也可以告诉我。现在还没发出去。",
+      "我写好了一封发给{where}的韩语消息。在“请求”里对照韩语原文和翻译，没问题就发送，想改也可以告诉我。现在还没发出去。",
     theBusiness: "商家",
-    phoneSoon: "离到达只剩 {hours} 小时了，打电话比发邮件快。打给{where}，照着下面念就行：",
-    phoneNoEmail: "行程里没有{where}的邮箱，所以帮你准备了打电话时说的话：",
+    phoneSoon: "离到达只剩{hours}小时。我已经写好给{where}的邮件，不过打电话更快，请求卡片上也有通话稿。",
+    phoneNoEmail: "行程里没有{where}的邮箱，那就打电话吧。通话稿在请求卡片上。",
     stop: {
       max_tool_calls: "步骤太多，我先停一下。能再具体说说你想要什么吗？",
       repeated_call: "我一直在重复同一步，先停下了。换个说法再告诉我一次吧。",
@@ -1429,6 +1480,9 @@ const zhTW: Messages = {
     bookedAs: "已訂好 · {mode}",
     planned: "Majungi 已經幫你準備好了，方便時再訂就好。",
     goodTrip: "旅途愉快！",
+    noDirect: "沒有直達的交通，可以經過其他城市：",
+    via: "經{city}",
+    change: "在{city}轉乘",
   },
   airportTips: {
     title: "機場小撇步",
@@ -1551,6 +1605,17 @@ const zhTW: Messages = {
     title: "請求",
     empty: "還沒有請求。在聊天裡跟 Majungi 說說看，例如：「幫我跟飯店說我凌晨一點半到。」",
     round: "第 {n} 次",
+    call: {
+      title: "打電話給{where}",
+      soon: "時間不夠？打電話能更快得到回覆。",
+      noEmail: "沒有對方的電子信箱，就照著這份稿子打電話吧。",
+      callNow: "打電話",
+      show: "查看通話稿",
+      making: "Majungi 正在寫通話稿…",
+      lines: "依序念出來",
+      replies: "對方可能會說",
+      failed: "通話稿沒寫出來，請再試一次。",
+    },
   },
   status: {
     draft: "草稿",
@@ -1767,6 +1832,9 @@ const zhTW: Messages = {
       tooFar: "太遠了，不適合搭計程車。可以搭 KTX 或客運。",
       failed: "現在查不了，請稍後再試。",
     },
+    rateOn: "{date} 匯率",
+    rateApprox: "大約匯率",
+    rateSource: "匯率來源：Exchange Rate API",
   },
   checklist: {
     title: "行前清單",
@@ -1802,10 +1870,10 @@ const zhTW: Messages = {
   agent: {
     askIntro: "先告訴我這幾點：",
     drafted:
-      "我寫好了一則要給{where}的韓文訊息。在下面的「請求」裡對照韓文原文和翻譯，沒問題就寄出，想改也可以跟我說。現在還沒寄出。",
+      "我寫好了一則要給{where}的韓文訊息。在「請求」裡對照韓文原文和翻譯，沒問題就寄出，想改也可以跟我說。現在還沒寄出。",
     theBusiness: "店家",
-    phoneSoon: "離抵達只剩 {hours} 小時，打電話比寄信快。打給{where}，照著下面念就好：",
-    phoneNoEmail: "行程裡沒有{where}的信箱，所以幫你準備了打電話時要說的話：",
+    phoneSoon: "距離抵達只剩{hours}小時。我已經寫好給{where}的信，不過打電話比較快，請求卡片上也有通話稿。",
+    phoneNoEmail: "行程裡沒有{where}的電子信箱，那就打電話吧。通話稿在請求卡片上。",
     stop: {
       max_tool_calls: "步驟太多了，我先停一下。可以再具體說說你想要什麼嗎？",
       repeated_call: "我一直在重複同一個步驟，先停下來了。換個說法再跟我說一次吧。",
@@ -1881,6 +1949,9 @@ const vi: Messages = {
     bookedAs: "Đã đặt · {mode}",
     planned: "Majungi đã chuẩn bị sẵn. Lúc nào tiện thì bạn đặt nhé.",
     goodTrip: "Chúc bạn đi chơi vui vẻ!",
+    noDirect: "Không có tuyến đi thẳng. Bạn có thể đi qua thành phố khác:",
+    via: "Qua {city}",
+    change: "Đổi chuyến ở {city}",
   },
   airportTips: {
     title: "Mẹo ở sân bay",
@@ -2003,6 +2074,17 @@ const vi: Messages = {
     title: "Yêu cầu",
     empty: "Chưa có yêu cầu nào. Thử nhờ Majungi trong khung chat nhé, ví dụ: “Báo khách sạn giúp mình là 1 rưỡi sáng mình mới tới.”",
     round: "Lần {n}",
+    call: {
+      title: "Gọi cho {where}",
+      soon: "Gấp quá? Gọi điện sẽ có câu trả lời nhanh hơn.",
+      noEmail: "Chưa có email, nên hãy gọi theo kịch bản này.",
+      callNow: "Gọi",
+      show: "Xem kịch bản gọi",
+      making: "Majungi đang viết kịch bản…",
+      lines: "Đọc lần lượt từng câu",
+      replies: "Họ có thể trả lời",
+      failed: "Chưa tạo được kịch bản. Bạn thử lại nhé.",
+    },
   },
   status: {
     draft: "Đang soạn",
@@ -2219,6 +2301,9 @@ const vi: Messages = {
       tooFar: "Xa quá để đi taxi. Thử đi KTX hoặc xe buýt nhé.",
       failed: "Giờ chưa tính được. Bạn thử lại sau chút nhé.",
     },
+    rateOn: "Tỷ giá ngày {date}",
+    rateApprox: "Tỷ giá ước tính",
+    rateSource: "Tỷ giá từ Exchange Rate API",
   },
   checklist: {
     title: "Danh sách cần chuẩn bị",
@@ -2254,10 +2339,10 @@ const vi: Messages = {
   agent: {
     askIntro: "Cho mình biết mấy điều này trước nhé:",
     drafted:
-      "Mình đã viết sẵn tin nhắn tiếng Hàn gửi {where}. Xem bản tiếng Hàn và bản dịch ở mục Yêu cầu bên dưới, rồi gửi đi hoặc bảo mình sửa nhé. Hiện chưa gửi gì cả.",
+      "Mình đã viết sẵn tin nhắn tiếng Hàn gửi {where}. Xem bản tiếng Hàn và bản dịch ở mục Yêu cầu, rồi gửi đi hoặc bảo mình sửa nhé. Hiện chưa gửi gì cả.",
     theBusiness: "bên đó",
-    phoneSoon: "Chỉ còn {hours} tiếng nữa là bạn tới, gọi điện sẽ nhanh hơn email. Gọi cho {where} và đọc theo đoạn này nhé:",
-    phoneNoEmail: "Trong lịch trình chưa có email của {where}, nên mình soạn sẵn nội dung để bạn gọi điện:",
+    phoneSoon: "Chỉ còn {hours} tiếng nữa là bạn tới. Mình đã viết email cho {where}, nhưng gọi điện sẽ nhanh hơn: thẻ yêu cầu có sẵn kịch bản gọi.",
+    phoneNoEmail: "Lịch trình chưa có email của {where}, nên mình gọi điện nhé. Kịch bản gọi có trên thẻ yêu cầu.",
     stop: {
       max_tool_calls: "Việc này dài quá nên mình dừng lại. Bạn nói rõ hơn một chút bạn cần gì nhé?",
       repeated_call: "Mình cứ lặp lại một bước nên đã dừng. Bạn nói lại theo cách khác giúp mình nhé.",
@@ -2333,6 +2418,9 @@ const th: Messages = {
     bookedAs: "จองแล้ว · {mode}",
     planned: "Majungi เตรียมไว้ให้แล้ว สะดวกเมื่อไหร่ค่อยจองก็ได้",
     goodTrip: "เที่ยวให้สนุกนะ!",
+    noDirect: "ไม่มีทางไปตรง ไปผ่านเมืองอื่นได้:",
+    via: "ผ่าน{city}",
+    change: "ต่อรถที่{city}",
   },
   airportTips: {
     title: "ทริคที่สนามบิน",
@@ -2455,6 +2543,17 @@ const th: Messages = {
     title: "คำขอ",
     empty: "ยังไม่มีคำขอ ลองบอก Majungi ในแชทดูสิ เช่น “บอกโรงแรมหน่อยว่าจะถึงตีหนึ่งครึ่ง”",
     round: "ครั้งที่ {n}",
+    call: {
+      title: "โทรหา {where}",
+      soon: "รีบไหม? โทรไปจะได้คำตอบเร็วกว่า",
+      noEmail: "ไม่มีอีเมล เลยโทรตามบทนี้ได้เลย",
+      callNow: "โทร",
+      show: "ดูบทพูด",
+      making: "Majungi กำลังเขียนบทพูด…",
+      lines: "อ่านทีละประโยค",
+      replies: "อีกฝ่ายอาจตอบว่า",
+      failed: "ทำบทพูดไม่ได้ ลองใหม่อีกครั้งนะ",
+    },
   },
   status: {
     draft: "กำลังเขียน",
@@ -2671,6 +2770,9 @@ const th: Messages = {
       tooFar: "ไกลเกินไปสำหรับแท็กซี่ ลองนั่ง KTX หรือรถบัสดูนะ",
       failed: "ตอนนี้เช็กไม่ได้ ลองใหม่อีกครั้งนะ",
     },
+    rateOn: "อัตราแลกเปลี่ยนวันที่ {date}",
+    rateApprox: "อัตราแลกเปลี่ยนโดยประมาณ",
+    rateSource: "อัตราจาก Exchange Rate API",
   },
   checklist: {
     title: "เช็กลิสต์ก่อนเที่ยว",
@@ -2706,10 +2808,10 @@ const th: Messages = {
   agent: {
     askIntro: "ขอรู้เรื่องนี้ก่อนนะ:",
     drafted:
-      "เขียนข้อความภาษาเกาหลีถึง{where}ไว้แล้ว ดูต้นฉบับกับคำแปลในช่องคำขอด้านล่าง แล้วกดส่งหรือบอกให้แก้ได้เลย ตอนนี้ยังไม่ได้ส่งอะไรออกไป",
+      "เขียนข้อความภาษาเกาหลีถึง{where}ไว้แล้ว ดูต้นฉบับกับคำแปลในช่องคำขอ แล้วกดส่งหรือบอกให้แก้ได้เลย ตอนนี้ยังไม่ได้ส่งอะไรออกไป",
     theBusiness: "ร้าน",
-    phoneSoon: "อีกแค่ {hours} ชั่วโมงก็ถึงแล้ว โทรเร็วกว่าอีเมล โทรหา{where}แล้วอ่านตามนี้ได้เลย:",
-    phoneNoEmail: "ในทริปยังไม่มีอีเมลของ{where} เลยเตรียมบทพูดไว้ให้โทรแทน:",
+    phoneSoon: "อีกแค่ {hours} ชั่วโมงก็จะถึงแล้ว ฉันเขียนอีเมลถึง {where} ไว้แล้ว แต่โทรจะเร็วกว่า ในการ์ดคำขอมีบทพูดสำหรับโทรด้วย",
+    phoneNoEmail: "ในทริปไม่มีอีเมลของ {where} งั้นโทรไปเลยนะ บทพูดอยู่ในการ์ดคำขอ",
     stop: {
       max_tool_calls: "เรื่องนี้ยาวไปหน่อยเลยหยุดไว้ก่อน ช่วยบอกให้ชัดขึ้นอีกนิดได้ไหมว่าต้องการอะไร?",
       repeated_call: "วนอยู่ขั้นเดิมเลยหยุดไว้ก่อน ลองพูดใหม่อีกแบบได้ไหม?",
@@ -2785,6 +2887,9 @@ const id: Messages = {
     bookedAs: "Sudah dipesan · {mode}",
     planned: "Majungi sudah siapkan. Pesan kapan pun kamu sempat.",
     goodTrip: "Selamat jalan-jalan!",
+    noDirect: "Tidak ada rute langsung. Kamu bisa lewat kota lain:",
+    via: "Lewat {city}",
+    change: "Transit di {city}",
   },
   airportTips: {
     title: "Tips di bandara",
@@ -2907,6 +3012,17 @@ const id: Messages = {
     title: "Permintaan",
     empty: "Belum ada permintaan. Coba minta tolong Majungi di chat, misalnya: “Kabari hotel kalau aku baru sampai jam setengah dua pagi.”",
     round: "Ke-{n}",
+    call: {
+      title: "Telepon {where}",
+      soon: "Mepet waktu? Telepon lebih cepat dapat jawaban.",
+      noEmail: "Tidak ada email, jadi telepon pakai naskah ini.",
+      callNow: "Telepon",
+      show: "Lihat naskah telepon",
+      making: "Majungi sedang menulis naskah…",
+      lines: "Bacakan satu per satu",
+      replies: "Mereka mungkin menjawab",
+      failed: "Naskah belum bisa dibuat. Coba lagi ya.",
+    },
   },
   status: {
     draft: "Lagi ditulis",
@@ -3123,6 +3239,9 @@ const id: Messages = {
       tooFar: "Terlalu jauh untuk naik taksi. Coba KTX atau bus.",
       failed: "Belum bisa dicek sekarang. Coba lagi sebentar ya.",
     },
+    rateOn: "Kurs per {date}",
+    rateApprox: "Kurs perkiraan",
+    rateSource: "Kurs dari Exchange Rate API",
   },
   checklist: {
     title: "Daftar persiapan",
@@ -3158,10 +3277,10 @@ const id: Messages = {
   agent: {
     askIntro: "Kasih tahu ini dulu, ya:",
     drafted:
-      "Aku sudah tulis pesan bahasa Korea untuk {where}. Cek teks Korea dan terjemahannya di bagian Permintaan di bawah, lalu kirim atau minta diubah. Belum ada yang terkirim.",
+      "Aku sudah tulis pesan bahasa Korea untuk {where}. Cek teks Korea dan terjemahannya di bagian Permintaan, lalu kirim atau minta diubah. Belum ada yang terkirim.",
     theBusiness: "pihak penginapan",
-    phoneSoon: "Kamu tiba {hours} jam lagi, jadi telepon lebih cepat daripada email. Telepon {where} dan bacakan ini:",
-    phoneNoEmail: "Belum ada email {where} di rencana perjalananmu, jadi aku siapkan naskah untuk telepon:",
+    phoneSoon: "Kamu tiba dalam {hours} jam lagi. Aku sudah menulis email ke {where}, tapi telepon lebih cepat: ada naskah telepon di kartu permintaan.",
+    phoneNoEmail: "Belum ada email {where} di rencana perjalananmu, jadi telepon saja. Naskahnya ada di kartu permintaan.",
     stop: {
       max_tool_calls: "Prosesnya kepanjangan, jadi aku berhenti dulu. Bisa jelaskan sedikit lebih spesifik apa yang kamu butuhkan?",
       repeated_call: "Aku muter-muter di langkah yang sama, jadi berhenti dulu. Coba sampaikan dengan cara lain, ya.",
@@ -3237,6 +3356,9 @@ const es: Messages = {
     bookedAs: "Reservado · {mode}",
     planned: "Majungi ya lo tiene listo. Resérvalo cuando quieras.",
     goodTrip: "¡Buen viaje!",
+    noDirect: "No hay ruta directa. Puedes ir pasando por otra ciudad:",
+    via: "Vía {city}",
+    change: "Transbordo en {city}",
   },
   airportTips: {
     title: "Consejos para el aeropuerto",
@@ -3359,6 +3481,17 @@ const es: Messages = {
     title: "Solicitudes",
     empty: "Aún no hay solicitudes. Pídele algo a Majungi en el chat, por ejemplo: “Dile al hotel que llego a la 1:30 de la madrugada”.",
     round: "Vez {n}",
+    call: {
+      title: "Llamar a {where}",
+      soon: "¿Vas justo de tiempo? Llamando te responden antes.",
+      noEmail: "No hay correo guardado, así que llama con este guion.",
+      callNow: "Llamar",
+      show: "Ver el guion",
+      making: "Majungi está escribiendo el guion…",
+      lines: "Léelo frase por frase",
+      replies: "Te pueden responder",
+      failed: "No se pudo crear el guion. Inténtalo otra vez.",
+    },
   },
   status: {
     draft: "Borrador",
@@ -3575,6 +3708,9 @@ const es: Messages = {
       tooFar: "Está demasiado lejos para ir en taxi. Prueba el KTX o el autobús.",
       failed: "Ahora no se puede calcular. Inténtalo otra vez en un momento.",
     },
+    rateOn: "Cambio del {date}",
+    rateApprox: "Cambio aproximado",
+    rateSource: "Tipos de cambio: Exchange Rate API",
   },
   checklist: {
     title: "Lista para el viaje",
@@ -3610,10 +3746,10 @@ const es: Messages = {
   agent: {
     askIntro: "Antes necesito saber esto:",
     drafted:
-      "Te he escrito un mensaje en coreano para {where}. Revisa el coreano y la traducción en Solicitudes, aquí abajo, y envíalo o pídeme cambios. Todavía no se ha enviado nada.",
+      "Te he escrito un mensaje en coreano para {where}. Revisa el coreano y la traducción en Solicitudes y envíalo o pídeme cambios. Todavía no se ha enviado nada.",
     theBusiness: "el alojamiento",
-    phoneSoon: "Llegas en solo {hours} horas, así que llamar es más rápido que escribir. Llama a {where} y lee esto:",
-    phoneNoEmail: "No hay correo de {where} en tu plan, así que te he preparado qué decir por teléfono:",
+    phoneSoon: "Llegas en solo {hours} horas. Ya escribí el correo a {where}, pero llamar es más rápido: en la tarjeta de la solicitud también tienes un guion para la llamada.",
+    phoneNoEmail: "No tienes el correo de {where} en tu plan, así que mejor llamar. El guion está en la tarjeta de la solicitud.",
     stop: {
       max_tool_calls: "Se estaba alargando mucho y he parado. ¿Me dices con un poco más de detalle qué necesitas?",
       repeated_call: "Estaba dando vueltas en el mismo paso y he parado. ¿Me lo dices de otra forma?",
@@ -3689,6 +3825,9 @@ const ko: Messages = {
     bookedAs: "예매 완료 · {mode}",
     planned: "마중이가 준비해 뒀어요. 편할 때 예매하세요.",
     goodTrip: "즐거운 여행 되세요!",
+    noDirect: "바로 가는 교통편이 없어요. 다른 도시를 거쳐 갈 수 있어요:",
+    via: "{city} 경유",
+    change: "{city}에서 갈아타기",
   },
   airportTips: {
     title: "공항 꿀팁",
@@ -3811,6 +3950,17 @@ const ko: Messages = {
     title: "요청",
     empty: "아직 요청이 없어요. 채팅에서 마중이한테 부탁해 보세요. 예: “호텔에 새벽 1시 반에 도착한다고 전해 줘.”",
     round: "{n}번째",
+    call: {
+      title: "{where}에 전화하기",
+      soon: "시간이 촉박하면 전화가 더 빨리 답을 받아요.",
+      noEmail: "이메일이 없어서 이 대본으로 전화하면 돼요.",
+      callNow: "전화 걸기",
+      show: "통화 대본 보기",
+      making: "마중이가 대본을 쓰는 중…",
+      lines: "한 줄씩 읽어 주세요",
+      replies: "이렇게 답할 수 있어요",
+      failed: "대본을 만들지 못했어요. 다시 해 주세요.",
+    },
   },
   status: {
     draft: "작성 중",
@@ -4027,6 +4177,9 @@ const ko: Messages = {
       tooFar: "택시로 가기엔 너무 멀어요. KTX나 버스를 타 보세요.",
       failed: "지금은 확인할 수 없어요. 잠시 후 다시 해 주세요.",
     },
+    rateOn: "{date} 환율",
+    rateApprox: "대략적인 환율",
+    rateSource: "환율 출처: Exchange Rate API",
   },
   checklist: {
     title: "여행 체크리스트",
@@ -4062,10 +4215,10 @@ const ko: Messages = {
   agent: {
     askIntro: "먼저 이것만 알려 주세요:",
     drafted:
-      "{where}에 보낼 한국어 메시지를 써 뒀어요. 아래 요청 칸에서 한국어 원문과 번역을 확인하고, 보내거나 고쳐 달라고 해 주세요. 아직 아무것도 안 보냈어요.",
+      "{where}에 보낼 한국어 메시지를 써 뒀어요. 요청 칸에서 한국어 원문과 번역을 확인하고, 보내거나 고쳐 달라고 해 주세요. 아직 아무것도 안 보냈어요.",
     theBusiness: "업체",
-    phoneSoon: "도착까지 {hours}시간밖에 안 남아서 메일보다 전화가 빨라요. {where}에 전화해서 아래처럼 말해 보세요:",
-    phoneNoEmail: "여행 보드에 {where} 이메일이 없어서 전화할 때 쓸 대본을 준비했어요:",
+    phoneSoon: "도착까지 {hours}시간밖에 안 남았어요. {where}에 보낼 메일은 써 뒀지만 전화가 더 빨라요. 요청 카드에 통화 대본도 있어요.",
+    phoneNoEmail: "여행 보드에 {where} 이메일이 없어서 전화로 할게요. 통화 대본은 요청 카드에 있어요.",
     stop: {
       max_tool_calls: "일이 너무 길어져서 잠깐 멈췄어요. 원하는 걸 조금만 더 구체적으로 말해 주세요.",
       repeated_call: "같은 걸 계속 반복하고 있어서 멈췄어요. 다른 말로 다시 부탁해 주세요.",

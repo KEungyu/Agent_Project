@@ -5,10 +5,11 @@ import { markTransportBookedAction, prepareTransportAction } from "@/app/actions
 import type { ItineraryItem } from "@/lib/board/types";
 import { cityKo } from "@/lib/i18n/places";
 import { fmt, type Messages } from "@/lib/i18n/messages";
+import { CITIES } from "@/lib/map/cities";
 import { cityIdOf, localCityName } from "@/lib/map/route";
 import { formatDate } from "@/lib/time";
 import { formatDuration } from "@/lib/transport/format";
-import { transportOptions, type TransportMode, type TransportOption } from "@/lib/transport/routes";
+import { transportOptions, viaRoutes, type TransportMode, type TransportOption } from "@/lib/transport/routes";
 import { ExecutionBadge } from "./ExecutionBadge";
 import { BusIcon, CheckIcon, ExternalIcon, PlaneIcon, SubwayIcon, TrainIcon } from "./icons";
 import { VehicleArt } from "./VehicleArt";
@@ -26,6 +27,10 @@ const MODE_ICON: Record<TransportMode, (props: { className?: string }) => React.
 };
 
 type Props = { itinerary: ItineraryItem[]; language: string; m: Messages };
+// 한 가지 가는 방법: 바로 가면 구간 하나, 다른 도시를 거치면 구간 둘(hub에서 갈아탄다)
+type Plan = { segments: TransportOption[]; hub?: string; minutes?: number };
+const CITY_IDS = CITIES.map((city) => city.id);
+const isMode = (value: string): value is TransportMode => value in MODE_ICON;
 
 export function TransportPlanner({ itinerary, language, m }: Props) {
   const legs = itinerary.flatMap((item, i) => {
@@ -51,7 +56,15 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
   const t = m.transport;
   const fromId = cityIdOf(from.city);
   const toId = cityIdOf(to.city);
-  const options = fromId && toId ? transportOptions(fromId, toId) : [];
+  const direct = fromId && toId ? transportOptions(fromId, toId) : [];
+  // 바로 가는 길이 없으면 다른 도시를 거쳐 가는 길을 제안한다
+  const plans: Plan[] =
+    direct.length > 0
+      ? direct.map((option) => ({ segments: [option], minutes: option.minutes }))
+      : fromId && toId
+        ? viaRoutes(fromId, toId, CITY_IDS).map((route) => ({ segments: route.legs, hub: route.hub, minutes: route.minutes }))
+        : [];
+  const viaOnly = direct.length === 0 && plans.length > 0;
   const status = to.transport.status;
   const [choice, setChoice] = useState(0);
   const [phase, setPhase] = useState<"idle" | "running" | "ready">(status === "planned" ? "ready" : "idle");
@@ -62,7 +75,8 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const option: TransportOption | undefined = options[choice];
+  const plan: Plan | undefined = plans[choice];
+  const bookable = plan?.segments.filter((segment) => segment.booking) ?? [];
   const fromName = localCityName(from.city, language);
   const toName = localCityName(to.city, language);
   const steps = [fmt(t.step1, { from: fromName, to: toName }), fmt(t.step2, { date: formatDate(to.date, language) }), t.step3];
@@ -83,14 +97,17 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
     tick(1);
   };
 
+  // 고른 방법의 수단을 "flight+subway"처럼 남긴다
   const markBooked = () => {
-    if (!option) return;
-    startTransition(() => markTransportBookedAction(to.date, to.city, option.mode));
+    if (!plan) return;
+    startTransition(() => markTransportBookedAction(to.date, to.city, plan.segments.map((segment) => segment.mode).join("+")));
   };
 
   // 지하철처럼 예매할 수단만 있는 구간은 "교통편 없음"이 아니다
-  const free = status === "none" && options.length > 0 && options.every((item) => !item.booking);
-  const bookedMode = to.transport.note && to.transport.note in MODE_ICON ? t[to.transport.note as TransportMode] : to.transport.note;
+  const free = status === "none" && plans.length > 0 && plans.every((item) => item.segments.every((segment) => !segment.booking));
+  const bookedModes = (to.transport.note ?? "").split("+").filter(isMode);
+  const bookedMode = bookedModes.length > 0 ? bookedModes.map((mode) => t[mode]).join(" + ") : to.transport.note;
+  const hubName = (hub?: string) => (hub ? localCityName(CITIES.find((city) => city.id === hub)?.name.en ?? hub, language) : "");
   const chip =
     status === "booked_by_user" ? (
       <span className="leg-chip is-booked">
@@ -126,8 +143,8 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
 
       {status === "booked_by_user" && (
         <Ticket
-          mode={(to.transport.note && to.transport.note in MODE_ICON ? to.transport.note : options[0]?.mode ?? "ktx") as TransportMode}
-          options={options}
+          modes={bookedModes.length > 0 ? bookedModes : [plans[0]?.segments[0]?.mode ?? "ktx"]}
+          plans={plans}
           fromName={{ ko: cityKo(from.city) ?? from.city, local: fromName }}
           toName={{ ko: cityKo(to.city) ?? to.city, local: toName }}
           date={formatDate(to.date, language)}
@@ -136,20 +153,22 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
       )}
 
       {status !== "booked_by_user" &&
-        (options.length === 0 ? (
+        (plans.length === 0 ? (
           <p className="leg-unknown">{t.unknown}</p>
         ) : (
           <>
+            {viaOnly && <p className="leg-via-note">{t.noDirect}</p>}
             <div className="leg-options" role="radiogroup" aria-label={t.title}>
-              {options.map((item, i) => {
-                const Icon = MODE_ICON[item.mode];
+              {plans.map((item, i) => {
+                const [first] = item.segments;
+                const Icon = MODE_ICON[first.mode];
                 return (
                   <button
-                    key={item.mode}
+                    key={item.segments.map((segment) => segment.mode).join("+") + (item.hub ?? "")}
                     type="button"
                     role="radio"
                     aria-checked={i === choice}
-                    className={`leg-option mode-${item.mode}`}
+                    className={`leg-option mode-${first.mode}${item.hub ? " is-via" : ""}`}
                     disabled={phase === "running"}
                     onClick={() => setChoice(i)}
                   >
@@ -158,12 +177,30 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
                     </span>
                     <span className="leg-option-main">
                       <span className="leg-mode">
-                        {t[item.mode]}
-                        {i === 0 && options.length > 1 && <span className="leg-rec">{t.recommended}</span>}
+                        {item.hub ? fmt(t.via, { city: hubName(item.hub) }) : t[first.mode]}
+                        {i === 0 && plans.length > 1 && <span className="leg-rec">{t.recommended}</span>}
                       </span>
-                      <span className="leg-stations" lang="ko">
-                        {item.from.ko} → {item.to.ko}
-                      </span>
+                      {item.hub ? (
+                        <span className="leg-via-steps">
+                          {item.segments.map((segment, j) => {
+                            const SegmentIcon = MODE_ICON[segment.mode];
+                            return (
+                              <span key={j} className={`leg-via-step mode-${segment.mode}`} style={{ "--j": j } as React.CSSProperties}>
+                                <SegmentIcon />
+                                <span>{t[segment.mode]}</span>
+                                <span className="leg-stations" lang="ko">
+                                  {segment.from.ko} → {segment.to.ko}
+                                </span>
+                              </span>
+                            );
+                          })}
+                          <span className="leg-via-change">{fmt(t.change, { city: hubName(item.hub) })}</span>
+                        </span>
+                      ) : (
+                        <span className="leg-stations" lang="ko">
+                          {first.from.ko} → {first.to.ko}
+                        </span>
+                      )}
                     </span>
                     {item.minutes && <span className="leg-time">{formatDuration(item.minutes, t)}</span>}
                   </button>
@@ -171,7 +208,7 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
               })}
             </div>
 
-            {option?.mode === "subway" || !option?.booking ? (
+            {bookable.length === 0 ? (
               <p className="leg-free">{t.noBooking}</p>
             ) : phase === "idle" ? (
               <button type="button" className="button leg-ask" onClick={run}>
@@ -198,10 +235,12 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
                     <div className="leg-ready">
                       {justRan && <p>{t.ready}</p>}
                       <div className="leg-actions">
-                        <a className="button" href={option.booking.url} target="_blank" rel="noopener noreferrer">
-                          {fmt(t.open, { site: option.booking.name })}
-                          <ExternalIcon className="leg-go" />
-                        </a>
+                        {bookable.map((segment) => (
+                          <a key={segment.mode + segment.from.en} className="button" href={segment.booking!.url} target="_blank" rel="noopener noreferrer">
+                            {fmt(t.open, { site: segment.booking!.name })}
+                            <ExternalIcon className="leg-go" />
+                          </a>
+                        ))}
                         <button type="button" className="button-quiet" onClick={markBooked}>
                           <CheckIcon className="leg-go" />
                           {t.booked}
@@ -218,34 +257,39 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
   );
 }
 
-// 예매 완료 승차권: 수단마다 색과 탈것 그림이 다르고, 탈것이 한 번 달려 들어온다
+// 예매 완료 승차권: 수단마다 색과 탈것 그림이 다르고, 탈것이 한 번 달려 들어온다.
+// 다른 도시를 거쳐 가면 첫 수단의 색과 그림을 쓰고, 출발은 첫 구간, 도착은 마지막 구간 역으로 적는다.
 function Ticket({
-  mode,
-  options,
+  modes,
+  plans,
   fromName,
   toName,
   date,
   m,
 }: {
-  mode: TransportMode;
-  options: TransportOption[];
+  modes: TransportMode[];
+  plans: Plan[];
   fromName: { ko: string; local: string };
   toName: { ko: string; local: string };
   date: string;
   m: Messages;
 }) {
   const t = m.transport;
-  const option = options.find((item) => item.mode === mode);
+  const mode = modes[0];
+  const plan = plans.find((item) => item.segments.map((segment) => segment.mode).join("+") === modes.join("+"));
   const Icon = MODE_ICON[mode];
-  const from = option ? { ko: option.from.ko, sub: option.from.en } : { ko: fromName.ko, sub: fromName.local };
-  const to = option ? { ko: option.to.ko, sub: option.to.en } : { ko: toName.ko, sub: toName.local };
+  const first = plan?.segments[0];
+  const last = plan?.segments.at(-1);
+  const from = first ? { ko: first.from.ko, sub: first.from.en } : { ko: fromName.ko, sub: fromName.local };
+  const to = last ? { ko: last.to.ko, sub: last.to.en } : { ko: toName.ko, sub: toName.local };
+  const minutes = plan?.minutes;
   return (
     <div className={`ticket ticket-${mode}`}>
       <div className="ticket-main">
         <p className="ticket-top">
           <span className="ticket-mode">
             <Icon />
-            {t[mode]}
+            {modes.map((item) => t[item]).join(" + ")}
           </span>
           <span className="tabular">{date}</span>
         </p>
@@ -263,7 +307,7 @@ function Ticket({
           </p>
         </div>
         <p className="ticket-foot">
-          {option?.minutes ? `${formatDuration(option.minutes, t)} · ` : ""}
+          {minutes ? `${formatDuration(minutes, t)} · ` : ""}
           {t.goodTrip}
         </p>
       </div>

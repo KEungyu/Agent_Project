@@ -111,6 +111,9 @@ const LEGS: Leg[] = [
   { a: "busan", b: "jeju", options: [{ mode: "flight", minutes: 60, from: P.gimhae, to: P.jejuAirport, booking: flights("PUS", "CJU") }] },
   { a: "busan", b: "yeosu", options: [{ mode: "bus", minutes: 180, from: P.busanSeobu, to: P.yeosuBus, booking: TMONEY_BUS }] },
   { a: "gangneung", b: "sokcho", options: [{ mode: "bus", minutes: 60, from: P.gangneungBus, to: P.sokchoBus, booking: TMONEY_BUS }] },
+  { a: "suwon", b: "busan", options: [{ mode: "ktx", minutes: 170, from: P.suwonStation, to: P.busanStation, booking: KORAIL }] },
+  { a: "jeonju", b: "yeosu", options: [{ mode: "ktx", minutes: 80, from: P.jeonjuStation, to: P.yeosuExpo, booking: KORAIL }] },
+  { a: "yeosu", b: "jeju", options: [{ mode: "flight", minutes: 50, from: P.yeosuAirport, to: P.jejuAirport, booking: flights("RSU", "CJU") }] },
 ];
 
 function flip(option: TransportOption): TransportOption {
@@ -131,4 +134,23 @@ export function transportOptions(fromId: string, toId: string): TransportOption[
   const backward = LEGS.find((leg) => leg.a === toId && leg.b === fromId);
   if (backward) return backward.options.map(flip);
   return [];
+}
+
+// 바로 가는 구간이 없으면 다른 도시 한 곳을 거쳐 가는 길을 찾는다. 각 구간의 추천 수단끼리 잇고,
+// 갈아타는 시간 30분을 더한 전체 시간이 짧은 순으로 두 개까지 돌려준다.
+export type ViaRoute = { hub: string; legs: [TransportOption, TransportOption]; minutes: number };
+const TRANSFER_MINUTES = 30;
+
+export function viaRoutes(fromId: string, toId: string, cityIds: string[]): ViaRoute[] {
+  if (transportOptions(fromId, toId).length > 0) return [];
+  return cityIds
+    .filter((hub) => hub !== fromId && hub !== toId)
+    .flatMap((hub): ViaRoute[] => {
+      const [first] = transportOptions(fromId, hub);
+      const [second] = transportOptions(hub, toId);
+      if (!first || !second) return [];
+      return [{ hub, legs: [first, second], minutes: (first.minutes ?? 0) + (second.minutes ?? 0) + TRANSFER_MINUTES }];
+    })
+    .sort((a, b) => a.minutes - b.minutes)
+    .slice(0, 2);
 }

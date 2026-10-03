@@ -19,11 +19,14 @@ import { prepareFollowUp } from "@/lib/requests/followup";
 import type { FollowUpKind } from "@/lib/requests/followup-kinds";
 import { getRequest, TransitionError } from "@/lib/requests/state";
 import { sanitizeSlots } from "@/lib/requests/drafting";
+import { makePhoneScript, type PhoneScript } from "@/lib/requests/channel";
+import { checkConditions } from "@/lib/requests/conditions";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
 import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
 import { estimateFare, farePeriod, type FareEstimate, type FarePeriod } from "@/lib/taxi/fare";
 import { drivingRoute, geocode, haversine, inSeoul } from "@/lib/taxi/lookup";
+import { wonRate, type WonRate } from "@/lib/currency/rates";
 import { kstMinutesOfDay } from "@/lib/time";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
@@ -219,7 +222,7 @@ export async function followUpAction(requestId: string, kind: FollowUpKind): Pro
 // 장소 글자와 좌표는 OpenStreetMap 서비스로만 보내고 보드에는 저장하지 않는다.
 export type TaxiPlaceInput = { text: string } | { lat: number; lng: number; label: string };
 export type TaxiResult =
-  | { ok: true; from: string; to: string; km: number; approx: boolean; outsideSeoul: boolean; estimate: FareEstimate }
+  | { ok: true; from: string; to: string; km: number; approx: boolean; outsideSeoul: boolean; estimate: FareEstimate; rate: WonRate | null }
   | { ok: false; error: "fromNotFound" | "toNotFound" | "same" | "tooFar" | "failed" };
 
 export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: TaxiPlaceInput; period: FarePeriod | "now"; language: string }): Promise<TaxiResult> {
@@ -244,6 +247,7 @@ export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: Taxi
       approx: route.approx,
       outsideSeoul,
       estimate: estimateFare(route.meters, route.seconds, period, { outsideSeoul }),
+      rate: await wonRate(language),
     };
   } catch {
     return { ok: false, error: "failed" };
@@ -276,5 +280,32 @@ export async function translateForShowAction(text: string, kind: "sentence" | "p
   } catch (error) {
     console.error(`[show] translate failed: ${error instanceof Error ? error.message : String(error)}`);
     return { ok: false, error: m.writeFailed };
+  }
+}
+
+// 요청 카드의 전화 대본: 이메일이 없거나 시간이 촉박할 때 숙소에 전화로 읽을 한국어 대본을 만든다.
+// 앱은 전화를 걸지 않는다. 대본은 저장하지 않고 서버 메모리에만 잠깐 담아 둔다(같은 요청은 다시 만들지 않는다).
+export type CallScriptResult = { ok: true; script: PhoneScript } | { ok: false; error: string };
+const callScripts = ((globalThis as { __majungCallScripts?: Map<string, PhoneScript> }).__majungCallScripts ??= new Map());
+
+export async function callScriptAction(requestId: string): Promise<CallScriptResult> {
+  const db = getDb();
+  const board = ensureBoard(db);
+  const m = getMessages(board.user_language).requests.call;
+  const request = getRequest(db, requestId);
+  const type = request && loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
+  if (!request || !type) return { ok: false, error: m.failed };
+  // 요청에 담긴 값이 모자라면(예: 예전 요청) 보드의 숙소 정보로 채운다
+  const slots = checkConditions(type, board, { targetId: request.target_id, provided: request.slots }).filled;
+  const key = `${requestId}:${board.user_language}:${JSON.stringify(slots)}`;
+  const cached = callScripts.get(key);
+  if (cached) return { ok: true, script: cached };
+  try {
+    const script = await makePhoneScript(createLlmClient(), type, sanitizeSlots(slots), board.user_language);
+    callScripts.set(key, script);
+    return { ok: true, script };
+  } catch (error) {
+    console.error(`[call] script failed: ${error instanceof Error ? error.message : String(error)}`);
+    return { ok: false, error: m.failed };
   }
 }

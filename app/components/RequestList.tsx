@@ -3,7 +3,9 @@ import { getLanguage } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { RequestType } from "@/lib/request-types/schema";
 import { formatKst } from "@/lib/time";
+import { decideChannel } from "@/lib/requests/channel";
 import { ApprovalCard } from "./ApprovalCard";
+import { CallPanel } from "./CallPanel";
 import { ExecutionBadge, LEVEL_KEY } from "./ExecutionBadge";
 import { EnvelopeIcon } from "./icons";
 import { ReplyPanel } from "./ReplyPanel";
@@ -12,6 +14,7 @@ import { SignTitle } from "./SignTitle";
 
 const FINISHED = new Set(["done", "declined"]);
 
+// 시각에 따라 바뀌는 판단(전화 칸)은 요청 시점 기준이다
 export function RequestList({
   requests,
   types,
@@ -27,6 +30,7 @@ export function RequestList({
   m: Messages;
   language: string;
 }) {
+  const now = new Date();
   return (
     <section className="panel" aria-labelledby="requests-heading">
       <SignTitle id="requests-heading" ko="요청" text={m.requests.title} icon={<EnvelopeIcon />} />
@@ -41,6 +45,14 @@ export function RequestList({
             const type = types.find((candidate) => candidate.id === request.type_id);
             const stay = stays.find((candidate) => candidate.id === request.target_id);
             const line = type ? LEVEL_KEY[type.execution_level] : "info";
+            // 이메일이 없어 전화로 가는 요청, 또는 메일을 보내도 답을 기다릴 시간이 모자란 요청에는 전화 칸을 띄운다
+            const waiting = request.status === "pending_approval" || request.status === "awaiting_reply";
+            const callReason =
+              request.channel === "phone" && request.status === "draft"
+                ? "noEmail"
+                : waiting && type && stay?.phone && decideChannel(type, stay, request.slots, now).reason === "deadline_soon"
+                  ? "soon"
+                  : null;
             return (
               <li key={request.id} className={`request ${request.status === "pending_approval" ? "is-focus" : ""}`}>
                 <div className="request-head">
@@ -56,6 +68,9 @@ export function RequestList({
                   {request.round > 1 && <span className="request-round">{fmt(m.requests.round, { n: request.round })}</span>}
                 </div>
                 <RouteStrip status={request.status} line={line} m={m} />
+                {callReason && (
+                  <CallPanel requestId={request.id} phone={stay?.phone} where={stay?.name ?? m.agent.theBusiness} reason={callReason} m={m.requests.call} />
+                )}
                 {request.status === "pending_approval" && request.draft && (
                   <ApprovalCard requestId={request.id} draft={request.draft} to={stay?.email} m={m.approval} language={getLanguage(language)} />
                 )}

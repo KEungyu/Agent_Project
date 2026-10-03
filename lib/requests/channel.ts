@@ -81,9 +81,3 @@ Never include: ${type.message_guidelines.must_not_include.join(", ")}.`,
     schema: phoneScriptSchema,
   });
 }
-
-export function formatPhoneScript(script: PhoneScript): string {
-  const lines = script.lines.map((line, i) => `${i + 1}. ${line.ko}\n   ${line.pronunciation}\n   = ${line.meaning}`);
-  const replies = script.expected_replies.map((reply) => `• ${reply.ko} = ${reply.meaning}`);
-  return [...lines, "", ...replies].join("\n");
-}

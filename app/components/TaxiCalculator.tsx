@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { estimateTaxiAction, type TaxiPlaceInput, type TaxiResult } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { FarePeriod } from "@/lib/taxi/fare";
+import { formatMoney } from "@/lib/currency/rates";
+import { formatDate } from "@/lib/time";
 import { LocateIcon, PlaneIcon, BedIcon, ShowIcon, SwapIcon, TaxiIcon } from "./icons";
 import { SHOW_EVENT, type ShowEventDetail, type TaxiTarget } from "./ShowCards";
 import { SignTitle } from "./SignTitle";
@@ -186,7 +188,7 @@ export function TaxiCalculator({
         </p>
       )}
       {result?.ok && show && (
-        <TaxiMeter key={`${result.estimate.low}-${result.estimate.high}-${result.from}-${result.to}`} result={result} m={m} show={show} />
+        <TaxiMeter key={`${result.estimate.low}-${result.estimate.high}-${result.from}-${result.to}`} result={result} m={m} show={show} language={language} />
       )}
       <p className="taxi-basis">
         {m.basis} {m.osm}
@@ -195,7 +197,17 @@ export function TaxiCalculator({
   );
 }
 
-function TaxiMeter({ result, m, show }: { result: Extract<TaxiResult, { ok: true }>; m: Messages["taxi"]; show: ShowEventDetail }) {
+function TaxiMeter({
+  result,
+  m,
+  show,
+  language,
+}: {
+  result: Extract<TaxiResult, { ok: true }>;
+  m: Messages["taxi"];
+  show: ShowEventDetail;
+  language: string;
+}) {
   const { estimate } = result;
   const low = useCountUp(estimate.low);
   const high = useCountUp(estimate.high);
@@ -213,6 +225,18 @@ function TaxiMeter({ result, m, show }: { result: Extract<TaxiResult, { ok: true
           <span className="taxi-dash">–</span>
           {won.format(high)}
         </p>
+        {/* 미터기와 함께 이용자 나라 돈으로도 올라간다 */}
+        {result.rate && (
+          <p className="taxi-local-money">
+            ≈ {formatMoney(low * result.rate.perWon, result.rate.currency, language)} – {formatMoney(high * result.rate.perWon, result.rate.currency, language)}
+            <span className="taxi-rate-note">
+              {result.rate.live && result.rate.date ? fmt(m.rateOn, { date: formatDate(result.rate.date, language) }) : m.rateApprox} ·{" "}
+              <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">
+                {m.rateSource}
+              </a>
+            </span>
+          </p>
+        )}
         <p className="taxi-trip">
           <span className="taxi-dot is-from" aria-hidden="true" />
           {result.from}

@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { runAgent } from "../agent/loop";
 import { createTools } from "../agent/registry";
-import { fakeLlm, message, toolUse } from "../agent/testing";
+import { fakeLlm, message, schemaHas, toolUse } from "../agent/testing";
 import { seedDemoBoard } from "../board/demo";
 import { getBoard } from "../board/store";
 import type { Stay } from "../board/types";
 import { openDb } from "../db/client";
 import { loadRequestTypes } from "../request-types/loader";
-import { decideChannel, formatPhoneScript } from "./channel";
+import { decideChannel } from "./channel";
 
 const type = loadRequestTypes().types.find((candidate) => candidate.id === "late_checkin")!;
 const ARRIVAL = "2026-10-20T01:30+09:00";
@@ -33,16 +33,19 @@ describe("decideChannel", () => {
   });
 });
 
-describe("draft_request의 전화 경로", () => {
-  const script = {
-    lines: [{ ko: "안녕하세요. 예약자명 Emma Smith입니다.", pronunciation: "annyeonghaseyo. yeyakjamyeong Emma Smith-imnida.", meaning: "Hello, the booking is under Emma Smith." }],
-    expected_replies: [{ ko: "네, 가능합니다.", meaning: "Yes, that's possible." }],
+describe("draft_request의 채널", () => {
+  const lateCheckin = type;
+  const structured = (request: Parameters<typeof schemaHas>[0]) => {
+    if (!schemaHas(request, "coverage")) return { subject: "Late check-in inquiry", body: "Guest Emma Smith ..." };
+    const facts = JSON.parse(request.prompt.replace("Facts (JSON): ", ""));
+    const body = `예약자명 ${facts.guest_name}, 예약번호 ${facts.booking_ref}. 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.`;
+    return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: lateCheckin.message_guidelines.must_include.map((item) => ({ item, quote: item })) };
   };
 
-  it("도착 3시간 전이면 메일 초안 대신 전화 스크립트를 주고, 발송 단계로 가지 않는다", async () => {
+  it("이메일이 있으면 도착 3시간 전이어도 메일 초안을 승인 대기로 두고, 전화도 권한다", async () => {
     const db = openDb(":memory:");
     const board = seedDemoBoard(db);
-    const llm = fakeLlm([message([toolUse("t1", "draft_request", { type_id: "late_checkin" })], "tool_use")], () => script);
+    const llm = fakeLlm([message([toolUse("t1", "draft_request", { type_id: "late_checkin" })], "tool_use")], structured);
 
     const result = await runAgent({
       llm,
@@ -54,8 +57,21 @@ describe("draft_request의 전화 경로", () => {
 
     expect(result.stopReason).toBe("awaiting_user");
     expect(result.reply).toContain("in just 3 hours");
-    expect(result.reply).toContain("annyeonghaseyo");
-    expect(result.reply).toContain(formatPhoneScript(script));
+    const [request] = getBoard(db, board.id)!.requests;
+    expect(request).toMatchObject({ channel: "email", status: "pending_approval" });
+    expect(request.draft?.body_ko).toContain("Emma Smith");
+  });
+
+  it("이메일이 없으면 전화 요청을 만들고, 대본은 채팅이 아니라 요청 카드에서 보여준다", async () => {
+    const db = openDb(":memory:");
+    const board = seedDemoBoard(db);
+    db.$client.prepare("UPDATE stays SET email = NULL, phone = '+82-2-000-0000'").run();
+    const llm = fakeLlm([message([toolUse("t1", "draft_request", { type_id: "late_checkin" })], "tool_use")]);
+
+    const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId: board.id, now: () => hoursBefore(30) }, messages: [{ role: "user", content: "go" }], log: () => {} });
+
+    expect(result.reply).toContain("request card");
+    expect(llm.structured).not.toHaveBeenCalled();
     const [request] = getBoard(db, board.id)!.requests;
     expect(request).toMatchObject({ channel: "phone", status: "draft" });
     expect(request.draft).toBeUndefined();

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getBoard, recordEvent } from "../board/store";
 import { fmt, getMessages } from "../i18n/messages";
 import { checkConditions } from "../requests/conditions";
-import { decideChannel, formatPhoneScript, makePhoneScript } from "../requests/channel";
+import { decideChannel } from "../requests/channel";
 import { composeDraft } from "../requests/drafting";
 import { createRequest, setRequestChannel, transition } from "../requests/state";
 import type { RequestType } from "../request-types/schema";
@@ -34,8 +34,17 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       target_id: z.string().optional().describe("stay id the request is about; may be omitted when there is one stay"),
       provided: z.record(z.string(), z.string()).optional(),
     }),
-    run: ({ type_id, target_id, provided }, ctx) =>
-      checkConditions(typeOf(types, type_id), boardOf(ctx), { targetId: target_id, provided, now: ctx.now?.() }),
+    run: ({ type_id, target_id, provided }, ctx) => {
+      const check = checkConditions(typeOf(types, type_id), boardOf(ctx), { targetId: target_id, provided, now: ctx.now?.() });
+      // 빠진 값을 바로 묻지 않고, 이용자가 이미 말한 값("오늘", "새벽 1시" 등)부터 저장하도록 결과에 다음 행동을 적어 준다
+      return check.missing.length > 0
+        ? {
+            ...check,
+            next_step:
+              "Before asking, look at what the traveler already said in this conversation. Save any of these missing details they gave, even loosely (today, tonight, 2 AM), with board_update and check again. Use ask_user only for what is still unknown.",
+          }
+        : { ...check, next_step: "Nothing is missing. Call draft_request now." };
+    },
   });
 
   const askUser = defineTool({
@@ -102,8 +111,15 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
           request.target_id === check.target_id &&
           (request.status === "draft" || request.status === "pending_approval"),
       );
+      // 승인 대기 초안이 있는데 이용자가 채팅으로 고쳐 달라고 하면, 그 초안을 되돌려 다시 쓴다(새 요청을 만들지 않는다)
       if (open?.status === "pending_approval") {
-        throw new Error(`A draft is already waiting for the traveler's approval (request ${open.id}).`);
+        if (!revision_note) {
+          throw new Error(
+            `A draft is already waiting for the traveler's approval (request ${open.id}). To change it, call draft_request again with revision_note.`,
+          );
+        }
+        recordEvent(ctx.db, ctx.boardId, "user_action", { action: "request_changes", via: "chat" }, open.id);
+        transition(ctx.db, open.id, "draft", "user", { note: revision_note });
       }
       const request =
         open ??
@@ -113,22 +129,19 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
           "agent",
         );
 
-      if (decision.channel === "phone") {
-        // 앱은 전화를 걸지 않는다: 읽을 스크립트만 준비한다 (준비 단계, 승인·발송 없음)
-        const script = await makePhoneScript(ctx.llm, type, check.filled, board.user_language);
+      // 이메일이 있으면 언제나 메일 초안을 만들어 요청 카드에서 승인받는다. 시간이 촉박하면 카드에 전화 대본도 함께 띄운다.
+      // 이메일이 없을 때만 전화로 간다: 앱은 전화를 걸지 않고, 요청 카드에 읽을 대본을 보여준다 (준비 단계, 승인·발송 없음).
+      if (!stay?.email) {
         setRequestChannel(ctx.db, request.id, "phone");
-        const intro =
-          decision.reason === "deadline_soon"
-            ? fmt(messages.agent.phoneSoon, { hours: decision.hours_left ?? "", where })
-            : fmt(messages.agent.phoneNoEmail, { where });
-        return { reply: `${intro}\n\n${formatPhoneScript(script)}`, request_id: request.id, channel: "phone", reason: decision.reason };
+        return { reply: fmt(messages.agent.phoneNoEmail, { where }), request_id: request.id, channel: "phone", reason: decision.reason };
       }
 
       const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
       transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled, channel: "email" } });
 
+      const callToo = decision.reason === "deadline_soon";
       return {
-        reply: fmt(messages.agent.drafted, { where }),
+        reply: callToo ? fmt(messages.agent.phoneSoon, { hours: decision.hours_left ?? "", where }) : fmt(messages.agent.drafted, { where }),
         request_id: request.id,
         subject_ko: draft.subject_ko,
         body_ko: draft.body_ko,

@@ -1,5 +1,4 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import Link from "next/link";
 import { connection } from "next/server";
 import { getConversation } from "@/lib/agent/conversation";
 import { hasTripData } from "@/lib/board/forms";
@@ -108,7 +107,6 @@ export default async function Home() {
       </main>
       <Toaster />
       <footer className="platform-footer" lang="ko">
-        <Link href="/report">AI 적용 전/후 지표 보기</Link>
         <IntroReplay label={m.intro.replay} />
       </footer>
     </>

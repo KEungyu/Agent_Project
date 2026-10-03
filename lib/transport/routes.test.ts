@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { transportOptions } from "./routes";
+import { CITIES } from "../map/cities";
+import { transportOptions, viaRoutes } from "./routes";
 
 describe("transport options", () => {
   it("recommends KTX first between Seoul and Gyeongju, in both directions", () => {
@@ -37,5 +38,27 @@ describe("airport transfers", () => {
     expect(day.some((item) => item.id === "nightBus")).toBe(false);
     expect(day.every((item) => item.available)).toBe(true);
     expect(airportTransfers("PUS", false)).toEqual([]);
+  });
+});
+
+describe("viaRoutes", () => {
+  const ids = CITIES.map((city) => city.id);
+
+  it("finds a way through another city when there is no direct route", () => {
+    const [best] = viaRoutes("jeju", "incheon", ids);
+    expect(best.hub).toBe("seoul");
+    expect(best.legs.map((leg) => leg.mode)).toEqual(["flight", "subway"]);
+    expect(best.legs[0].from.en).toBe("Jeju Airport");
+  });
+
+  it("does not suggest a detour when a direct route exists", () => {
+    expect(viaRoutes("seoul", "busan", ids)).toEqual([]);
+  });
+
+  it("covers every pair of map cities directly or through one other city", () => {
+    const missing = ids.flatMap((a) =>
+      ids.filter((b) => a !== b && transportOptions(a, b).length === 0 && viaRoutes(a, b, ids).length === 0).map((b) => `${a}-${b}`),
+    );
+    expect(missing).toEqual([]);
   });
 });
