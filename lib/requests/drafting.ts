@@ -84,6 +84,7 @@ Rules:
 - Never include: ${must_not_include.join(", ")}.
 - The body must be at most ${max_chars} characters.
 - Use only the facts provided. Do not invent facts, prices, or promises.
+- Do not give a reason for the request (for example a flight delay) unless a reason is in the facts.
 - Copy names and booking numbers exactly as given. Write dates and times the Korean way (e.g. 10월 20일 새벽 1시 30분).
 - Mention that the guest does not read Korean well, and ask the business to reply to this email.
 

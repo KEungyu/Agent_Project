@@ -35,7 +35,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
       provided: z.record(z.string(), z.string()).optional(),
     }),
     run: ({ type_id, target_id, provided }, ctx) =>
-      checkConditions(typeOf(types, type_id), boardOf(ctx), { targetId: target_id, provided }),
+      checkConditions(typeOf(types, type_id), boardOf(ctx), { targetId: target_id, provided, now: ctx.now?.() }),
   });
 
   const askUser = defineTool({
@@ -51,7 +51,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
     }),
     run: ({ type_id, target_id, keys }, ctx) => {
       const board = boardOf(ctx);
-      const check = checkConditions(typeOf(types, type_id), board, { targetId: target_id });
+      const check = checkConditions(typeOf(types, type_id), board, { targetId: target_id, now: ctx.now?.() });
       const alreadyKnown = keys.filter((key) => key in check.filled);
       if (alreadyKnown.length > 0) {
         recordEvent(ctx.db, ctx.boardId, "re_ask", { type_id, keys: alreadyKnown });
@@ -83,7 +83,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
     run: async ({ type_id, target_id, provided, revision_note }, ctx) => {
       const type = typeOf(types, type_id);
       const board = boardOf(ctx);
-      const check = checkConditions(type, board, { targetId: target_id, provided });
+      const check = checkConditions(type, board, { targetId: target_id, provided, now: ctx.now?.() });
       if (check.missing.length > 0) {
         throw new Error(`Missing details: ${check.missing.map((slot) => slot.key).join(", ")}. Call ask_user first.`);
       }

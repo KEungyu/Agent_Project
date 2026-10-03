@@ -43,7 +43,8 @@ export function decideChannel(
   const phone = available("phone");
   const deadline = deadlineOf(slots[type.channel_rule.deadline_slot]);
   const hours_left = deadline ? Math.round(((deadline.getTime() - now.getTime()) / 3_600_000) * 10) / 10 : undefined;
-  const urgent = hours_left !== undefined && hours_left < type.channel_rule.phone_if_hours_left_lt;
+  // 이미 지난 마감은 급한 것이 아니라 낡은 값이다 (조건 확인에서 다시 묻는다)
+  const urgent = hours_left !== undefined && hours_left >= 0 && hours_left < type.channel_rule.phone_if_hours_left_lt;
   const withHours = hours_left === undefined ? {} : { hours_left };
 
   if (!email && !phone) return { channel: null, reason: "no_contact", ...withHours };

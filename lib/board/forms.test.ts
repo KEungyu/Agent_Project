@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../db/client";
-import { addItineraryForm, saveStayForm, saveTripForm } from "./forms";
-import { getCurrentBoard } from "./store";
+import { addItineraryForm, hasTripData, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport, startNewTrip } from "./forms";
+import { getCurrentBoard, listEvents } from "./store";
 
 const form = (values: Record<string, string>) => {
   const data = new FormData();
@@ -52,5 +52,44 @@ describe("board forms", () => {
   it("이름 없는 숙소 추가는 거부한다", () => {
     const db = openDb(":memory:");
     expect(() => saveStayForm(db, form({ email: "a@hotel.test" }))).toThrow(/name/);
+  });
+
+  it("교통편은 마중이 준비(planned)한 뒤 이용자가 예매 완료로 표시하고, 바뀔 때마다 기록이 남는다", () => {
+    const db = openDb(":memory:");
+    addItineraryForm(db, form({ date: "2026-10-20", city: "Seoul" }));
+    addItineraryForm(db, form({ date: "2026-10-22", city: "Gyeongju" }));
+    expect(setLegTransport(db, "2026-10-22", "Gyeongju", "planned").itinerary[1].transport).toEqual({ status: "planned" });
+    const board = setLegTransport(db, "2026-10-22", "Gyeongju", "booked_by_user", "KTX");
+    expect(board.itinerary[1].transport).toEqual({ status: "booked_by_user", note: "KTX" });
+    expect(board.itinerary[0].transport).toEqual({ status: "none" });
+    const actions = listEvents(db, board.id).map((event) => event.detail);
+    expect(actions).toContainEqual(expect.objectContaining({ action: "set_transport", status: "booked_by_user", note: "KTX" }));
+    expect(() => setLegTransport(db, "2026-10-30", "Busan", "planned")).toThrow();
+  });
+
+  it("도시 일정에서 한 칸을 빼고, 항공편을 다시 저장해도 터미널과 출국 공항이 남는다", () => {
+    const db = openDb(":memory:");
+    addItineraryForm(db, form({ date: "2026-10-20", city: "Seoul" }));
+    addItineraryForm(db, form({ date: "2026-10-22", city: "Gyeongju" }));
+    expect(removeItineraryItem(db, "2026-10-20", "Seoul").itinerary.map((item) => item.city)).toEqual(["Gyeongju"]);
+    expect(() => removeItineraryItem(db, "2026-10-20", "Seoul")).toThrow();
+
+    saveTripForm(db, form({ arrival_datetime: "2026-10-20T00:40", arrival_airport: "ICN", arrival_terminal: "T2", departure_datetime: "2026-10-25T18:30", departure_airport: "GMP" }));
+    const board = saveTripForm(db, form({ arrival_datetime: "2026-10-20T00:40", arrival_airport: "ICN", arrival_terminal: "T2", departure_datetime: "2026-10-25T19:00" }));
+    expect(board.arrival).toMatchObject({ airport: "ICN", terminal: "T2" });
+    expect(board.departure).toMatchObject({ airport: "GMP", datetime: "2026-10-25T19:00+09:00" });
+  });
+
+  it("새 여행을 시작하면 빈 보드가 현재 보드가 되고, 언어는 이어받고, 예전 보드는 남는다", async () => {
+    const db = openDb(":memory:");
+    saveTripForm(db, form({ arrival_datetime: "2026-10-20T00:40", arrival_airport: "ICN", user_language: "ja" }));
+    const old = getCurrentBoard(db)!;
+    expect(hasTripData(old)).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const fresh = startNewTrip(db);
+    expect(getCurrentBoard(db)!.id).toBe(fresh.id);
+    expect(fresh.user_language).toBe("ja");
+    expect(hasTripData(fresh)).toBe(false);
+    expect(fresh.arrival).toBeUndefined();
   });
 });

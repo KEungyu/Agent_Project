@@ -26,8 +26,8 @@ export type LlmClient = {
 };
 
 export class MissingApiKeyError extends Error {
-  constructor() {
-    super("ANTHROPIC_API_KEY가 설정되지 않았습니다. .env.example을 .env로 복사한 뒤 값을 채우세요.");
+  constructor(keyName = "ANTHROPIC_API_KEY 또는 GEMINI_API_KEY") {
+    super(`${keyName}가 설정되지 않았습니다. .env.example을 .env로 복사한 뒤 값을 채우세요.`);
     this.name = "MissingApiKeyError";
   }
 }
@@ -43,7 +43,7 @@ export class LlmRefusalError extends Error {
 const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as const;
 
 export function createClaudeClient(): LlmClient {
-  if (!process.env.ANTHROPIC_API_KEY) throw new MissingApiKeyError();
+  if (!process.env.ANTHROPIC_API_KEY) throw new MissingApiKeyError("ANTHROPIC_API_KEY");
   const client = new Anthropic();
   return {
     create: ({ system, tools, messages }) =>

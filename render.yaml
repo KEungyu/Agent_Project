@@ -1,0 +1,19 @@
+# Render 배포 설정 (Blueprint). Render 대시보드에서 New → Blueprint로 이 저장소를 고르면 읽는다.
+# 무료 플랜은 15분 동안 접속이 없으면 잠들고, 다시 켜지거나 재배포하면 data/ 안의 DB와 발송함이 초기화된다.
+services:
+  - type: web
+    name: majungi
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      # 제미나이 키는 저장소에 넣지 않는다. 배포할 때 Render 화면에서 직접 입력한다.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MAIL_MODE
+        value: mock

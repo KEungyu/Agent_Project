@@ -4,7 +4,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getCurrentBoard } from "../lib/board/store";
 import { seedDemoBoard } from "../lib/board/demo";
 import { createTools } from "../lib/agent/registry";
-import { createClaudeClient, MissingApiKeyError } from "../lib/agent/llm";
+import { MissingApiKeyError } from "../lib/agent/llm";
+import { createLlmClient } from "../lib/agent/provider";
 import { runAgent } from "../lib/agent/loop";
 import { openDb } from "../lib/db/client";
 
@@ -31,7 +32,7 @@ if (!board) {
 
 let llm;
 try {
-  llm = createClaudeClient();
+  llm = createLlmClient();
 } catch (error) {
   if (error instanceof MissingApiKeyError) {
     console.error(error.message);

@@ -4,6 +4,7 @@ import type { Db } from "../db/client";
 import { getMessages } from "../i18n/messages";
 import { checkSafety } from "../safety/guard";
 import { getConversation, setConversation } from "./conversation";
+import { GeminiApiError } from "./gemini";
 import { MissingApiKeyError, type LlmClient } from "./llm";
 import { runAgent } from "./loop";
 import { createTools } from "./registry";
@@ -43,7 +44,14 @@ export async function runTurn({
       language,
       messages: [...getConversation(boardId), { role: "user", content: text }],
     });
-    setConversation(boardId, result.messages);
+    // 도구가 만든 답(질문·초안 안내·전화 대본)이나 중단 안내는 모델의 글로 남지 않으므로,
+    // 대화 기록 끝에 마중이의 말로 붙여 둔다. 그래야 화면을 다시 그려도 답이 사라지지 않는다.
+    const last = result.messages.at(-1);
+    const messages =
+      result.reply && last?.role === "user"
+        ? [...result.messages, { role: "assistant" as const, content: [{ type: "text" as const, text: result.reply }] }]
+        : result.messages;
+    setConversation(boardId, messages);
     return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })) };
   } catch (error) {
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
@@ -51,6 +59,11 @@ export async function runTurn({
       // 여행자에게는 이용자 언어 안내와 다음 행동만 보이고, 원인(요금·인증 등)은 서버 로그에만 남긴다
       console.error(`[agent] Claude API error ${error.status}: ${error.message}`);
       return { ok: false, error: getMessages(language).chat.unavailable };
+    }
+    if (error instanceof GeminiApiError) {
+      console.error(`[agent] ${error.message}`);
+      const chat = getMessages(language).chat;
+      return { ok: false, error: error.busy ? chat.busy : chat.unavailable };
     }
     throw error;
   }

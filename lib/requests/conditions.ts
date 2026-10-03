@@ -29,19 +29,29 @@ export function resolveTargetId(type: RequestType, board: TripBoard, targetId?: 
   return board.stays.length === 1 ? board.stays[0].id : undefined;
 }
 
+// 마감 기준 값(예: 도착 예정 시각)이 이미 지났는지. 날짜만 있으면 그날 한국 시간 24시를 기준으로 본다.
+function isPast(value: string, now: Date): boolean {
+  const time = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T24:00:00+09:00`) : new Date(value);
+  return !Number.isNaN(time.getTime()) && time.getTime() < now.getTime();
+}
+
 export function checkConditions(
   type: RequestType,
   board: TripBoard,
-  options: { targetId?: string; provided?: Record<string, string> } = {},
+  options: { targetId?: string; provided?: Record<string, string>; now?: Date } = {},
 ): ConditionCheck {
   const targetId = resolveTargetId(type, board, options.targetId);
   const filled: Record<string, string> = {};
   const missing: MissingSlot[] = [];
+  const now = options.now ?? new Date();
 
   for (const slot of type.required_slots) {
+    // 이용자가 대화에서 방금 알려준 값이 보드에 저장된 예전 값보다 앞선다
     const value =
-      (slot.from_board ? readBoardPath(board, slot.from_board, targetId) : undefined) ?? options.provided?.[slot.key];
-    if (value) filled[slot.key] = value;
+      options.provided?.[slot.key] ?? (slot.from_board ? readBoardPath(board, slot.from_board, targetId) : undefined);
+    // 마감 기준 값이 이미 지났으면 낡은 값으로 보고 다시 묻는다 (예: 어제 저장한 도착 시각)
+    const stale = Boolean(value) && slot.key === type.channel_rule?.deadline_slot && isPast(value!, now);
+    if (value && !stale) filled[slot.key] = value;
     else missing.push({ key: slot.key, question: slot.ask[board.user_language] ?? slot.ask.en });
   }
   return { type_id: type.id, ...(targetId ? { target_id: targetId } : {}), filled, missing };

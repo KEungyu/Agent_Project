@@ -26,7 +26,15 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   await connection();
   const language = getLanguage(getCurrentBoard(getDb())?.user_language);
   return (
-    <html lang={language.code} className={pretendard.variable}>
+    // 오프닝을 이미 본 세션이면 화면을 그리기 전에 표시해 두어 오프닝이 번쩍이지 않게 한다
+    <html lang={language.code} className={pretendard.variable} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(sessionStorage.getItem("majungi-intro-seen"))document.documentElement.setAttribute("data-intro-seen","")}catch(e){}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

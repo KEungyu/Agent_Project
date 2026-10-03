@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Messages } from "@/lib/i18n/messages";
+import { ChevronIcon } from "./icons";
 
 // 브라우저 기본 날짜 입력은 운영체제 언어를 따르므로, 이용자 언어로 연·월·일을 보여주는 달력을 직접 그린다.
 // 폼에는 기존과 같은 형식("YYYY-MM-DD", "YYYY-MM-DDTHH:MM")의 값만 넘긴다.
@@ -137,13 +138,13 @@ function DatePicker({
         <span className="calendar" role="dialog" aria-label={ariaLabel}>
           <span className="calendar-head">
             <button type="button" className="calendar-nav" onClick={() => shift(-1)} aria-label={labels.prevMonth}>
-              ‹
+              <ChevronIcon direction="left" />
             </button>
             <span className="calendar-title" aria-live="polite">
               {monthTitle}
             </span>
             <button type="button" className="calendar-nav" onClick={() => shift(1)} aria-label={labels.nextMonth}>
-              ›
+              <ChevronIcon direction="right" />
             </button>
           </span>
           <span className="calendar-grid">

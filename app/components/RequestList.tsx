@@ -5,6 +5,7 @@ import type { RequestType } from "@/lib/request-types/schema";
 import { formatKst } from "@/lib/time";
 import { ApprovalCard } from "./ApprovalCard";
 import { ExecutionBadge, LEVEL_KEY } from "./ExecutionBadge";
+import { EnvelopeIcon } from "./icons";
 import { ReplyPanel } from "./ReplyPanel";
 import { RouteStrip } from "./RouteStrip";
 import { SignTitle } from "./SignTitle";
@@ -28,7 +29,7 @@ export function RequestList({
 }) {
   return (
     <section className="panel" aria-labelledby="requests-heading">
-      <SignTitle id="requests-heading" ko="요청" text={m.requests.title} />
+      <SignTitle id="requests-heading" ko="요청" text={m.requests.title} icon={<EnvelopeIcon />} />
       {requests.length === 0 ? (
         <p className="empty-note">{m.requests.empty}</p>
       ) : (
@@ -43,7 +44,8 @@ export function RequestList({
             return (
               <li key={request.id} className={`request ${request.status === "pending_approval" ? "is-focus" : ""}`}>
                 <div className="request-head">
-                  {type && <ExecutionBadge level={type.execution_level} m={m} />}
+                  {/* 상태가 바뀌면(승인·발송·회신) 배지가 다시 찍힌다 */}
+                  {type && <ExecutionBadge key={request.status} level={type.execution_level} m={m} />}
                   <h3 className="request-title">
                     <span lang="ko">{type?.label.ko ?? request.type_id}</span>
                     {type && type.label[language] && language !== "ko" && (

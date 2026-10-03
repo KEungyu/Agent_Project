@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import Link from "next/link";
 import { connection } from "next/server";
 import { getConversation } from "@/lib/agent/conversation";
+import { hasTripData } from "@/lib/board/forms";
 import { getCurrentBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { getLanguage } from "@/lib/i18n/languages";
@@ -11,6 +12,8 @@ import { evaluateAlerts } from "@/lib/proactive/rules";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import { AlertList } from "./components/AlertList";
 import { ArrivalBoard } from "./components/ArrivalBoard";
+import { EntryIntro, IntroReplay } from "./components/EntryIntro";
+import { kstDate } from "@/lib/time";
 import { Toaster } from "./components/Toaster";
 import { buildHero } from "@/lib/hero";
 import { Chat, type ChatLine } from "./components/Chat";
@@ -44,9 +47,14 @@ export default async function Home() {
   const alerts = board ? evaluateAlerts(board, now) : [];
   const hero = buildHero(board, alerts, types, m, now);
   const chatLines = board ? toChatLines(getConversation(board.id)) : [];
+  // 입국 도장: 입국일(없으면 오늘)과 도착 공항
+  const entryDate = (board?.arrival?.datetime ? kstDate(board.arrival.datetime) : kstDate(now.toISOString())).replaceAll("-", ".");
 
   return (
     <>
+      <EntryIntro m={m.intro} ko={getMessages("ko").intro} language={language.code} stamp={{ date: entryDate, airport: board?.arrival?.airport ?? "ICN" }} hasTrip={hasTripData(board)}
+        languagePicker={<LanguagePicker current={language} title={m.language} panelId="intro-language-panel" />}
+      />
       <header className="signbar">
         <div className="signbar-inner">
           <div className="brand">
@@ -56,7 +64,7 @@ export default async function Home() {
             </span>
             <div>
               <p className="brand-name" lang="ko">
-                마중 <span lang="en">Majung</span>
+                마중이 <span lang="en">Majungi</span>
               </p>
               <p className="brand-tagline">{m.tagline}</p>
             </div>
@@ -80,6 +88,7 @@ export default async function Home() {
       <Toaster />
       <footer className="platform-footer" lang="ko">
         <Link href="/report">AI 적용 전/후 지표 보기</Link>
+        <IntroReplay label={m.intro.replay} />
       </footer>
     </>
   );

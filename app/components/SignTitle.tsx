@@ -4,14 +4,21 @@ export function SignTitle({
   ko,
   text,
   as: Tag = "h2",
+  icon,
 }: {
   id?: string;
   ko: string;
   text: string;
   as?: "h2" | "h3";
+  icon?: React.ReactNode;
 }) {
   return (
-    <Tag id={id} className={`sign-title sign-title-${Tag}`}>
+    <Tag id={id} className={`sign-title sign-title-${Tag}${icon ? " has-icon" : ""}`}>
+      {icon && (
+        <span className="sign-title-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <span lang="ko" className="sign-title-ko">
         {ko}
       </span>

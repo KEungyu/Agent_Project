@@ -53,7 +53,7 @@ describe("draft_request의 전화 경로", () => {
     });
 
     expect(result.stopReason).toBe("awaiting_user");
-    expect(result.reply).toContain("only 3 hours away");
+    expect(result.reply).toContain("in just 3 hours");
     expect(result.reply).toContain("annyeonghaseyo");
     expect(result.reply).toContain(formatPhoneScript(script));
     const [request] = getBoard(db, board.id)!.requests;

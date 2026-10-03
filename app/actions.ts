@@ -2,9 +2,11 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
-import { createClaudeClient, MissingApiKeyError } from "@/lib/agent/llm";
+import { MissingApiKeyError } from "@/lib/agent/llm";
+import { createLlmClient } from "@/lib/agent/provider";
+import { GeminiApiError } from "@/lib/agent/gemini";
 import { runTurn, type TurnResult } from "@/lib/agent/turn";
-import { addItineraryForm, ensureBoard, saveStayForm, saveTripForm } from "@/lib/board/forms";
+import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport, startNewTrip } from "@/lib/board/forms";
 import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
@@ -36,6 +38,28 @@ export async function addItinerary(form: FormData) {
   revalidatePath("/");
 }
 
+export async function startNewTripAction() {
+  startNewTrip(getDb());
+  revalidatePath("/", "layout");
+}
+
+export async function removeItineraryAction(date: string, city: string) {
+  removeItineraryItem(getDb(), date, city);
+  revalidatePath("/");
+}
+
+// 마중이 예매를 준비해 둔 구간 (결제·확정은 하지 않는다)
+export async function prepareTransportAction(date: string, city: string) {
+  setLegTransport(getDb(), date, city, "planned");
+  revalidatePath("/");
+}
+
+// 이용자가 공식 사이트에서 예매를 마쳤다고 표시한 구간. note에는 고른 수단(예: KTX)을 남긴다.
+export async function markTransportBookedAction(date: string, city: string, note: string) {
+  setLegTransport(getDb(), date, city, "booked_by_user", note.slice(0, 40));
+  revalidatePath("/");
+}
+
 // 화면 언어이자 마중의 답변·역번역 언어. 레이아웃의 html lang도 바뀌므로 레이아웃까지 다시 그린다.
 export async function setLanguage(code: string) {
   if (!isLanguageCode(code)) return;
@@ -46,12 +70,17 @@ export async function setLanguage(code: string) {
   revalidatePath("/", "layout");
 }
 
+// 언어 패널을 폼으로도 보낼 수 있게 한다: 화면이 아직 준비(하이드레이션)되기 전에 눌러도 그 언어로 다시 열린다
+export async function setLanguageFromForm(form: FormData) {
+  await setLanguage(String(form.get("code") ?? ""));
+}
+
 export type ChatResult = TurnResult;
 
 async function runChatTurn(text: string): Promise<ChatResult> {
   const db = getDb();
   const board = ensureBoard(db);
-  return runTurn({ db, boardId: board.id, language: board.user_language, text, createLlm: createClaudeClient });
+  return runTurn({ db, boardId: board.id, language: board.user_language, text, createLlm: createLlmClient });
 }
 
 export async function sendChat(message: string): Promise<ChatResult> {
@@ -97,11 +126,16 @@ export async function retranslateAction(requestId: string): Promise<ApprovalResu
   const db = getDb();
   const board = ensureBoard(db);
   try {
-    await retranslateDraft(db, createClaudeClient(), requestId, board.user_language);
+    await retranslateDraft(db, createLlmClient(), requestId, board.user_language);
     return { ok: true };
   } catch (error) {
     if (error instanceof MissingApiKeyError || error instanceof ApprovalError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) return { ok: false, error: `Claude API error ${error.status}: ${error.message}` };
+    if (error instanceof GeminiApiError) {
+      console.error(`[retranslate] ${error.message}`);
+      const chat = getMessages(board.user_language).chat;
+      return { ok: false, error: error.busy ? chat.busy : chat.unavailable };
+    }
     throw error;
   } finally {
     revalidatePath("/");
@@ -119,11 +153,11 @@ export async function submitReplyAction(requestId: string, rawKo: string): Promi
     const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
     if (!type) return { ok: true, manual: true };
     try {
-      const interpretation = await interpretReply(createClaudeClient(), type, reply.raw_ko, ensureBoard(db).user_language);
+      const interpretation = await interpretReply(createLlmClient(), type, reply.raw_ko, ensureBoard(db).user_language);
       applyInterpretation(db, reply, interpretation);
       return { ok: true, manual: interpretation.needs_user_check };
     } catch (error) {
-      if (error instanceof MissingApiKeyError || error instanceof Anthropic.APIError) return { ok: true, manual: true };
+      if (error instanceof MissingApiKeyError || error instanceof Anthropic.APIError || error instanceof GeminiApiError) return { ok: true, manual: true };
       throw error;
     }
   } catch (error) {

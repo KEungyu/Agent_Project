@@ -1,15 +1,15 @@
 id: luggage_storage
 version: 1
 label:
-  ko: 체크아웃 후 짐 보관 문의
+  ko: 체크아웃 후 짐 맡기기
   en: Luggage storage after check-out
-  ja: チェックアウト後の荷物預かりの問い合わせ
-  zh-CN: 退房后行李寄存咨询
-  zh-TW: 退房後行李寄放詢問
-  vi: Hỏi gửi hành lý sau khi trả phòng
-  th: สอบถามการฝากกระเป๋าหลังเช็กเอาต์
-  id: Tanya penitipan tas setelah check-out
-  es: Consulta de consigna tras la salida
+  ja: チェックアウト後の荷物預かり
+  zh-CN: 退房后寄存行李
+  zh-TW: 退房後寄放行李
+  vi: Gửi hành lý sau khi trả phòng
+  th: ฝากกระเป๋าหลังเช็กเอาต์
+  id: Titip koper setelah check-out
+  es: Dejar las maletas tras el check-out
 journey_stage: departure
 execution_level: 대행
 target: stay
@@ -22,22 +22,22 @@ required_slots:
       zh-CN: "哪家酒店？"
       zh-TW: "哪一家飯店？"
       vi: "Khách sạn nào?"
-      th: "โรงแรมไหน"
+      th: "พักโรงแรมไหน?"
       id: "Hotel yang mana?"
       es: "¿Qué hotel?"
-      ko: "어느 숙소인가요?"
+      ko: "어느 숙소예요?"
   - key: guest_name
     from_board: stays[target].guest_name
     ask:
       en: "What name is the booking under?"
-      ja: "予約者のお名前は？"
+      ja: "予約は誰の名前で入っていますか？"
       zh-CN: "预订人姓名是什么？"
       zh-TW: "訂房人姓名是什麼？"
       vi: "Phòng được đặt dưới tên ai?"
-      th: "จองไว้ในชื่ออะไร"
+      th: "จองไว้ในชื่อใคร?"
       id: "Pemesanan atas nama siapa?"
       es: "¿A nombre de quién está la reserva?"
-      ko: "예약자 이름이 무엇인가요?"
+      ko: "누구 이름으로 예약했어요?"
   - key: booking_ref
     from_board: stays[target].booking_ref
     ask:
@@ -49,19 +49,19 @@ required_slots:
       th: "หมายเลขการจองของคุณคืออะไร"
       id: "Berapa nomor pemesananmu?"
       es: "¿Cuál es tu número de reserva?"
-      ko: "예약번호가 무엇인가요?"
+      ko: "예약번호를 알려 주세요."
   - key: check_out_date
     from_board: stays[target].check_out_date
     ask:
       en: "What is your check-out date?"
       ja: "チェックアウト日はいつですか？"
-      zh-CN: "你的退房日期是哪天？"
-      zh-TW: "你的退房日期是哪一天？"
-      vi: "Ngày trả phòng của bạn là ngày nào?"
-      th: "คุณเช็กเอาต์วันไหน"
-      id: "Kapan tanggal check-out kamu?"
-      es: "¿Cuál es tu fecha de salida?"
-      ko: "체크아웃 날짜가 언제인가요?"
+      zh-CN: "哪天退房？"
+      zh-TW: "哪一天退房？"
+      vi: "Bạn trả phòng ngày nào?"
+      th: "เช็กเอาต์วันไหน?"
+      id: "Check-out tanggal berapa?"
+      es: "¿Qué día haces el check-out?"
+      ko: "체크아웃은 며칠이에요?"
   - key: pickup_time
     ask:
       en: "Until what time do you need to leave your bags?"
@@ -69,21 +69,21 @@ required_slots:
       zh-CN: "你需要把行李寄存到几点？"
       zh-TW: "你需要把行李寄放到幾點？"
       vi: "Bạn cần gửi hành lý đến mấy giờ?"
-      th: "ต้องการฝากกระเป๋าถึงกี่โมง"
-      id: "Sampai jam berapa kamu perlu menitip tas?"
+      th: "อยากฝากกระเป๋าถึงกี่โมง?"
+      id: "Mau titip koper sampai jam berapa?"
       es: "¿Hasta qué hora necesitas dejar el equipaje?"
-      ko: "몇 시까지 짐을 맡기실 건가요?"
+      ko: "짐은 몇 시까지 맡기고 싶어요?"
   - key: bag_count
     ask:
       en: "How many bags?"
       ja: "荷物はいくつですか？"
       zh-CN: "有几件行李？"
       zh-TW: "有幾件行李？"
-      vi: "Bạn có mấy kiện hành lý?"
-      th: "มีกระเป๋ากี่ใบ"
-      id: "Berapa tas?"
+      vi: "Bạn có mấy túi hành lý?"
+      th: "มีกระเป๋ากี่ใบ?"
+      id: "Ada berapa koper?"
       es: "¿Cuántas maletas?"
-      ko: "짐은 몇 개인가요?"
+      ko: "짐은 몇 개예요?"
 optional_slots: [bag_size]
 channels:
   - { type: email, requires: [stay_email] }

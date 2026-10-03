@@ -1,13 +1,22 @@
 import type { TripBoard } from "@/lib/board/types";
-import type { Messages } from "@/lib/i18n/messages";
+import { removeItineraryAction } from "@/app/actions";
+import { fmt, type Messages } from "@/lib/i18n/messages";
 import { cityKo } from "@/lib/i18n/places";
 import { localCityName } from "@/lib/map/route";
 import { formatDate, formatKst } from "@/lib/time";
+import { XIcon } from "./icons";
 
 // 여행 일정을 노선도로 그린다: 입국 공항 → 도시들 → 출국 공항.
 // 도시 사이 구간은 교통편 상태를 보여준다(없으면 점선).
 
-type Stop = { key: string; name: string; meta: string; kind: "airport" | "city"; segment?: "none" | "planned" | "booked_by_user" | "airport" };
+type Stop = {
+  key: string;
+  name: string;
+  meta: string;
+  kind: "airport" | "city";
+  segment?: "none" | "planned" | "booked_by_user" | "airport";
+  date?: string;
+};
 
 export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Messages; locale: string }) {
   const stops: Stop[] = [];
@@ -26,6 +35,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
       name: item.city,
       meta: formatDate(item.date, locale),
       segment: i === 0 ? "airport" : item.transport.status,
+      date: item.date,
     });
   });
   if (board?.departure?.datetime) {
@@ -65,6 +75,18 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
             </span>
           )}
           <span className="trip-meta">{stop.meta}</span>
+          {stop.date && (
+            <form action={removeItineraryAction.bind(null, stop.date, stop.name)} className="trip-remove-form">
+              <button
+                type="submit"
+                className="trip-remove"
+                aria-label={fmt(m.board.removeCity, { city: localName(stop.name) })}
+                title={fmt(m.board.removeCity, { city: localName(stop.name) })}
+              >
+                <XIcon />
+              </button>
+            </form>
+          )}
         </li>
       ))}
     </ol>

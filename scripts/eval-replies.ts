@@ -1,7 +1,8 @@
 // 사용법: npm run eval:replies
 // 가상 회신 20개를 실제 Claude로 분류해 정확도를 출력한다 (BACKLOG M10 완료 기준: 85% 이상).
 import Anthropic from "@anthropic-ai/sdk";
-import { createClaudeClient, MissingApiKeyError } from "../lib/agent/llm";
+import { MissingApiKeyError } from "../lib/agent/llm";
+import { createLlmClient } from "../lib/agent/provider";
 import { interpretReply } from "../lib/requests/replies";
 import { loadRequestTypes } from "../lib/request-types/loader";
 import { LATE_CHECKIN_REPLIES } from "../tests/fixtures/late-checkin-replies";
@@ -15,7 +16,7 @@ try {
 async function main() {
   let llm;
   try {
-    llm = createClaudeClient();
+    llm = createLlmClient();
   } catch (error) {
     if (error instanceof MissingApiKeyError) {
       console.error(error.message);

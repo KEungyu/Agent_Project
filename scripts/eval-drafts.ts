@@ -1,7 +1,8 @@
 // 사용법: npm run eval:drafts
 // 실제 Claude로 늦은 체크인 초안 3개를 만들고 점검 결과를 출력한다 (BACKLOG M8 완료 기준).
 import Anthropic from "@anthropic-ai/sdk";
-import { createClaudeClient, MissingApiKeyError } from "../lib/agent/llm";
+import { MissingApiKeyError } from "../lib/agent/llm";
+import { createLlmClient } from "../lib/agent/provider";
 import { composeDraft } from "../lib/requests/drafting";
 import { loadRequestTypes } from "../lib/request-types/loader";
 import { LATE_CHECKIN_FIXTURES } from "../tests/fixtures/late-checkin-slots";
@@ -15,7 +16,7 @@ try {
 async function main() {
   let llm;
   try {
-    llm = createClaudeClient();
+    llm = createLlmClient();
   } catch (error) {
     if (error instanceof MissingApiKeyError) {
       console.error(error.message);

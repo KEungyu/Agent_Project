@@ -63,7 +63,7 @@ describe("먼저 챙겨주기 규칙", () => {
 
   it("알림 문구와 처리 요청에 보드 값이 채워진다", () => {
     const [r1] = evaluateAlerts(FIXTURES.r1().board, NOW);
-    expect(r1.message).toBe("Your arrival at Hotel A is Oct 20, 23:30, but late check-in isn't confirmed yet.");
+    expect(r1.message).toBe("You reach Hotel A around Oct 20, 23:30, but late check-in isn't confirmed yet.");
     expect(r1.action).toBe("Please ask Hotel A about late check-in. I arrive at Oct 20, 23:30.");
     const [r3] = evaluateAlerts(FIXTURES.r3().board, NOW);
     expect(r3.message).toContain("you arrive in 4 hours");
@@ -92,7 +92,7 @@ describe("먼저 챙겨주기 규칙", () => {
     const { db, board: b } = FIXTURES.r5();
     updateBoard(db, b.id, { user_language: "ko" });
     const [alert] = evaluateAlerts(getBoard(db, b.id)!, NOW);
-    expect(alert.message).toContain("도착해요");
+    expect(alert.message).toContain("도착하네요");
     expect(alert.action).toContain("ICN");
   });
 });

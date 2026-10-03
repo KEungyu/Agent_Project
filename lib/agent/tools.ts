@@ -39,12 +39,21 @@ export const boardGet = defineTool({
     "Always check the board before asking the traveler for information. " +
     "Pass `field` to read one section only; omit it to read the whole board.",
   input: z.object({ field: z.enum(BOARD_FIELDS).optional() }),
-  run: ({ field }, { db, boardId }) => {
+  run: ({ field }, { db, boardId, now }) => {
     const board = getBoard(db, boardId);
     if (!board) throw new Error(`board not found: ${boardId}`);
-    return field ? { [field]: board[field] ?? null } : board;
+    // 지금 한국 시각을 함께 준다: "새벽 2시"처럼 날짜 없이 말한 시각을 어느 날로 볼지 정할 때 쓴다
+    const now_kst = koreaNow(now?.() ?? new Date());
+    return field ? { now_kst, [field]: board[field] ?? null } : { now_kst, ...board };
   },
 });
+
+// "2026-10-02T07:30+09:00 (Friday)"
+export function koreaNow(date: Date): string {
+  const kst = new Date(date.getTime() + 9 * 3_600_000);
+  const weekday = kst.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+  return `${kst.toISOString().slice(0, 16)}+09:00 (${weekday})`;
+}
 
 const DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD");
 const DATETIME = z

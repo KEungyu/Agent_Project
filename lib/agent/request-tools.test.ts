@@ -122,7 +122,7 @@ describe("check_conditions / ask_user", () => {
     const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId }, messages: [{ role: "user", content: "go" }], log: () => {} });
 
     expect(result.stopReason).toBe("awaiting_user");
-    expect(result.reply).toContain("Nothing has been sent yet");
+    expect(result.reply).toContain("Nothing's been sent yet");
     const [request] = getBoard(db, boardId)!.requests;
     expect(request).toMatchObject({ type_id: "late_checkin", status: "pending_approval" });
     expect(request.draft?.back_translation).toContain("Late check-in inquiry");

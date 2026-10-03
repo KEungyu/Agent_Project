@@ -41,7 +41,7 @@ export default async function ReportPage() {
             </span>
           <span>
             <span className="brand-name">
-              마중 <span lang="en">Majung</span>
+              마중이 <span lang="en">Majungi</span>
             </span>
             <span className="brand-tagline">앱으로 돌아가기</span>
           </span>

@@ -51,18 +51,18 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
 
   return (
     <section id="chat" className="desk" aria-labelledby="chat-heading">
-      <SignTitle id="chat-heading" ko="마중에게 묻기" text={m.title} />
+      <SignTitle id="chat-heading" ko="마중이에게 묻기" text={m.title} />
       <ol ref={logRef} className="desk-log" aria-live="polite">
         {lines.length === 0 && (
           <li className="desk-empty">
             <div className="desk-greet">
               {/* eslint-disable-next-line @next/next/no-img-element -- 정적 마스코트 이미지 */}
-              <img className="greet-mascot" src="/mascot/majung.png" width={140} height={135} alt="Majung" />
+              <img className="greet-mascot" src="/mascot/majung.png" width={140} height={135} alt="Majungi" />
               <div className="greet-bubble">
                 <p className="greet-ko" lang="ko">
-                  안녕하세요, 마중이에요!
+                  안녕하세요, 마중이예요!
                 </p>
-                {m.hello !== "안녕하세요, 마중이에요!" && <p className="greet-hello">{m.hello}</p>}
+                {m.hello !== "안녕하세요, 마중이예요!" && <p className="greet-hello">{m.hello}</p>}
                 <p className="greet-note">{m.empty}</p>
               </div>
             </div>
@@ -99,12 +99,28 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
           ),
         )}
         {pending && (
-          <li className="say say-assistant say-pending">
-            <MascotAvatar />
-            <div className="say-body">
-              <span className="working-line" aria-hidden="true" />
-              <p className="muted">{m.working}</p>
+          <li className="say-working">
+            {/* 마중이가 무대 위를 왔다 갔다 뛰며 땀을 흘린다 */}
+            <div className="working-stage" aria-hidden="true">
+              <span className="working-runner">
+                <span className="working-body">
+                  <img src="/mascot/majung.png" alt="" width={56} height={54} />
+                  <span className="sweat sweat-1" />
+                  <span className="sweat sweat-2" />
+                  <span className="sweat sweat-3" />
+                </span>
+                <span className="dust dust-1" />
+                <span className="dust dust-2" />
+              </span>
             </div>
+            <p className="working-text" role="status">
+              {m.working}
+              <span className="working-dots" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            </p>
           </li>
         )}
       </ol>

@@ -6,6 +6,7 @@ import type { Messages } from "@/lib/i18n/messages";
 import { formatKst } from "@/lib/time";
 import { EXECUTION_LEVELS, ExecutionBadge } from "./ExecutionBadge";
 import { FlapText } from "./FlapText";
+import { PlaneIcon } from "./icons";
 
 // 도착 안내 전광판: 실제 지하철 안내판처럼 "이번 / 다음" 두 줄.
 // 이번 = 지금 처리할 일, 다음 = 입국(또는 귀국)까지. 윗줄에서 "어서 오세요"가 9개 언어로 돈다(마중 = 맞이함).
@@ -72,12 +73,18 @@ export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messag
     <section className="board" aria-label={`${m.hero.current}: ${model.next.title}`}>
       <div className="board-screen">
         <div className="board-top">
+          <p className="board-kind" aria-hidden="true">
+            <PlaneIcon />
+            <span lang="ko">도착</span>
+            <span>ARRIVALS</span>
+          </p>
           <p className="board-welcome" aria-hidden="true">
-            <FlapText text={welcome.text} lang={welcome.lang} />
+            <FlapText text={welcome.text} lang={welcome.lang} className="flap-tiles" />
           </p>
           <p className="board-clock" aria-label={`${clock} KST`}>
             <span className="board-clock-dot" aria-hidden="true" />
-            {clock} <span className="board-tz">KST</span>
+            <FlapText text={clock} className="flap-tiles" />
+            <span className="board-tz">KST</span>
           </p>
         </div>
 
@@ -102,7 +109,9 @@ export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messag
                   {[model.countdown.place, formatKst(model.countdown.target, locale)].filter(Boolean).join(" · ")}
                 </p>
               </div>
-              <strong className="board-row-time tabular">{now ? countdownText(model.countdown.target, now, locale) : "—"}</strong>
+              <strong className="board-row-time tabular">
+                {now ? <FlapText text={countdownText(model.countdown.target, now, locale)} className="flap-tiles" /> : "—"}
+              </strong>
             </li>
           )}
         </ol>

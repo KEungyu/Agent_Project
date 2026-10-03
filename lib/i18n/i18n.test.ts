@@ -36,6 +36,6 @@ describe("i18n", () => {
   });
 
   it("자리표시자를 채운다", () => {
-    expect(fmt(getMessages("ko").sent.sentTo, { to: "a@b.test", time: "10월 20일" })).toBe("a@b.test에 발송 · 10월 20일");
+    expect(fmt(getMessages("ko").sent.sentTo, { to: "a@b.test", time: "10월 20일" })).toBe("a@b.test에 보냄 · 10월 20일");
   });
 });
