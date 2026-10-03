@@ -49,3 +49,28 @@ export function kstMinutesOfDay(value: string): number {
 export function kstDate(value: string): string {
   return new Date(new Date(value).getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
 }
+
+// 연도는 한국어 원문과 같도록 어느 언어에서나 서력으로 쓴다 (태국어 기본값은 불기 2569년)
+const gregorian = (locale: string) => `${locale}-u-ca-gregory`;
+
+// 승인 전에 확인하는 날짜: 연도·요일까지 ("2026-10-09" → "Fri, Oct 9, 2026")
+export function formatFullDate(value: string, locale = "en"): string {
+  return new Intl.DateTimeFormat(gregorian(locale), { timeZone: "UTC", year: "numeric", month: "short", day: "numeric", weekday: "short" }).format(
+    new Date(`${value.slice(0, 10)}T00:00:00Z`),
+  );
+}
+
+// 승인 전에 확인하는 시각: 연도·요일·24시간·KST까지 ("2026-10-10T01:00+09:00" → "Sat, Oct 10, 2026, 01:00 KST")
+export function formatFullKst(value: string, locale = "en"): string {
+  const text = new Intl.DateTimeFormat(gregorian(locale), {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(value));
+  return `${text} KST`;
+}

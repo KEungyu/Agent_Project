@@ -32,7 +32,7 @@ describe("짐 보관 요청 유형 (데이터만 추가)", () => {
       [message([toolUse("t1", "draft_request", { type_id: "luggage_storage", provided })], "tool_use")],
       (request) => {
         if (!schemaHas(request, "coverage")) return { subject: "Luggage storage", body: "Can you keep 2 bags until 17:00?" };
-        const body = "예약자명 Emma Smith, 예약번호 BK123456. 체크아웃 날짜 10월 22일. 짐 개수 2개. 찾아갈 시각 오후 5시. 보관 가능 여부와 요금 문의.";
+        const body = "예약자명 Emma Smith, 예약번호 BK123456. 체크아웃 날짜 2026년 10월 22일. 짐 개수 2개. 찾아갈 시각 오후 5시. 보관 가능 여부와 요금 문의.";
         return {
           subject_ko: "체크아웃 후 짐 보관 문의",
           body_ko: body,

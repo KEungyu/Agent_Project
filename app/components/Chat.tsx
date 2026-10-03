@@ -26,7 +26,7 @@ function focusDraft() {
 
 const draftedIn = (line: ChatLine) => line.tools?.some((tool) => tool.name === "draft_request" && tool.ok);
 
-// 안내 데스크: 마중에게 묻는 창. 도구 호출은 지하철 출구 번호판처럼 노란 표로 보여준다.
+// 안내 데스크: 마중에게 묻는 창.
 export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m: Messages["chat"]; safety: Messages["safety"] }) {
   const [lines, setLines] = useState<ChatLine[]>(initialLines);
   const [pending, startTransition] = useTransition();
@@ -102,15 +102,7 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
           <li key={i} className={`say say-${line.role} ${i >= initialCount.current ? "is-new" : ""}`}>
             {(line.role === "assistant" || line.role === "error") && <MascotAvatar />}
             <div className="say-body">
-              {line.tools && line.tools.length > 0 && (
-                <div className="exit-tiles">
-                  {line.tools.map((tool, j) => (
-                    <span key={j} className={tool.ok ? "exit-tile" : "exit-tile is-error"}>
-                      {tool.name}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {/* 도구 이름(board_get 등)은 내부 동작이라 화면에 보이지 않는다. 서버 로그([agent])에서 확인한다 */}
               <p>{line.text}</p>
               {draftedIn(line) && (
                 <button type="button" className="say-draft" onClick={focusDraft}>

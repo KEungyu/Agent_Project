@@ -1960,25 +1960,6 @@ ul {
   background: var(--alert-tint);
   color: var(--alert);
 }
-.exit-tiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-.exit-tile {
-  padding: 2px 7px;
-  border-radius: 3px;
-  background: var(--exit);
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-}
-.exit-tile.is-error {
-  background: var(--alert-tint);
-  color: var(--alert);
-}
 /* 마중이가 일하는 중: 작은 무대 위를 왔다 갔다 뛰며 땀을 흘린다 */
 .say-working {
   display: grid;
@@ -6679,4 +6660,77 @@ html[data-intro-seen] .intro {
 .taxi-rate-note a {
   color: inherit;
   text-underline-offset: 2px;
+}
+
+/* 시연용 발송 안내: 전광판 아래, 승인 버튼 옆, 메일 앱 경로 */
+.board-demo {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--prep-deep);
+}
+.approve-demo {
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--prep-deep);
+}
+.mail-note {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.intro-warn {
+  max-width: 34ch;
+  margin: 2px auto 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--prep-deep);
+}
+
+/* 확신하지 못한 회신: 경고를 먼저, 해석은 추측으로 */
+.reply-unsure {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--prep-tint);
+  color: var(--prep-deep);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.reply-meaning.is-guess p:last-child {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* 승인 전에 확인할 핵심 사실 */
+.approval-facts {
+  padding: 12px var(--pad);
+  border-bottom: 1px solid var(--rule);
+  background: var(--info-tint);
+}
+.approval-facts dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px 16px;
+  margin: 6px 0 0;
+}
+.approval-facts dt {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.approval-facts dd {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/* 띄어쓰기 없이 이어지는 일본어·중국어·태국어 제목은 글자 사이에서 줄을 바꿔 좁은 화면에서 잘리지 않게 한다 */
+:lang(ja) .flap-word,
+:lang(zh) .flap-word,
+:lang(th) .flap-word {
+  white-space: normal;
 }

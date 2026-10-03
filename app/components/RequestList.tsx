@@ -4,6 +4,7 @@ import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { RequestType } from "@/lib/request-types/schema";
 import { formatKst } from "@/lib/time";
 import { decideChannel } from "@/lib/requests/channel";
+import { requestFacts } from "@/lib/requests/facts";
 import { ApprovalCard } from "./ApprovalCard";
 import { CallPanel } from "./CallPanel";
 import { ExecutionBadge, LEVEL_KEY } from "./ExecutionBadge";
@@ -72,7 +73,14 @@ export function RequestList({
                   <CallPanel requestId={request.id} phone={stay?.phone} where={stay?.name ?? m.agent.theBusiness} reason={callReason} m={m.requests.call} />
                 )}
                 {request.status === "pending_approval" && request.draft && (
-                  <ApprovalCard requestId={request.id} draft={request.draft} to={stay?.email} m={m.approval} language={getLanguage(language)} />
+                  <ApprovalCard
+                    requestId={request.id}
+                    draft={request.draft}
+                    to={stay?.email}
+                    facts={requestFacts(request.slots, language, m.approval)}
+                    m={m.approval}
+                    language={getLanguage(language)}
+                  />
                 )}
                 {(request.status === "awaiting_reply" || latestReplies[request.id]) && (
                   <ReplyPanel requestId={request.id} status={request.status} reply={latestReplies[request.id] ?? null} m={m} />

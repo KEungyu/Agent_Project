@@ -122,6 +122,8 @@ export function EntryIntro({ m, ko, language, stamp, hasTrip, languagePicker }: 
             {m.enter}
             <span className="intro-arrow" aria-hidden="true" />
           </button>
+          {/* 입국하기는 지금 보드를 비우고 새 여행을 시작하므로, 기존 여행이 있으면 미리 알린다 */}
+          {hasTrip && <p className="intro-warn">{m.newTripNote}</p>}
           {hasTrip && (
             <button type="button" className="intro-resume" onClick={close}>
               {m.resume}

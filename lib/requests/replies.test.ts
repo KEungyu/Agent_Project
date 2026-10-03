@@ -76,4 +76,15 @@ describe("replies", () => {
     expect(systems[0]).toContain("written in Vietnamese");
     expect(result.needs_user_check).toBe(true);
   });
+
+  it("운영시간 안내·다른 날짜·상충·확답 없음은 신뢰도가 높아도 이용자 확인으로 넘긴다", async () => {
+    const answer = (flags: object) =>
+      fakeLlm([], () => ({ class: "done", conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, matches_requested_time: true, contradictory: false, uncertain: false, ...flags }));
+    expect((await interpretReply(answer({}), type, "가능합니다", "en")).needs_user_check).toBe(false);
+    for (const flags of [{ answers_request: false }, { matches_requested_time: false }, { contradictory: true }, { uncertain: true }]) {
+      const result = await interpretReply(answer(flags), type, "…", "en");
+      expect(result.needs_user_check).toBe(true);
+      expect(result).not.toHaveProperty("contradictory");
+    }
+  });
 });

@@ -6,7 +6,23 @@ import type { Db } from "../db/client";
 import type { LlmClient } from "./llm";
 
 // now: 채널 판단 등 시각에 따른 판단을 테스트에서 고정하기 위해 바꿀 수 있다
-export type ToolContext = { db: Db; boardId: string; llm: LlmClient; now?: () => Date };
+// latestUserText: 이번 턴에 이용자가 쓴 문장. "오늘"처럼 날짜를 정하는 말을 코드로 확인할 때만 쓴다
+export type ToolContext = { db: Db; boardId: string; llm: LlmClient; now?: () => Date; latestUserText?: string };
+
+// "오늘 새벽 2시"처럼 오늘에 묶은 시각이 이미 지났으면 날짜를 추측하지 말고 먼저 확인받는다.
+// "오늘 밤", "tonight"처럼 자정 이후를 뜻하는 말이면 그대로 진행한다.
+const TODAY_WORDS = /오늘|today|今日|今天|hôm nay|วันนี้|hari ini|\bhoy\b/i;
+const TONIGHT_WORDS = /오늘\s*밤|tonight|今夜|今晚|đêm nay|คืนนี้|malam ini|esta noche/i;
+
+export function needsDateConfirmation(expectedArrival: string, userText: string | undefined, now: Date): string | undefined {
+  if (!userText || !TODAY_WORDS.test(userText) || TONIGHT_WORDS.test(userText)) return undefined;
+  const kst = (date: Date) => new Date(date.getTime() + 9 * 3_600_000).toISOString();
+  const arrival = kst(new Date(expectedArrival));
+  const today = kst(now);
+  // 오늘 날짜가 아닌 날로 저장하려 하고, 그 시각(시:분)이 오늘은 이미 지났다 = "오늘"을 다음 날로 옮긴 경우
+  if (arrival.slice(0, 10) === today.slice(0, 10) || arrival.slice(11, 16) >= today.slice(11, 16)) return undefined;
+  return `${arrival.slice(0, 10)} ${arrival.slice(11, 16)} KST`;
+}
 
 export type AgentTool<Input = unknown> = {
   name: string;
@@ -74,7 +90,8 @@ const stayFields = z
     checkin_cutoff: TIME,
     checkout_time: TIME,
   })
-  .partial();
+  .partial()
+  .strict();
 
 export const boardUpdate = defineTool({
   name: "board_update",
@@ -91,8 +108,19 @@ export const boardUpdate = defineTool({
     departure: z
       .object({ datetime: DATETIME, airport: z.string().min(2).optional(), flight_no: z.string().optional() })
       .optional(),
-  }),
-  run: ({ source, stay_id, stay, arrival, departure }, { db, boardId }) => {
+  })
+  // 모르는 키(예: stay 밖의 expected_arrival)를 조용히 버리고 "저장됨"이라고 답하지 않도록 거부한다
+  .strict(),
+  run: ({ source, stay_id, stay, arrival, departure }, { db, boardId, now, latestUserText }) => {
+    const proposed = stay?.expected_arrival && needsDateConfirmation(stay.expected_arrival, latestUserText, now?.() ?? new Date());
+    // 오류가 아니라 "저장하지 않음 + 확인할 날짜"로 돌려준다: 오류로 돌리면 모델이 같은 저장을 되풀이하다 멈출 수 있다
+    if (proposed) {
+      return {
+        saved: false,
+        confirm_first: proposed,
+        next_step: `Nothing was saved. The traveler tied this time to "today", but it has already passed today. Reply now with one short question asking them to confirm ${proposed} (early tomorrow morning). Do not call other tools until they answer.`,
+      };
+    }
     if (arrival || departure) updateBoard(db, boardId, { ...(arrival && { arrival }), ...(departure && { departure }) });
     let savedStayId = stay_id;
     if (stay && stay_id) {

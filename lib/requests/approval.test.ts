@@ -54,6 +54,14 @@ describe("approval gate", () => {
     expect(getHistory(db, requestId).map((entry) => entry.to)).toEqual(["draft", "pending_approval", "sent", "awaiting_reply"]);
   });
 
+  it("같은 초안을 두 번 승인·발송해도 모의 발송은 한 번만 기록된다 (빠른 중복 클릭·재시도)", () => {
+    const { db, requestId, mailer } = setup();
+    approveAndSend(db, requestId, mailer);
+    expect(() => approveAndSend(db, requestId, mailer)).toThrow();
+    expect(outboxFiles()).toHaveLength(1);
+    expect(getHistory(db, requestId).filter((entry) => entry.to === "sent")).toHaveLength(1);
+  });
+
   it("승인 후 본문이 한 글자라도 바뀌면 재승인을 요구한다 (저장된 해시까지 바꿔도)", () => {
     const { db, requestId, mailer } = setup();
     approveRequest(db, requestId);

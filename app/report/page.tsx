@@ -52,7 +52,7 @@ export default async function ReportPage() {
       <div className="platform-main">
         <h1 className="sign-title sign-title-h2">
           <span className="sign-title-ko">AI 적용 전/후 비교</span>
-          <span className="sign-title-text">늦은 체크인 문의 기준 · 완료된 요청 {rows.length}건</span>
+          <span className="sign-title-text">늦은 체크인 문의 기준 · 회신까지 처리된 요청 {rows.length}건 (시연·테스트 기록, 실제 사용자 실측 아님)</span>
         </h1>
 
         <section className="sign">
@@ -73,7 +73,7 @@ export default async function ReportPage() {
               <tr>
                 <th scope="col">지표</th>
                 <th scope="col">적용 전 (예상치)</th>
-                <th scope="col">적용 후 (실측)</th>
+                <th scope="col">적용 후 (이 앱 기록)</th>
               </tr>
             </thead>
             <tbody>
@@ -98,7 +98,7 @@ export default async function ReportPage() {
             </tbody>
           </table>
           <p className="report-note">
-            회신 해석 정확도는 가상 회신 20개로 따로 잰다: <code>npm run eval:replies</code> (목표 85%).
+            적용 전 값은 PRD 예상치이고, 적용 후 값은 이 보드에 남은 시연·테스트 요청(모의 발송, 예시 회신 포함)에서 계산했어요. 실제 사용자 성과가 아니에요. 회신 해석 정확도는 가상 회신으로 따로 재요: <code>npm run eval:replies</code> (목표 85%, 이 화면에는 결과가 나오지 않아요).
           </p>
         </section>
 
@@ -108,7 +108,7 @@ export default async function ReportPage() {
             <span className="sign-title-text">상태 이력과 이벤트 로그</span>
           </h2>
           {rows.length === 0 ? (
-            <p className="empty-note">아직 완료된 요청이 없습니다.</p>
+            <p className="empty-note">아직 회신까지 처리된 요청이 없어 계산한 값이 없습니다.</p>
           ) : (
             <table className="report-table report-rows">
               <thead>
@@ -125,7 +125,7 @@ export default async function ReportPage() {
                 {rows.map((row) => (
                   <tr key={row.request_id}>
                     <th scope="row">{types.find((type) => type.id === row.type_id)?.label.ko ?? row.type_id}</th>
-                    <td data-label="결과">{STATUS_LABELS[row.status]}</td>
+                    <td data-label="결과">{STATUS_LABELS[row.status]}{row.status === "conditional" ? " (조건 충족 전)" : ""}</td>
                     <td data-label="조작">{row.steps}</td>
                     <td data-label="능동 시간">{row.activeMinutes}분</td>
                     <td data-label="회신 대기">{row.waitingMinutes}분</td>

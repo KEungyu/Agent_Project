@@ -73,10 +73,6 @@ typography:
     fontSize: "13px"
     fontWeight: 600
     lineHeight: 1.3
-  exit-code:
-    fontFamily: "ui-monospace, SF Mono, Menlo, Consolas, monospace"
-    fontSize: "11px"
-    fontWeight: 700
 rounded:
   tile: "3px"
   sign: "6px"
@@ -148,11 +144,6 @@ components:
     rounded: "{rounded.pill}"
     padding: "3px 11px 3px 4px"
     height: "26px"
-  exit-tile:
-    backgroundColor: "{colors.exit}"
-    textColor: "{colors.ink}"
-    typography: "{typography.exit-code}"
-    rounded: "{rounded.tile}"
     padding: "2px 7px"
   code-roundel:
     backgroundColor: "{colors.arex-deep}"
@@ -263,13 +254,15 @@ AREX additionally codes everything that is Majung acting: the 2px ring on the ma
 
 **The Board Is Material Rule.** board, board-rule and led exist only for the arrival board's screen. They are not a dark theme and never reach sign panels, buttons or the desk.
 
-**The Honest Exit Rule.** Yellow exit tiles appear only for tool calls that actually executed; a failed call shows in alert-tint, and no tile is drawn for an intended or hypothetical call.
+**The Plain Words Rule.** Internal names never reach the traveler: no tool names (board_get, draft_request), request ids or English instructions in chat bubbles. Majungi says what it did in the traveler's language, only after it actually succeeded; tool calls stay in the server log.
+
+**The Demo Honesty Rule.** Sending is a demo (mock outbox). Every place that talks about sending says so in the traveler's language: the note under the line guide, the line beside the approve button, the approve label "(demo send)", and the "Demo mode" tag after sending. Copy / "open in my email app" is described separately as the traveler's own real email.
 
 ## Typography
 
 **Display Font:** Pretendard (variable, 45-920), with -apple-system, Apple SD Gothic Neo, Noto Sans KR
 **Body Font:** Pretendard, with per-language fallbacks: Hiragino Sans / Noto Sans JP for ja, PingFang SC / TC for zh, Noto Sans Thai for th
-**Label/Mono Font:** ui-monospace, used only inside exit tiles
+**Label/Mono Font:** ui-monospace, used only for the taxi meter digits
 
 **Character:** One sans throughout, like transit signage: Korean set heavy and tight, the visitor's language lighter and grayer beside it. Hierarchy is scale and weight, never a second display face.
 
@@ -312,7 +305,7 @@ Mostly flat, signage-like. Sign panels sit on the concrete ground with a hairlin
 
 ## Shapes
 
-Square-shouldered signs with a small 6px radius on panels, fields, buttons and the arrival board; 10px only for the popover and chat speech bodies; the desk greeting bubble is 6px with its bottom-left corner square and a square-cut tail; 3px for exit tiles and the demo tag; full pills for execution badges, the language button, the toast and the reduction chip; perfect circles for every roundel and station dot. Charcoal title bars bleed edge to edge inside their panel (no inset, panel clips them). Track is a 4px bar; unarranged track is a dashed 8px-on/6px-off repeat. Ring roundels (the brand, desk example markers, trip stations) use a white or charcoal gap ring before the colored ring; board dots use a board-black gap ring. Report bar tracks are 26px tall with a 4px radius.
+Square-shouldered signs with a small 6px radius on panels, fields, buttons and the arrival board; 10px only for the popover and chat speech bodies; the desk greeting bubble is 6px with its bottom-left corner square and a square-cut tail; 3px for the demo tag; full pills for execution badges, the language button, the toast and the reduction chip; perfect circles for every roundel and station dot. Charcoal title bars bleed edge to edge inside their panel (no inset, panel clips them). Track is a 4px bar; unarranged track is a dashed 8px-on/6px-off repeat. Ring roundels (the brand, desk example markers, trip stations) use a white or charcoal gap ring before the colored ring; board dots use a board-black gap ring. Report bar tracks are 26px tall with a 4px radius.
 
 ## Components
 
@@ -328,7 +321,6 @@ Plain signage controls, bold text, no icons except the approve arrow.
 
 ### Chips
 - **Execution line pill:** full pill in the line color with a white inner pill carrying the Korean term (안내 / 준비 / 대행) in the deep line color, then the translated label. Korean term is always present; there is no 확정 pill.
-- **Exit tile:** yellow, mono 11px/700, 3px radius, one per executed tool call.
 
 ### Cards / Containers
 - **Sign panel:** white, 1px rule border, 6px radius, sign shadow, 20px padding, opening with a full-bleed charcoal title bar (Korean on-dark 17px/800, user language on-dark-2).
@@ -396,10 +388,16 @@ The arrival board's third row, "준비 Prep" with a prep-orange dot, mirrors the
 First panel after the alerts (after active requests), titled "기초 회화" with a chat icon. A three-way segmented control (인사 / 생활 / 위급, Korean bold over the user's language) on ground with a sliding ink chip: arex-deep for greetings, deep teal `#0e7a63` for everyday, alert red for emergency (transform slide, 380ms ease-out). Phrase cards (auto-fill 190px, 2 columns ≤560px) carry the Korean at 20px/800 in the tab tone, the pronunciation written in the user's own script (katakana, Hangul-sound Chinese characters, Thai script, Latin spelled for each language) in ink, and the meaning in ink-2, over a white-to-tint gradient. Tapping reads the Korean with the browser voice (ko-KR, 0.85 rate): the speaker badge fills, its two sound waves blink in turn and a ring pulses out. Cards rise in with a 55ms stagger when a tab opens. The emergency tab first shows an alert-tint box with a blinking siren icon, the "call first" note and three red tel: buttons (112, 119, 1330) — Majungi never calls for the user.
 
 ### Show Cards
-After stays: tiles in soft tints with a white icon tile and a navy "Show" button. A wide taxi tile (apricot) has optional From and To fields with green/red ring dots and rust pick pills for stays and the four airports; then four tiles in two columns: restaurant (leaf, nine dietary chips), pharmacy (teal-lavender, seven symptom chips), shopping (pink-apricot, six question chips) and "write your own" (periwinkle, a textarea). Chips fill with the tile's tone and pop when on. Typed text without Hangul is turned into Korean by Majungi (a place name for the taxi, a polite 해요체 sentence for the write card); a spinner and "Majungi is translating…" show meanwhile. "Show" opens a full-screen card on a dimmed navy backdrop: white, 26px radius, flipping in (rotateY −70° → 0, 640ms ease-out) with one light sweep, then each Korean line rises in 90ms apart. Korean is huge for the person reading (lead clamp 30–60px/800, address/airport lines clamp 24–44px arex-deep); the taxi card says only "○○까지 가 주세요." with the starting point as a smaller ground pill ("출발: ○○"); the user's language sits small below a dashed rule. Stay cards' "Show to a taxi driver" and the fare check's "Show the driver" open the same taxi card. Esc, the close button or a backdrop tap closes it.
+After stays: tiles in soft tints with a white icon tile and a navy "Show" button. A wide taxi tile (apricot) has optional From and To fields with green/red ring dots and rust pick pills for stays and the four airports (Incheon, Gimpo, Gimhae, Jeju); then four tiles in two columns: restaurant (leaf, nine dietary chips), pharmacy (teal-lavender, seven symptom chips), shopping (pink-apricot, six question chips) and "write your own" (periwinkle, a textarea). Chips fill with the tile's tone and pop when on. Typed text without Hangul is turned into Korean by Majungi (a place name for the taxi, a polite 해요체 sentence for the write card); a spinner and "Majungi is translating…" show meanwhile. "Show" opens a full-screen card on a dimmed navy backdrop: white, 26px radius, flipping in (rotateY −70° → 0, 640ms ease-out) with one light sweep, then each Korean line rises in 90ms apart. Korean is huge for the person reading (lead clamp 30–60px/800, address/airport lines clamp 24–44px arex-deep); the taxi card says only "○○까지 가 주세요." with the starting point as a smaller ground pill ("출발: ○○"); the user's language sits small below a dashed rule. Stay cards' "Show to a taxi driver" and the fare check's "Show the driver" open the same taxi card. Esc, the close button or a backdrop tap closes it.
 
 ### Call Panel
 Inside a request card when calling is the way (no email on the board — the script loads right away) or the better way (email exists but the deadline is close — a "Show the call script" button). A 14px-radius panel on a mint-to-sky gradient (urgent: prep-tint to cream) with a 44px round handset badge (act-deep, prep when urgent) that shakes like a ringing phone and sends out a ring, the title "Call {stay}", a one-line reason, and a green tel: "Call" button (full width ≤560px). The script is numbered white rows (act-deep number dots): Korean 17px/800, pronunciation in act-deep, meaning in ink-2, rising in 80ms apart; "They might say" replies sit in dashed chips. The app never dials; the email draft stays the primary path whenever an email exists.
+
+### Approval Facts
+At the top of every approval card, under the "In Korean" bar: an info-tint band titled "Check these before you approve" with a grid of label/value pairs (12px/600 ink-2 over 14.5px/800 ink): check-in date, arrival at the stay (year, weekday, 24-hour time and "KST", Gregorian year in every language), check-out date when present, and "Send to" with the email. They are made from the same values the draft was written from. Under the Korean copy buttons a 12px ink-2 line explains that copying or opening the mail app is the traveler's own real email; beside "Change something" a 12.5px/700 prep-deep line says the demo send never reaches the business, and the approve button reads "Approve (demo send)".
+
+### Unsure Replies
+When Majungi can't be sure what a reply means (low confidence, a general policy, a different date, a contradiction or a hedge), the reply panel opens the Korean original, shows a prep-tint warning first, labels the reading "Majungi's best guess (not confirmed)" in ink-2 at weight 500, and asks the traveler to pick one of the four classes. Nothing is completed automatically.
 
 ### Request Focus
 When Majungi drafts a message, active requests move above the phrases and trip board, the page scrolls to the newest waiting card and rings it in act green once (1.6s), and the chat reply gets a green "See the draft" pill that does the same.
@@ -408,7 +406,7 @@ When Majungi drafts a message, active requests move above the phrases and trip b
 Under the Korean draft: "Copy Korean" and "Open in my email app" (mailto with subject and body); under the translation: "Copy translation". Pill buttons; on copy the icon swaps to a check with a pop, the pill fills arex-deep, a white ripple spreads from the icon, and it reverts after 1.8s.
 
 ### Taxi Fare Check
-Last sign on the trip board. A warm sand-to-apricot panel (`#fff8e0` → `#fff1e3`, 16px radius) holds From (act-green ring dot) and To (alert-red ring dot) fields; From has a quiet "My location" button (crosshair icon, spins while locating). Under each field, pill picks for the user's stays (bed icon) and the four airports (plane icon) in a rust tone (`#b0532a`), filling rust with a pop when chosen. A 38px round swap button sits between the ends and spins half a turn on click. Time of ride is a row of radio pills (Now / Daytime / 22–23 · 02–04 / 23–02), checked = signbar navy. The submit button is taxi-yellow (`#ffcd00` → `#ffb000`, dark ink) and its car icon drives back and forth while checking. The result is a taxi meter: board-black screen with faint scanlines and an inset shadow, a "택시 TAXI" roof lamp that flickers on to exit-yellow with a glow, and the fare range in amber LED monospace (tabular, soft glow) that counts up from ₩0 in 100-won steps (1.1s ease-out); under it, for every language but Korean, "≈" the same range in the user's currency (by language: USD, JPY, CNY, TWD, VND, THB, IDR, EUR) in a softer amber monospace that counts up with it, plus a small on-dark-2 note with the rate date (or "approximate rate" when the daily ExchangeRate-API fetch fails and fixed rates are used) and the required source link; below it the route with the same ring dots, km and minutes, and a rate pill (night rates in violet `#3b2f6b`). Then a rust "Show the driver" button that opens the taxi show card for the same trip, and three plain tips. Errors use the prep tint. Fare math is in `lib/taxi/fare.ts` (Seoul medium-taxi rates); places come from OpenStreetMap Nominatim and roads from OSRM, with a straight-line fallback.
+Last sign on the trip board. A warm sand-to-apricot panel (`#fff8e0` → `#fff1e3`, 16px radius) holds From (act-green ring dot) and To (alert-red ring dot) fields; From has a quiet "My location" button (crosshair icon, spins while locating). Under each field, pill picks for the user's stays (bed icon) and the two Seoul airports, Incheon and Gimpo (plane icon) in a rust tone (`#b0532a`), filling rust with a pop when chosen. A 38px round swap button sits between the ends and spins half a turn on click. Time of ride is a row of radio pills (Now / Daytime / 22–23 · 02–04 / 23–02), checked = signbar navy. The submit button is taxi-yellow (`#ffcd00` → `#ffb000`, dark ink) and its car icon drives back and forth while checking. The result is a taxi meter: board-black screen with faint scanlines and an inset shadow, a "택시 TAXI" roof lamp that flickers on to exit-yellow with a glow, and the fare range in amber LED monospace (tabular, soft glow) that counts up from ₩0 in 100-won steps (1.1s ease-out); under it, for every language but Korean, "≈" the same range in the user's currency (by language: USD, JPY, CNY, TWD, VND, THB, IDR, EUR) in a softer amber monospace that counts up with it, plus a small on-dark-2 note with the rate date (or "approximate rate" when the daily ExchangeRate-API fetch fails and fixed rates are used) and the required source link; below it the route with the same ring dots, km and minutes, and a rate pill (night rates in violet `#3b2f6b`). Then a rust "Show the driver" button that opens the taxi show card for the same trip, and three plain tips. Errors use the prep tint; a ride that neither starts nor ends in Seoul gets a "Seoul only for now" notice instead of a number. The meter label says "Estimated meter fare", and the note under the sign names the basis (Seoul City medium-taxi fare table, 2026, linked), that tolls are excluded, and that traffic and the actual route change the fare. Fare math is in `lib/taxi/fare.ts`; places come from OpenStreetMap Nominatim and roads from OSRM, with a straight-line fallback.
 
 ### Majungi at Work
 While the desk waits for a reply, the old progress bar is replaced by a 260×70 stage with a dashed floor: the frog runs across it and back (2.6s loop, flipping at each end), hopping with a squash-and-stretch, throwing light-blue sweat drops behind its head and grey dust puffs at its feet, above "마중이가 일하는 중" in arex-deep with three bouncing AREX dots. Reduced motion keeps the frog still and hides sweat and dust.
@@ -461,7 +459,8 @@ Every animation and transition is zeroed under prefers-reduced-motion by one glo
 - **Don't** use a line color as a generic accent, background wash, or decorative stripe.
 - **Don't** draw a multi-color line stripe in the header; the header carries one AREX rule.
 - **Don't** show a 확정 (confirmed) badge or any badge without its Korean term.
-- **Don't** draw an exit tile for a tool call that did not run.
+- **Don't** show tool names, request ids or internal instructions to the traveler.
+- **Don't** describe the demo send as a real delivery or the business's acceptance.
 - **Don't** use emoji for flags; flags are authored SVG with a 1px hairline ring and 2px radius.
 - **Don't** put the mascot on safety cards (112 / 119 / 1330 / 1345).
 - **Don't** animate board text on plain page load.

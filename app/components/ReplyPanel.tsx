@@ -81,9 +81,11 @@ export function ReplyPanel({ requestId, status, reply, m }: Props) {
         <p lang="ko">{reply.raw_ko}</p>
       </details>
 
+      {/* 마중이가 확신하지 못한 회신은 경고를 먼저 보이고, 해석은 "추측"으로만 보여준다 */}
+      {needsChoice && interpretation && <p className="reply-unsure">{r.check}</p>}
       {interpretation?.summary && (
-        <div className="reply-meaning">
-          <p className="station-sign-label">{r.meaning}</p>
+        <div className={needsChoice ? "reply-meaning is-guess" : "reply-meaning"}>
+          <p className="station-sign-label">{needsChoice ? r.guess : r.meaning}</p>
           <p>{interpretation.summary}</p>
         </div>
       )}
@@ -94,7 +96,7 @@ export function ReplyPanel({ requestId, status, reply, m }: Props) {
 
       {needsChoice ? (
         <div className="reply-choice">
-          <p>{interpretation ? r.check : r.manual}</p>
+          <p>{interpretation ? r.pick : r.manual}</p>
           <div className="reply-choice-grid">
             {CLASSES.map((cls) => (
               <button

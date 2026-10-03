@@ -11,14 +11,14 @@ import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveT
 import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
-import { getMessages } from "@/lib/i18n/messages";
+import { fmt, getMessages } from "@/lib/i18n/messages";
 import { getMailer } from "@/lib/mail/mailer";
-import { approveAndSend, ApprovalError, requestChanges, retranslateDraft } from "@/lib/requests/approval";
+import { approveAndSend, ApprovalError, retranslateDraft } from "@/lib/requests/approval";
 import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from "@/lib/requests/replies";
 import { prepareFollowUp } from "@/lib/requests/followup";
 import type { FollowUpKind } from "@/lib/requests/followup-kinds";
 import { getRequest, TransitionError } from "@/lib/requests/state";
-import { sanitizeSlots } from "@/lib/requests/drafting";
+import { draftFacts, sanitizeSlots } from "@/lib/requests/drafting";
 import { makePhoneScript, type PhoneScript } from "@/lib/requests/channel";
 import { checkConditions } from "@/lib/requests/conditions";
 import { loadRequestTypes } from "@/lib/request-types/loader";
@@ -115,19 +115,19 @@ export async function approveAndSendAction(requestId: string): Promise<ApprovalR
   }
 }
 
-// 초안으로 되돌린 뒤, 수정 메모를 채팅으로 에이전트에게 넘겨 다시 쓰게 한다
+// 수정 메모를 이용자 언어의 자연스러운 한 문장으로 채팅에 넘겨 마중이가 같은 초안을 다시 쓰게 한다.
+// 요청 ID나 내부 지시문은 채팅에 넣지 않는다. 초안은 새 초안이 만들어진 뒤에만 바뀌므로 실패해도 기존 초안이 남는다.
 export async function requestChangesAction(requestId: string, note: string): Promise<ChatResult> {
   const db = getDb();
-  try {
-    requestChanges(db, requestId, note.trim());
-  } catch (error) {
-    if (error instanceof TransitionError) return { ok: false, error: error.message };
-    throw error;
-  }
-  const request = getRequest(db, requestId)!;
-  const result = await runChatTurn(
-    `Please redraft my ${request.type_id} message (request ${request.id}) with these changes: ${note.trim() || "make it clearer"}`,
-  );
+  const board = ensureBoard(db);
+  const request = getRequest(db, requestId);
+  if (!request || request.status !== "pending_approval") return { ok: false, error: getMessages(board.user_language).chat.unavailable };
+  const m = getMessages(board.user_language);
+  const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
+  const where = (request.target_id && getStay(db, request.target_id)?.name) || m.agent.theBusiness;
+  const typeLabel = type?.label[board.user_language] ?? type?.label.en ?? request.type_id;
+  recordEvent(db, board.id, "user_action", { action: "request_changes", via: "card" }, requestId);
+  const result = await runChatTurn(fmt(m.approval.changeMessage, { type: typeLabel, where, note: note.trim() || "-" }));
   revalidatePath("/");
   return result;
 }
@@ -163,7 +163,7 @@ export async function submitReplyAction(requestId: string, rawKo: string): Promi
     const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
     if (!type) return { ok: true, manual: true };
     try {
-      const interpretation = await interpretReply(createLlmClient(), type, reply.raw_ko, ensureBoard(db).user_language);
+      const interpretation = await interpretReply(createLlmClient(), type, reply.raw_ko, ensureBoard(db).user_language, draftFacts(request.slots));
       applyInterpretation(db, reply, interpretation);
       return { ok: true, manual: interpretation.needs_user_check };
     } catch (error) {
@@ -223,7 +223,7 @@ export async function followUpAction(requestId: string, kind: FollowUpKind): Pro
 export type TaxiPlaceInput = { text: string } | { lat: number; lng: number; label: string };
 export type TaxiResult =
   | { ok: true; from: string; to: string; km: number; approx: boolean; outsideSeoul: boolean; estimate: FareEstimate; rate: WonRate | null }
-  | { ok: false; error: "fromNotFound" | "toNotFound" | "same" | "tooFar" | "failed" };
+  | { ok: false; error: "fromNotFound" | "toNotFound" | "same" | "tooFar" | "unsupported" | "failed" };
 
 export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: TaxiPlaceInput; period: FarePeriod | "now"; language: string }): Promise<TaxiResult> {
   const language = isLanguageCode(input.language) ? input.language : "en";
@@ -235,6 +235,8 @@ export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: Taxi
     const to = await resolve(input.to);
     if (!to) return { ok: false, error: "toNotFound" };
     if (haversine(from, to) < 150) return { ok: false, error: "same" };
+    // 요금표는 서울 중형택시 기준이다. 서울을 지나지 않는 이동(부산·제주 등)에는 확정값처럼 보이는 금액을 내지 않는다
+    if (!inSeoul(from) && !inSeoul(to)) return { ok: false, error: "unsupported" };
     const route = await drivingRoute(from, to);
     if (route.meters > 150_000) return { ok: false, error: "tooFar" };
     const period = input.period === "now" ? farePeriod(kstMinutesOfDay(new Date().toISOString())) : input.period;

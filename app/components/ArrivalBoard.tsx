@@ -160,6 +160,7 @@ export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messag
             </li>
           ))}
         </ul>
+        <span className="board-demo">{m.hero.demoNote}</span>
       </div>
     </section>
   );

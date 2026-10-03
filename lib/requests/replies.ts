@@ -21,6 +21,11 @@ const interpretationSchema = z.object({
   requested_info: z.array(z.string()),
   summary: z.string(),
   confidence: z.number().min(0).max(1),
+  // 자동 처리를 막는 신호. 저장하지 않고, 하나라도 걸리면 이용자 확인으로 넘긴다
+  answers_request: z.boolean(),
+  matches_requested_time: z.boolean(),
+  contradictory: z.boolean(),
+  uncertain: z.boolean(),
 });
 
 export function addReply(db: Db, requestId: string, rawKo: string): Reply {
@@ -51,32 +56,47 @@ function interpretSystem(type: RequestType, language: string): string {
   return `You read a Korean business's reply to a traveler's request (${type.label.en}) and classify it.
 
 Classes:
-- done: the request is accepted with nothing more the traveler must do or agree to.
-- conditional: accepted, but with a condition, extra fee, or a step the traveler must follow (e.g. ${(hints.conditional ?? []).join(", ")}).
-- declined: the request cannot be accepted (e.g. ${(hints.declined ?? []).join(", ")}).
-- info_requested: the business needs more information before deciding (e.g. ${(hints.info_requested ?? []).join(", ")}).
+- done: the reply clearly accepts THIS request, for the requested date and time, with nothing more the traveler must do or agree to.
+- conditional: accepted only if the traveler meets a condition, pays an extra fee, or follows a step (e.g. ${(hints.conditional ?? []).join(", ")}; also "complete online check-in by 22:00", "call us before you arrive"). Keep every condition and its deadline.
+- declined: the request cannot be accepted (e.g. ${(hints.declined ?? []).join(", ")}). Keep the negation and any alternative they offer.
+- info_requested: the business needs more information before deciding (e.g. ${(hints.info_requested ?? []).join(", ")}; also asking for the booking number or the guest's name). This is not an acceptance.
+
+Low confidence (below ${INTERPRETATION_MIN_CONFIDENCE}) — pick the closest class but set confidence to 0.4 or lower — when:
+- the reply only states a general policy (for example "our front desk is open 24 hours") without answering this request;
+- the date or time it accepts differs from the requested ones in the facts;
+- it contradicts itself: one part allows and another forbids (for example "the staff said 1 AM is fine, but the booking policy says no check-in after midnight"), even when the last sentence sounds final;
+- it is uncertain ("probably", "아마", "확답은 어렵다").
 
 Return:
 - class
-- conditions: each condition or required step, written in ${name}. Empty unless class is conditional.
+- conditions: each condition or required step with its deadline, written in ${name}. Empty unless class is conditional.
 - requested_info: each piece of information they ask for, written in ${name}. Empty unless class is info_requested.
-- summary: one or two plain sentences in ${name} telling the traveler what the reply means for them.
-- confidence: 0 to 1, how sure you are of the class. Use below ${INTERPRETATION_MIN_CONFIDENCE} when the reply is ambiguous.
+- summary: two short sentences in ${name}: quote the Korean phrase that decides it ("…"), then what it means for the traveler. When confidence is low, say plainly that the reply does not confirm the request yet and what still needs to be confirmed. Never present a general policy as an acceptance.
+- confidence: 0 to 1, how sure you are of the class.
+- answers_request: false if the reply only states a general policy or does not answer this request.
+- matches_requested_time: false if the date or time the reply decides about (allows or refuses) differs from the requested ones in the facts. An alternative the business proposes (for example "please arrive by 11 PM") does not count. true when it gives no date or time.
+- contradictory: true if one part allows and another forbids.
+- uncertain: true if it hedges ("probably", "아마", "확답은 어렵다", "확인 후 연락").
 Use only what the reply says. Do not invent times, fees, or promises.`;
 }
 
+// facts: 요청한 날짜·시각 등(한국어 표기 포함). 회신이 다른 날짜를 허락했는지 가려내는 데 쓴다
 export async function interpretReply(
   llm: LlmClient,
   type: RequestType,
   rawKo: string,
   language: string,
+  facts?: Record<string, string>,
 ): Promise<Interpretation> {
   const result = await llm.structured({
     system: interpretSystem(type, language),
-    prompt: `Reply (Korean):\n${rawKo}`,
+    prompt: [facts ? `What the traveler asked (facts, JSON): ${JSON.stringify(facts)}` : "", `Reply (Korean):\n${rawKo}`].filter(Boolean).join("\n\n"),
     schema: interpretationSchema,
   });
-  return { ...result, needs_user_check: result.confidence < INTERPRETATION_MIN_CONFIDENCE };
+  const { answers_request, matches_requested_time, contradictory, uncertain, ...interpretation } = result;
+  // 운영시간 안내·다른 날짜·상충·확답 없음은 신뢰도와 상관없이 자동으로 수락·완료하지 않는다
+  const doubtful = !answers_request || !matches_requested_time || contradictory || uncertain;
+  return { ...interpretation, needs_user_check: doubtful || result.confidence < INTERPRETATION_MIN_CONFIDENCE };
 }
 
 function saveInterpretation(db: Db, replyId: string, interpretation: Interpretation) {

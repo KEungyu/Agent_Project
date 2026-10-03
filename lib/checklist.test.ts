@@ -3,6 +3,7 @@ import { seedDemoBoard } from "./board/demo";
 import { createBoard, updateBoard, getBoard } from "./board/store";
 import { openDb } from "./db/client";
 import { buildChecklist } from "./checklist";
+import { createRequest } from "./requests/state";
 
 describe("buildChecklist", () => {
   it("starts with nothing ticked on an empty trip and skips items that do not apply", () => {
@@ -36,5 +37,18 @@ describe("buildChecklist", () => {
       ],
     });
     expect(buildChecklist(getBoard(db, board.id)).map((entry) => entry.key)).not.toContain("rides");
+  });
+});
+
+describe("buildChecklist — 조건부 수락", () => {
+  it("조건부 수락은 조건을 받아들여 완료되기 전까지 늦은 체크인을 체크하지 않는다", () => {
+    const db = openDb(":memory:");
+    const board = seedDemoBoard(db);
+    const request = createRequest(db, { boardId: board.id, typeId: "late_checkin", targetId: board.stays[0].id, slots: {} }, "agent");
+    db.$client.prepare("UPDATE requests SET status = 'conditional' WHERE id = ?").run(request.id);
+    const late = () => buildChecklist(getBoard(db, board.id)).find((item) => item.key === "lateCheckin");
+    expect(late()?.done).toBe(false);
+    db.$client.prepare("UPDATE requests SET status = 'done' WHERE id = ?").run(request.id);
+    expect(late()?.done).toBe(true);
   });
 });

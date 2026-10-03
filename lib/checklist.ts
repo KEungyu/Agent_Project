@@ -21,7 +21,8 @@ export function buildChecklist(board: TripBoard | null): ChecklistItem[] {
     { key: "stay", done: stays.length > 0 },
     { key: "cities", done: (board?.itinerary.length ?? 0) > 0 },
   ];
-  // 밤늦게 도착할 때만: 늦게 도착하는 숙소마다 늦은 체크인 답(수락·조건부 수락)을 받았으면 체크.
+  // 밤늦게 도착할 때만: 늦게 도착하는 숙소마다 늦은 체크인을 수락받았으면 체크.
+  // 조건부 수락은 조건을 받아들이기(완료) 전까지 체크하지 않는다.
   // 숙소 도착 시각을 모르고 비행기만 늦으면, 어느 숙소든 답을 받았으면 체크한다.
   const lateStays = stays.filter((stay) => late(stay.expected_arrival));
   if (late(board?.arrival?.datetime) || lateStays.length > 0) {
@@ -30,7 +31,7 @@ export function buildChecklist(board: TripBoard | null): ChecklistItem[] {
         (request) =>
           request.type_id === "late_checkin" &&
           (stayId === undefined || request.target_id === stayId) &&
-          (request.status === "done" || request.status === "conditional"),
+          request.status === "done",
       );
     const done = lateStays.length > 0 ? lateStays.every((stay) => answeredFor(stay.id)) : answeredFor();
     items.push({ key: "lateCheckin", done });

@@ -5,6 +5,7 @@ import { approveAndSendAction, requestChangesAction, retranslateAction } from "@
 import type { Draft } from "@/lib/board/types";
 import { getLanguage, type Language } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
+import type { Fact } from "@/lib/requests/facts";
 import { CopyButton } from "./CopyButton";
 import { EnvelopeIcon } from "./icons";
 import { showToast } from "./Toaster";
@@ -15,12 +16,14 @@ export function ApprovalCard({
   requestId,
   draft,
   to,
+  facts,
   m,
   language,
 }: {
   requestId: string;
   draft: Draft;
   to?: string;
+  facts: Fact[];
   m: Messages["approval"];
   language: Language;
 }) {
@@ -74,6 +77,26 @@ export function ApprovalCard({
         <span>{m.korean}</span>
         {to && <span className="station-sign-to">{fmt(m.to, { to })}</span>}
       </header>
+      {/* 승인하기 전에 확인할 핵심 사실: 초안과 같은 값에서 만든 날짜·시각(연도·24시간·KST)과 받는 곳 */}
+      {(facts.length > 0 || to) && (
+        <div className="approval-facts">
+          <p className="station-sign-label">{m.factsTitle}</p>
+          <dl>
+            {facts.map((fact) => (
+              <div key={fact.label}>
+                <dt>{fact.label}</dt>
+                <dd className="tabular">{fact.value}</dd>
+              </div>
+            ))}
+            {to && (
+              <div>
+                <dt>{m.factTo}</dt>
+                <dd>{to}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
       <div className="station-sign-ko" lang="ko">
         <p className="station-sign-subject">{draft.subject_ko}</p>
         <p className="station-sign-body">{draft.body_ko}</p>
@@ -92,6 +115,10 @@ export function ApprovalCard({
             </a>
           )}
         </div>
+        {/* 복사·메일 앱은 이용자가 직접 보내는 실제 메일 경로라서, 앱의 시연용 발송과 구분해 알려 준다 */}
+        <p className="mail-note" lang={language.code}>
+          {m.mailNote}
+        </p>
       </div>
       <div className="station-sign-translation">
         <div className="station-sign-label-row">
@@ -135,6 +162,7 @@ export function ApprovalCard({
               {m.requestChanges}
             </button>
             <p className="approve-note">{m.notSent}</p>
+            <p className="approve-demo">{m.demoNote}</p>
           </div>
           <button type="button" className="button-approve" onClick={approve} disabled={pending}>
             {pending ? m.working : m.approve}

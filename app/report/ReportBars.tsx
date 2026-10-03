@@ -65,7 +65,7 @@ export function ReportBars({ bars }: { bars: Bar[] }) {
     <div className="report-visual">
       <div className="bar-legend" aria-hidden="true">
         <span className="bar-key bar-key-before">적용 전 (예상치)</span>
-        <span className="bar-key bar-key-after">적용 후 (실측)</span>
+        <span className="bar-key bar-key-after">적용 후 (이 앱 기록)</span>
       </div>
       <ol className="bars">
         {bars.map((bar, index) => (

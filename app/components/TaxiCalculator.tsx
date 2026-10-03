@@ -18,13 +18,12 @@ type Pick = { lat: number; lng: number; label: string };
 type End = { text: string; pick?: Pick; target?: TaxiTarget; here?: boolean };
 type Period = FarePeriod | "now";
 
-// 공항 택시 승강장 근처 좌표
+// 공항 택시 승강장 근처 좌표. 요금표가 서울 기준이라 서울을 오가는 공항(인천·김포)만 둔다
 const AIRPORTS: Record<string, { lat: number; lng: number }> = {
   ICN: { lat: 37.4492, lng: 126.4509 },
   GMP: { lat: 37.5583, lng: 126.7906 },
-  PUS: { lat: 35.1795, lng: 128.9382 },
-  CJU: { lat: 33.5113, lng: 126.493 },
 };
+const FARE_SOURCE = "https://sftc.seoul.go.kr/seoul/mulga/main/contents.do?menuNo=200023";
 const PERIODS: Period[] = ["now", "day", "late", "midnight"];
 const won = new Intl.NumberFormat("en-US");
 
@@ -191,7 +190,12 @@ export function TaxiCalculator({
         <TaxiMeter key={`${result.estimate.low}-${result.estimate.high}-${result.from}-${result.to}`} result={result} m={m} show={show} language={language} />
       )}
       <p className="taxi-basis">
-        {m.basis} {m.osm}
+        {m.basis}{" "}
+        <a href={FARE_SOURCE} target="_blank" rel="noopener noreferrer">
+          {m.source}
+        </a>
+        {" · "}
+        {m.osm}
       </p>
     </div>
   );

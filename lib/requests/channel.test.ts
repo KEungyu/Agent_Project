@@ -38,7 +38,7 @@ describe("draft_request의 채널", () => {
   const structured = (request: Parameters<typeof schemaHas>[0]) => {
     if (!schemaHas(request, "coverage")) return { subject: "Late check-in inquiry", body: "Guest Emma Smith ..." };
     const facts = JSON.parse(request.prompt.replace("Facts (JSON): ", ""));
-    const body = `예약자명 ${facts.guest_name}, 예약번호 ${facts.booking_ref}. 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.`;
+    const body = `예약자명 ${facts.guest_name}, 예약번호 ${facts.booking_ref}. 체크인 날짜 ${facts.check_in_date_ko}, 도착 예정 시각 ${facts.expected_arrival_ko}, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.`;
     return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: lateCheckin.message_guidelines.must_include.map((item) => ({ item, quote: item })) };
   };
 
@@ -90,5 +90,28 @@ describe("draft_request의 채널", () => {
 
     expect(JSON.stringify(result.toolCalls[0].output)).toContain("No email or phone");
     expect(getBoard(db, board.id)!.requests).toEqual([]);
+  });
+});
+
+describe("전화 안내 경계 (호텔 도착 2026-10-10 01:00 KST)", () => {
+  const arrival = { expected_arrival: "2026-10-10T01:00+09:00" };
+  const at = (time: string) => new Date(`2026-10-09T${time}:00+09:00`);
+  const both = { email: "hotel@example.com", phone: "+82-2-000-0000" } as Stay;
+
+  it("7시간 전·정확히 6시간 전은 메일만, 5시간 전부터 전화도 권한다 (6시간 미만)", () => {
+    expect(decideChannel(type, both, arrival, at("18:00"))).toMatchObject({ channel: "email", reason: "email_default", hours_left: 7 });
+    expect(decideChannel(type, both, arrival, at("19:00"))).toMatchObject({ channel: "email", reason: "email_default", hours_left: 6 });
+    expect(decideChannel(type, both, arrival, at("20:00"))).toMatchObject({ channel: "phone", reason: "deadline_soon", hours_left: 5 });
+  });
+
+  it("이메일 없이 전화만 있으면 전화, 둘 다 없으면 판단하지 않는다", () => {
+    expect(decideChannel(type, { phone: "+82-2-000-0000" } as Stay, arrival, at("12:00")).reason).toBe("no_email");
+    expect(decideChannel(type, {} as Stay, arrival, at("12:00")).channel).toBeNull();
+  });
+
+  it("도착 시각이 이미 지났으면 급한 것으로 보지 않는다 (조건 확인에서 다시 묻는다)", () => {
+    const late = decideChannel(type, both, arrival, new Date("2026-10-10T03:00:00+09:00"));
+    expect(late.reason).toBe("email_default");
+    expect(late.hours_left).toBeLessThan(0);
   });
 });

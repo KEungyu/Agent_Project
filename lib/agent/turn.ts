@@ -40,7 +40,7 @@ export async function runTurn({
     const result = await runAgent({
       llm: createLlm(),
       tools: createTools(),
-      ctx: { db, boardId },
+      ctx: { db, boardId, latestUserText: text },
       language,
       messages: [...getConversation(boardId), { role: "user", content: text }],
     });

@@ -66,6 +66,22 @@ export function checkDraft(type: RequestType, slots: Record<string, string>, dra
     }
   }
 
+  // 날짜·시각은 연도와 함께, 도착 시각은 24시간 표기와 KST까지 들어가야 한다
+  for (const [key, value] of Object.entries(slots)) {
+    if (!key.endsWith("_ko")) continue;
+    const match = /^(\d{4})년 (\d{1,2})월 (\d{1,2})일/.exec(value);
+    if (!match) continue;
+    const [, year, month, day] = match;
+    const time = /(\d{2}:\d{2})\(KST\)$/.exec(value)?.[1];
+    if (time) {
+      if (!body.includes(`${year}년 ${month}월 ${day}일`) || !body.includes(time) || !body.includes("KST")) {
+        problems.push(`${key.replace(/_ko$/, "")} 값은 "${value}"처럼 연도·24시간 시각·KST를 모두 적어야 한다`);
+      }
+    } else if (body.includes(`${month}월 ${day}일`) && !body.includes(`${year}년 ${month}월 ${day}일`)) {
+      problems.push(`${key.replace(/_ko$/, "")} 날짜는 "${year}년 ${month}월 ${day}일"처럼 연도를 함께 적어야 한다`);
+    }
+  }
+
   if (containsCardNumber(draft.body_ko)) problems.push("카드번호가 들어 있다");
   for (const word of must_not_include) {
     if (draft.body_ko.includes(word)) problems.push(`넣으면 안 되는 내용: ${word}`);
@@ -85,10 +101,38 @@ Rules:
 - The body must be at most ${max_chars} characters.
 - Use only the facts provided. Do not invent facts, prices, or promises.
 - Do not give a reason for the request (for example a flight delay) unless a reason is in the facts.
-- Copy names and booking numbers exactly as given. Write dates and times the Korean way (e.g. 10월 20일 새벽 1시 30분).
-- Mention that the guest does not read Korean well, and ask the business to reply to this email.
+- Do not add apologies, statements about the guest's language ability, fees, or the business's permission unless they are in the facts.
+- Copy names and booking numbers exactly as given.
+- Dates and times: copy the "*_ko" forms in the facts exactly. They carry the year, the date, the 24-hour time and KST (e.g. 2026년 10월 10일(토) 01:00(KST)).
+- The check-in date and the arrival time can be on different days (arriving after midnight). Keep each one as given and never move one to match the other.
+- Ask the business to reply to this email.
 
 Also return coverage: for each required item, the exact phrase copied from body_ko that covers it.`;
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+// "2026-10-10T01:00+09:00" → "2026년 10월 10일(토) 01:00(KST)", "2026-10-09" → "2026년 10월 9일(금)"
+export function koreanDateTime(value: string): string | undefined {
+  if (!ISO_DATE.test(value) && !ISO_DATETIME.test(value)) return undefined;
+  const instant = ISO_DATE.test(value) ? new Date(`${value}T12:00:00+09:00`) : new Date(value);
+  if (Number.isNaN(instant.getTime())) return undefined;
+  const kst = new Date(instant.getTime() + 9 * 3_600_000);
+  const date = `${kst.getUTCFullYear()}년 ${kst.getUTCMonth() + 1}월 ${kst.getUTCDate()}일(${WEEKDAY_KO.at(kst.getUTCDay())})`;
+  if (ISO_DATE.test(value)) return date;
+  return `${date} ${String(kst.getUTCHours()).padStart(2, "0")}:${String(kst.getUTCMinutes()).padStart(2, "0")}(KST)`;
+}
+
+// 초안에 넣을 사실: 날짜·시각 값마다 한국어 표기("*_ko")를 덧붙여 연도·24시간·KST가 빠지지 않게 한다
+export function draftFacts(slots: Record<string, string>): Record<string, string> {
+  const facts = sanitizeSlots(slots);
+  for (const [key, value] of Object.entries(facts)) {
+    const ko = koreanDateTime(value);
+    if (ko) facts[`${key}_ko`] = ko;
+  }
+  return facts;
 }
 
 export async function writeDraft(
@@ -96,12 +140,17 @@ export async function writeDraft(
   type: RequestType,
   slots: Record<string, string>,
   revisionNote?: string,
+  previous?: { subject_ko: string; body_ko: string },
 ) {
-  const facts = sanitizeSlots(slots);
+  const facts = draftFacts(slots);
   let problems: string[] = [];
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const prompt = [
       `Facts (JSON): ${JSON.stringify(facts)}`,
+      // 고쳐 달라는 부분만 바꾸고 나머지 문장은 그대로 둔다 (예: 도착 시각만 바꾸기)
+      previous
+        ? `Previous draft:\nSubject: ${previous.subject_ko}\n${previous.body_ko}\n\nChange only what the traveler asked and what the facts now say differently. Copy every other sentence exactly as it is.`
+        : "",
       revisionNote ? `The traveler asked for these changes to the previous draft: ${revisionNote}` : "",
       problems.length ? `Your previous draft had these problems. Fix all of them:\n- ${problems.join("\n- ")}` : "",
     ]
@@ -114,16 +163,32 @@ export async function writeDraft(
   throw new Error(`Draft failed checks after ${MAX_ATTEMPTS} attempts: ${problems.join("; ")}`);
 }
 
+// 번역문 첫 줄의 "제목" 단어 (언어마다 메일에서 쓰는 말)
+const SUBJECT_LABEL: Record<string, string> = {
+  en: "Subject",
+  ja: "件名",
+  "zh-CN": "主题",
+  "zh-TW": "主旨",
+  vi: "Tiêu đề",
+  th: "หัวเรื่อง",
+  id: "Subjek",
+  es: "Asunto",
+  ko: "제목",
+};
+
 // 초안을 쓴 호출과 분리해, 한국어 원문만 보고 번역한다 (이용자가 원문을 검증하는 수단)
 export async function backTranslate(llm: LlmClient, subjectKo: string, bodyKo: string, language: string) {
   const name = getLanguage(language).englishName;
   const result = await llm.structured({
-    system: `Translate the Korean email into ${name} faithfully, sentence by sentence. Do not add, remove, soften, or fix anything. Keep names and numbers unchanged.`,
+    system: `Translate the Korean email into ${name} so the traveler can check exactly what it says.
+- Keep the meaning sentence by sentence. Do not add, remove, soften, or fix anything.
+- Use the natural, polite wording a native ${name} speaker would use in a hotel email, not word-for-word calques.
+- Keep names, booking numbers, dates, years, 24-hour times and "KST" exactly.`,
     prompt: `Subject: ${subjectKo}\n\n${bodyKo}`,
     schema: translationSchema,
     effort: "low",
   });
-  return `Subject: ${result.subject}\n\n${result.body}`;
+  return `${SUBJECT_LABEL[language] ?? "Subject"}: ${result.subject}\n\n${result.body}`;
 }
 
 export function hashDraft(subjectKo: string, bodyKo: string): string {
@@ -136,8 +201,9 @@ export async function composeDraft(
   slots: Record<string, string>,
   language: string,
   revisionNote?: string,
+  previous?: { subject_ko: string; body_ko: string },
 ): Promise<{ draft: Draft; checks: string[] }> {
-  const { draft, checks } = await writeDraft(llm, type, slots, revisionNote);
+  const { draft, checks } = await writeDraft(llm, type, slots, revisionNote, previous);
   const back_translation = await backTranslate(llm, draft.subject_ko, draft.body_ko, language);
   return {
     draft: {

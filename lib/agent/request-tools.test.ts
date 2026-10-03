@@ -8,6 +8,7 @@ import { loadRequestTypes } from "../request-types/loader";
 import { runAgent } from "./loop";
 import { createTools } from "./registry";
 import { fakeLlm, message, schemaHas, toolUse } from "./testing";
+import { needsDateConfirmation } from "./tools";
 
 const lateCheckin = loadRequestTypes().types.find((type) => type.id === "late_checkin")!;
 
@@ -107,7 +108,7 @@ describe("check_conditions / ask_user", () => {
   it("draft_request는 초안·역번역을 만들고 요청을 승인 대기로 둔 채 멈춘다 (발송하지 않음)", async () => {
     const { db, boardId } = setup();
     const draftOutput = (slots: Record<string, string>) => {
-      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 10월 19일, 도착 예정 시각 새벽 1시 30분. 늦은 체크인 가능 여부 문의. 프런트 마감 후 출입 방법 문의.`;
+      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 ${slots.check_in_date_ko}, 도착 예정 시각 ${slots.expected_arrival_ko}. 늦은 체크인 가능 여부 문의. 프런트 마감 후 출입 방법 문의.`;
       const items = lateCheckin.message_guidelines.must_include;
       return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: items.map((item) => ({ item, quote: item })) };
     };
@@ -146,7 +147,7 @@ describe("채팅으로 초안 고치기", () => {
   it("승인 대기 초안이 있을 때 revision_note와 함께 다시 부르면 같은 요청의 초안을 바꾼다", async () => {
     const { db, boardId } = setup();
     const draftOutput = (slots: Record<string, string>, note = "") => {
-      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.${note}`;
+      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 ${slots.check_in_date_ko}, 도착 예정 시각 ${slots.expected_arrival_ko}, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.${note}`;
       return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: lateCheckin.message_guidelines.must_include.map((item) => ({ item, quote: item })) };
     };
     const structured = (request: Parameters<typeof schemaHas>[0]) =>
@@ -172,5 +173,85 @@ describe("채팅으로 초안 고치기", () => {
     expect(requests[0]).toMatchObject({ id: first.id, status: "pending_approval" });
     expect(requests[0].draft?.body_ko).toContain("정중하게");
     expect(requests[0].draft?.hash).not.toBe(first.draft?.hash);
+  });
+});
+
+describe("초안 고치기 실패", () => {
+  it("다시 쓰기에 실패하면 승인 대기 중인 기존 초안을 그대로 둔다", async () => {
+    const { db, boardId } = setup();
+    const good = (request: Parameters<typeof schemaHas>[0]) => {
+      if (!schemaHas(request, "coverage")) return { subject: "Late check-in inquiry", body: "..." };
+      const slots = JSON.parse(request.prompt.split("\n")[0].replace("Facts (JSON): ", ""));
+      const body = `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 ${slots.check_in_date_ko}, 도착 예정 시각 ${slots.expected_arrival_ko}, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법 문의.`;
+      return { subject_ko: "늦은 체크인 문의", body_ko: body, coverage: lateCheckin.message_guidelines.must_include.map((item) => ({ item, quote: item })) };
+    };
+    const run = (input: object, structured: (request: Parameters<typeof schemaHas>[0]) => unknown) =>
+      runAgent({
+        llm: fakeLlm([message([toolUse("t1", "draft_request", input)], "tool_use"), message([{ type: "text", text: "sorry" }], "end_turn")], structured),
+        tools: createTools(),
+        ctx: { db, boardId },
+        messages: [{ role: "user", content: "go" }],
+        log: () => {},
+      });
+
+    await run({ type_id: "late_checkin" }, good);
+    const [before] = getBoard(db, boardId)!.requests;
+    const failed = await run({ type_id: "late_checkin", revision_note: "arrive at 02:00" }, () => {
+      throw new Error("model unavailable");
+    });
+
+    expect(failed.toolCalls[0].ok).toBe(false);
+    const requests = getBoard(db, boardId)!.requests;
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ id: before.id, status: "pending_approval" });
+    expect(requests[0].draft?.hash).toBe(before.draft?.hash);
+  });
+});
+
+describe("board_update 입력 검사", () => {
+  it("숙소 밖에 둔 도착 시각처럼 모르는 키는 저장된 척하지 않고 거부한다", async () => {
+    const { db, boardId, stayId } = setup();
+    const llm = scripted(
+      reply([toolUse("t1", "board_update", { source: "user", stay_id: stayId, expected_arrival: "2026-10-20T02:00+09:00" })], "tool_use"),
+      reply([{ type: "text", text: "ok" }], "end_turn"),
+    );
+    const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId }, messages: [{ role: "user", content: "go" }], log: () => {} });
+    expect(result.toolCalls[0].ok).toBe(false);
+    expect(getBoard(db, boardId)!.stays[0].expected_arrival).toBe("2026-10-20T01:30+09:00");
+  });
+});
+
+describe("오늘에 묶은 지난 시각", () => {
+  const now = new Date("2026-10-09T21:00:00+09:00");
+  it("'오늘 새벽 2시'를 다음 날로 옮기려 하면 확인할 날짜를 돌려준다", () => {
+    expect(needsDateConfirmation("2026-10-10T02:00+09:00", "오늘 새벽 2시에 도착할 것 같아", now)).toBe("2026-10-10 02:00 KST");
+  });
+  it("'오늘 밤', 날짜 말이 없는 경우, 오늘 아직 안 지난 시각은 그대로 진행한다", () => {
+    expect(needsDateConfirmation("2026-10-10T02:00+09:00", "오늘 밤 새벽 2시에 도착해", now)).toBeUndefined();
+    expect(needsDateConfirmation("2026-10-10T02:00+09:00", "새벽 2시에 도착해", now)).toBeUndefined();
+    expect(needsDateConfirmation("2026-10-09T23:00+09:00", "오늘 밤 11시 도착", now)).toBeUndefined();
+    expect(needsDateConfirmation("2026-10-09T23:00+09:00", "오늘 11시 도착", now)).toBeUndefined();
+  });
+  it("확인을 받은 다음 턴(오늘이라는 말 없음)에는 저장한다", () => {
+    expect(needsDateConfirmation("2026-10-10T02:00+09:00", "응, 10일 새벽 2시 맞아", now)).toBeUndefined();
+  });
+});
+
+describe("board_update — 오늘에 묶은 지난 시각", () => {
+  it("저장하지 않고 확인할 날짜를 돌려준다 (오류로 멈추지 않음)", async () => {
+    const { db, boardId, stayId } = setup();
+    const llm = scripted(
+      reply([toolUse("t1", "board_update", { source: "user", stay_id: stayId, stay: { expected_arrival: "2026-10-10T02:00+09:00" } })], "tool_use"),
+      reply([{ type: "text", text: "Do you mean 2026-10-10 02:00 KST?" }], "end_turn"),
+    );
+    const result = await runAgent({
+      llm,
+      tools: createTools(),
+      ctx: { db, boardId, now: () => new Date("2026-10-09T21:00:00+09:00"), latestUserText: "오늘 새벽 2시에 도착해" },
+      messages: [{ role: "user", content: "오늘 새벽 2시에 도착해" }],
+      log: () => {},
+    });
+    expect(result.toolCalls[0]).toMatchObject({ ok: true, output: { saved: false, confirm_first: "2026-10-10 02:00 KST" } });
+    expect(getBoard(db, boardId)!.stays[0].expected_arrival).toBe("2026-10-20T01:30+09:00");
   });
 });

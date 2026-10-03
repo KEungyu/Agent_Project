@@ -5,6 +5,8 @@ import { checkConditions } from "../requests/conditions";
 import { decideChannel } from "../requests/channel";
 import { composeDraft } from "../requests/drafting";
 import { createRequest, setRequestChannel, transition } from "../requests/state";
+import { requestChanges } from "../requests/approval";
+import { requestFacts } from "../requests/facts";
 import type { RequestType } from "../request-types/schema";
 import { defineTool, type AgentTool, type ToolContext } from "./tools";
 
@@ -41,7 +43,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
         ? {
             ...check,
             next_step:
-              "Before asking, look at what the traveler already said in this conversation. Save any of these missing details they gave, even loosely (today, tonight, 2 AM), with board_update and check again. Use ask_user only for what is still unknown.",
+              "Before asking, look at what the traveler already said in this conversation. Save any of these missing details they gave, even loosely (today, tonight, 2 AM), with board_update and check again; if a time tied to today has already passed, confirm the date first. Use ask_user only for what is still unknown.",
           }
         : { ...check, next_step: "Nothing is missing. Call draft_request now." };
     },
@@ -111,37 +113,43 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
           request.target_id === check.target_id &&
           (request.status === "draft" || request.status === "pending_approval"),
       );
-      // 승인 대기 초안이 있는데 이용자가 채팅으로 고쳐 달라고 하면, 그 초안을 되돌려 다시 쓴다(새 요청을 만들지 않는다)
-      if (open?.status === "pending_approval") {
-        if (!revision_note) {
-          throw new Error(
-            `A draft is already waiting for the traveler's approval (request ${open.id}). To change it, call draft_request again with revision_note.`,
-          );
-        }
-        recordEvent(ctx.db, ctx.boardId, "user_action", { action: "request_changes", via: "chat" }, open.id);
-        transition(ctx.db, open.id, "draft", "user", { note: revision_note });
-      }
-      const request =
-        open ??
-        createRequest(
-          ctx.db,
-          { boardId: ctx.boardId, typeId: type_id, targetId: check.target_id, slots: check.filled },
-          "agent",
+      // 승인 대기 초안이 있는데 이용자가 고쳐 달라고 하면 같은 요청의 초안을 바꾼다(새 요청을 만들지 않는다).
+      // 새 초안이 만들어진 뒤에만 기존 초안을 바꾸므로, 다시 쓰기에 실패해도 승인 대기 중인 초안은 그대로 남는다.
+      const revising = open?.status === "pending_approval";
+      if (revising && !revision_note) {
+        throw new Error(
+          `A draft is already waiting for the traveler's approval (request ${open.id}). To change it, call draft_request again with revision_note.`,
         );
+      }
 
       // 이메일이 있으면 언제나 메일 초안을 만들어 요청 카드에서 승인받는다. 시간이 촉박하면 카드에 전화 대본도 함께 띄운다.
       // 이메일이 없을 때만 전화로 간다: 앱은 전화를 걸지 않고, 요청 카드에 읽을 대본을 보여준다 (준비 단계, 승인·발송 없음).
       if (!stay?.email) {
+        const request =
+          open ?? createRequest(ctx.db, { boardId: ctx.boardId, typeId: type_id, targetId: check.target_id, slots: check.filled }, "agent");
         setRequestChannel(ctx.db, request.id, "phone");
         return { reply: fmt(messages.agent.phoneNoEmail, { where }), request_id: request.id, channel: "phone", reason: decision.reason };
       }
 
-      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note);
+      // 초안을 먼저 쓴 뒤에 요청을 만들거나 바꾼다: 초안 작성에 실패하면 빈 요청 카드가 남지 않는다
+      const { draft, checks } = await composeDraft(ctx.llm, type, check.filled, board.user_language, revision_note, revising ? open.draft : undefined);
+      if (revising) requestChanges(ctx.db, open.id, revision_note!);
+      const request =
+        open ?? createRequest(ctx.db, { boardId: ctx.boardId, typeId: type_id, targetId: check.target_id, slots: check.filled }, "agent");
       transition(ctx.db, request.id, "pending_approval", "agent", { patch: { draft, slots: check.filled, channel: "email" } });
 
       const callToo = decision.reason === "deadline_soon";
+      // 마중이가 해석·저장한 날짜와 시각을 답에 함께 밝혀, 틀렸으면 승인 전에 바로 알 수 있게 한다
+      const factsLine = requestFacts(check.filled, board.user_language, messages.approval)
+        .map((fact) => `${fact.label}: ${fact.value}`)
+        .join(" · ");
+      const intro = revising
+        ? fmt(messages.agent.redrafted, { where })
+        : callToo
+          ? fmt(messages.agent.phoneSoon, { hours: decision.hours_left ?? "", where })
+          : fmt(messages.agent.drafted, { where });
       return {
-        reply: callToo ? fmt(messages.agent.phoneSoon, { hours: decision.hours_left ?? "", where }) : fmt(messages.agent.drafted, { where }),
+        reply: factsLine ? `${intro}\n${factsLine}` : intro,
         request_id: request.id,
         subject_ko: draft.subject_ko,
         body_ko: draft.body_ko,
