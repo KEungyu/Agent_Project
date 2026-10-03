@@ -1,0 +1,83 @@
+id: stay_request
+version: 1
+label:
+  ko: 숙소에 요청·문의
+  en: Other request to your stay
+  ja: 宿へのその他のお願い
+  zh-CN: 向住宿提出其他请求
+  zh-TW: 向住宿提出其他請求
+  vi: Yêu cầu khác gửi chỗ ở
+  th: คำขออื่นถึงที่พัก
+  id: Permintaan lain ke penginapan
+  es: Otra petición al alojamiento
+journey_stage: anytime
+execution_level: 대행
+target: stay
+required_slots:
+  - key: stay_name
+    from_board: stays[target].name
+    ask:
+      en: "Which hotel?"
+      ja: "どのホテルですか？"
+      zh-CN: "哪家酒店？"
+      zh-TW: "哪一家飯店？"
+      vi: "Khách sạn nào?"
+      th: "โรงแรมไหน?"
+      id: "Hotel yang mana?"
+      es: "¿Qué hotel?"
+      ko: "어느 숙소예요?"
+  - key: guest_name
+    from_board: stays[target].guest_name
+    ask:
+      en: "What name is the booking under?"
+      ja: "予約は誰の名前で入っていますか？"
+      zh-CN: "是用谁的名字预订的？"
+      zh-TW: "是用誰的名字訂房的？"
+      vi: "Phòng được đặt dưới tên ai?"
+      th: "จองไว้ในชื่อใคร?"
+      id: "Pemesanan atas nama siapa?"
+      es: "¿A nombre de quién está la reserva?"
+      ko: "누구 이름으로 예약했어요?"
+  - key: check_out_date
+    from_board: stays[target].check_out_date
+    ask:
+      en: "What is your check-out date?"
+      ja: "チェックアウト日はいつですか？"
+      zh-CN: "哪天退房？"
+      zh-TW: "哪一天退房？"
+      vi: "Bạn trả phòng ngày nào?"
+      th: "เช็กเอาต์วันไหน?"
+      id: "Check-out tanggal berapa?"
+      es: "¿Qué día haces el check-out?"
+      ko: "체크아웃은 며칠이에요?"
+  - key: request_detail
+    ask:
+      en: "What would you like to ask the hotel?"
+      ja: "ホテルに何をお願いしたいですか？"
+      zh-CN: "你想跟酒店说什么？"
+      zh-TW: "你想跟飯店說什麼？"
+      vi: "Bạn muốn nhờ khách sạn điều gì?"
+      th: "อยากขออะไรจากโรงแรม?"
+      id: "Kamu mau minta apa ke hotel?"
+      es: "¿Qué quieres pedirle al hotel?"
+      ko: "숙소에 무엇을 부탁하고 싶어요?"
+optional_slots: [booking_ref, check_in_date, room_number]
+channels:
+  - { type: email, requires: [stay_email] }
+  - { type: phone, requires: [stay_phone] }
+channel_rule:
+  deadline_slot: check_out_date
+  phone_if_hours_left_lt: 2
+message_guidelines:
+  tone: 정중한 합쇼체
+  must_include: [예약자명, 요청 내용, 가능 여부 회신 부탁]
+  must_not_include: [여권번호, 카드번호, 생년월일]
+  max_chars: 500
+reply_hints:
+  conditional: [추가 요금, 특정 시간에만 가능, 수량 제한]
+  declined: [제공 불가, 규정상 불가]
+  info_requested: [객실 번호, 정확한 시각, 연락처]
+follow_ups:
+  on_conditional: 조건을 이용자 언어로 설명하고 수락 여부를 묻는다
+  on_info_requested: 요구 정보를 보드에서 찾아 채우고, 없을 때만 이용자에게 묻는다
+  on_declined: [ask_user_for_alternative]

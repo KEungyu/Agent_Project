@@ -5056,17 +5056,7 @@ html[data-intro-seen] .intro {
   font-size: 14px;
   font-weight: 600;
   text-align: left;
-  cursor: pointer;
-  transition: border-color 160ms var(--ease-out), background-color 200ms var(--ease-out), transform 120ms var(--ease-out);
-}
-.check-item:hover:not(.is-auto) {
-  border-color: var(--arex);
-}
-.check-item:active:not(.is-auto) {
-  transform: scale(0.98);
-}
-.check-item.is-auto {
-  cursor: default;
+  transition: border-color 160ms var(--ease-out), background-color 200ms var(--ease-out);
 }
 .check-item.is-done {
   border-color: #b9d4ef;
@@ -5107,12 +5097,6 @@ html[data-intro-seen] .intro {
     stroke-dashoffset: 0;
   }
 }
-.check-auto {
-  display: grid;
-  place-items: center;
-  color: var(--arex);
-}
-.check-auto svg,
 .checklist-note svg {
   width: 15px;
   height: 15px;
@@ -5178,11 +5162,6 @@ html[data-intro-seen] .intro {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-.show-empty {
-  grid-column: 1 / -1;
-  font-size: 13px;
-  color: var(--ink-2);
-}
 .show-tile {
   --t1: #fff1e3;
   --t2: #ffe1cf;
@@ -5199,11 +5178,6 @@ html[data-intro-seen] .intro {
 .show-tile:hover {
   box-shadow: 0 10px 22px rgb(23 51 92 / 0.12);
   transform: translateY(-2px);
-}
-.show-tile.tone-plane {
-  --t1: #e8f2fc;
-  --t2: #d4e7fa;
-  --ti: var(--arex-deep);
 }
 .show-tile.tone-food {
   --t1: #eef7e8;
@@ -5281,7 +5255,6 @@ html[data-intro-seen] .intro {
   animation: pop 320ms var(--ease-out) both;
 }
 .diet-chip:focus-visible,
-.check-item:focus-visible,
 .show-close:focus-visible {
   outline: 2px solid var(--arex-deep);
   outline-offset: 2px;
@@ -5354,10 +5327,6 @@ html[data-intro-seen] .intro {
   background: #fff1e3;
   color: #b0532a;
 }
-.show-plane .show-card-icon {
-  background: #e8f2fc;
-  color: var(--arex-deep);
-}
 .show-food .show-card-icon {
   background: #eef7e8;
   color: #4f7a2e;
@@ -5398,11 +5367,6 @@ html[data-intro-seen] .intro {
   font-weight: 800;
   line-height: 1.3;
   color: var(--arex-deep);
-}
-.show-ko-sub {
-  font-size: clamp(18px, 3vw, 26px);
-  font-weight: 700;
-  color: var(--ink-2);
 }
 .show-card-local {
   display: grid;
@@ -5772,28 +5736,16 @@ html[data-intro-seen] .intro {
   font-size: 12px;
   color: var(--on-dark-2);
 }
-.taxi-say {
-  display: grid;
-  gap: 2px;
-  padding: 12px 16px;
-  border: 1px solid rgb(255 176 0 / 0.45);
-  border-radius: 14px;
-  background: #fff8e0;
+.taxi-show {
+  justify-self: start;
+  background: linear-gradient(135deg, #b0532a, #8c3b19);
 }
-.taxi-say-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-2);
+.taxi-show:hover {
+  background: linear-gradient(135deg, #c25f33, #9a4420);
 }
-.taxi-say-ko {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-.taxi-say-local {
-  font-size: 13px;
-  color: var(--ink-2);
+.taxi-show svg {
+  width: 18px;
+  height: 18px;
 }
 .taxi-tips {
   display: grid;
@@ -5826,4 +5778,617 @@ html[data-intro-seen] .intro {
     background: var(--exit);
     color: #1b1500;
   }
+}
+
+/* ── 전광판 "준비" 줄: 체크리스트 램프 ───────────────────── */
+
+.board-prep .board-row-main {
+  min-width: 0;
+}
+.board-lamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.board-lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--board-rule);
+  border-radius: 999px;
+  background: var(--board-tile-2);
+  color: rgb(241 244 247 / 0.45);
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.board-lamp svg {
+  width: 15px;
+  height: 15px;
+}
+/* 끝낸 항목은 초록 램프가 차례로 켜진다 */
+.board-lamp.is-on {
+  border-color: rgb(0 168 77 / 0.6);
+  background: rgb(0 168 77 / 0.16);
+  color: #8ff0b8;
+  box-shadow: 0 0 12px rgb(0 168 77 / 0.35);
+  animation: lamp-on 700ms var(--ease-out) calc(var(--i) * 110ms + 300ms) both;
+}
+@keyframes lamp-on {
+  0% {
+    background: var(--board-tile-2);
+    color: rgb(241 244 247 / 0.45);
+    box-shadow: none;
+  }
+  35% {
+    background: rgb(0 168 77 / 0.5);
+    color: #fff;
+    box-shadow: 0 0 22px rgb(0 168 77 / 0.8);
+  }
+}
+.board-prep-count {
+  color: var(--led-amber);
+  text-decoration: none;
+  border-radius: 6px;
+  transition: transform 140ms var(--ease-out);
+}
+.board-prep-count:hover {
+  transform: translateY(-1px);
+}
+.board-prep-count:focus-visible {
+  outline: 2px solid var(--led-amber);
+  outline-offset: 4px;
+}
+
+/* ── 체크리스트 아래 작은 팁 ─────────────────────────────── */
+
+.checklist-tips {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 12px;
+  background: var(--ground);
+}
+.checklist-tips-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+.checklist-tips ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.checklist-tips li {
+  position: relative;
+  padding-left: 12px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.checklist-tips li::before {
+  content: "";
+  position: absolute;
+  top: 0.62em;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--arex);
+}
+
+/* ── 노선도: 머무는 날 수와 출발·도착 표시 ─────────────── */
+
+.trip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.trip-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--info-tint);
+  color: var(--info-deep);
+  font-size: 11px;
+  font-weight: 700;
+}
+.trip-flag.is-start {
+  background: var(--act);
+  color: var(--on-dark);
+  animation: pop 420ms var(--ease-out) 200ms both;
+}
+.trip-flag.is-finish {
+  background:
+    repeating-conic-gradient(var(--signbar) 0 25%, var(--signbar-2) 0 50%) 0 0 / 8px 8px;
+  color: var(--on-dark);
+  animation: pop 420ms var(--ease-out) 320ms both;
+}
+.trip-flag [lang="ko"] {
+  font-weight: 800;
+}
+@media (max-width: 640px) {
+  .trip-tags {
+    justify-content: flex-start;
+  }
+}
+
+/* ── 기초 회화 ───────────────────────────────────────────── */
+
+.phrases-sign {
+  padding-top: var(--pad);
+}
+.phrases-sub {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.phrase-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--ground);
+}
+/* 고른 탭 아래로 색 칩이 미끄러진다 */
+.phrase-tab-ink {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border-radius: 10px;
+  background: var(--arex-deep);
+  box-shadow: 0 6px 16px rgb(0 79 140 / 0.3);
+  transform: translateX(calc(var(--tab) * 100%));
+  transition: transform 380ms var(--ease-out), background-color 300ms var(--ease-out);
+}
+.phrase-tab-ink.is-daily {
+  background: #0e7a63;
+  box-shadow: 0 6px 16px rgb(14 122 99 / 0.3);
+}
+.phrase-tab-ink.is-emergency {
+  background: var(--alert);
+  box-shadow: 0 6px 16px rgb(192 22 28 / 0.35);
+}
+.phrase-tab {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: color 200ms var(--ease-out);
+}
+.phrase-tab [lang="ko"] {
+  font-size: 15px;
+  font-weight: 800;
+}
+.phrase-tab[aria-selected="true"] {
+  color: var(--on-dark);
+}
+.phrase-tab:focus-visible {
+  outline: 2px solid var(--arex-deep);
+  outline-offset: 2px;
+}
+.phrase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.phrase-grid li {
+  animation: phrase-in 420ms var(--ease-out) calc(var(--i) * 55ms) both;
+}
+@keyframes phrase-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+.phrase-card {
+  --tone: var(--arex-deep);
+  --tint: #eef5fc;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  min-height: 108px;
+  padding: 14px 44px 14px 14px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--sign) 55%, var(--tint));
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+.phrase-card:disabled {
+  cursor: default;
+}
+.is-daily .phrase-card {
+  --tone: #0e7a63;
+  --tint: #e8f6f1;
+}
+.is-emergency .phrase-card {
+  --tone: var(--alert);
+  --tint: var(--alert-tint);
+}
+.phrase-card:not(:disabled):hover {
+  border-color: var(--tone);
+  box-shadow: 0 10px 22px rgb(23 51 92 / 0.12);
+  transform: translateY(-2px);
+}
+.phrase-card:not(:disabled):active {
+  transform: scale(0.97);
+}
+.phrase-card:focus-visible {
+  outline: 2px solid var(--tone);
+  outline-offset: 2px;
+}
+.phrase-ko {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--tone);
+}
+.phrase-sound {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.phrase-meaning {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.phrase-play {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--tone);
+}
+.phrase-play svg {
+  width: 17px;
+  height: 17px;
+}
+/* 읽는 동안: 스피커 물결이 번갈아 켜지고 카드 둘레로 소리 고리가 퍼진다 */
+.phrase-card.is-speaking {
+  border-color: var(--tone);
+}
+.phrase-card.is-speaking .phrase-play {
+  background: var(--tone);
+  color: var(--on-dark);
+}
+.phrase-card.is-speaking .wave-1 {
+  animation: wave 900ms ease-in-out infinite;
+}
+.phrase-card.is-speaking .wave-2 {
+  animation: wave 900ms ease-in-out 300ms infinite;
+}
+@keyframes wave {
+  50% {
+    opacity: 0.2;
+  }
+}
+.phrase-card.is-speaking::after {
+  content: "";
+  position: absolute;
+  top: 26px;
+  right: 26px;
+  width: 30px;
+  height: 30px;
+  margin: -15px -15px 0 0;
+  border: 2px solid var(--tone);
+  border-radius: 50%;
+  opacity: 0;
+  animation: ring 1.2s var(--ease-out) infinite;
+  pointer-events: none;
+}
+@keyframes ring {
+  from {
+    opacity: 0.7;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+.phrase-sos {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--alert-tint);
+  animation: phrase-in 360ms var(--ease-out) both;
+}
+.phrase-sos-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--alert);
+}
+.phrase-sos-note svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  animation: siren 1.4s ease-in-out infinite;
+}
+@keyframes siren {
+  50% {
+    opacity: 0.35;
+  }
+}
+.phrase-sos ul {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.phrase-sos-call {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0 8px;
+  height: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--alert);
+  color: var(--on-dark);
+  text-decoration: none;
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out);
+}
+.phrase-sos-call:hover {
+  background: #a51217;
+  transform: translateY(-1px);
+}
+.phrase-sos-call svg {
+  grid-row: span 2;
+  width: 20px;
+  height: 20px;
+}
+.phrase-sos-call strong {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.phrase-sos-call span {
+  font-size: 11.5px;
+  line-height: 1.3;
+  opacity: 0.9;
+}
+@media (max-width: 560px) {
+  .phrase-sos ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .phrase-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .phrase-card {
+    min-height: 0;
+    padding: 12px 12px 12px 12px;
+  }
+  .phrase-ko {
+    padding-right: 30px;
+    font-size: 17px;
+  }
+  .phrase-sound {
+    font-size: 12px;
+  }
+  .phrase-play {
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+  }
+}
+
+/* ── 보여주기 카드: 택시 입력, 약국·쇼핑·직접 쓰기 ─────── */
+
+.show-tile.tone-pharmacy {
+  --t1: #eaf6f4;
+  --t2: #f1eefb;
+  --ti: #1f7a6d;
+}
+.show-tile.tone-shopping {
+  --t1: #fdeef4;
+  --t2: #fff3e6;
+  --ti: #b03566;
+}
+.show-tile.tone-write {
+  --t1: #eef1fb;
+  --t2: #e6f3fb;
+  --ti: #3e4fb0;
+}
+.tone-pharmacy .diet-chip {
+  border-color: rgb(31 122 109 / 0.35);
+}
+.tone-pharmacy .diet-chip[aria-pressed="true"] {
+  border-color: #1f7a6d;
+  background: #1f7a6d;
+}
+.tone-shopping .diet-chip {
+  border-color: rgb(176 53 102 / 0.35);
+}
+.tone-shopping .diet-chip[aria-pressed="true"] {
+  border-color: #b03566;
+  background: #b03566;
+}
+.show-taxi-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  gap: 8px;
+}
+.show-taxi-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.show-taxi-field > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+.show-taxi-picks {
+  grid-column: 1 / -1;
+}
+.show-write-input {
+  grid-column: 1 / -1;
+  min-height: 84px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.show-error {
+  grid-column: 1 / -1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--prep-tint);
+  color: var(--prep-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+.show-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(255 255 255 / 0.35);
+  border-top-color: var(--on-dark);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+.show-pharmacy .show-card-icon {
+  background: #eaf6f4;
+  color: #1f7a6d;
+}
+.show-shopping .show-card-icon {
+  background: #fdeef4;
+  color: #b03566;
+}
+.show-write .show-card-icon {
+  background: #eef1fb;
+  color: #3e4fb0;
+}
+/* 카드가 펼쳐진 뒤 한국어 줄이 차례로 떠오른다 */
+.show-card-ko p {
+  animation: phrase-in 460ms var(--ease-out) calc(var(--i, 0) * 90ms + 380ms) both;
+}
+@media (max-width: 560px) {
+  .show-taxi-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ── 채팅: 초안 보기 버튼, 요청 카드 반짝임 ─────────────── */
+
+.say-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--act-deep);
+  color: var(--on-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out);
+}
+.say-draft:hover {
+  background: #006b31;
+  transform: translateY(-1px);
+}
+.say-draft svg {
+  width: 16px;
+  height: 16px;
+}
+.request.is-flash {
+  animation: request-flash 1.6s var(--ease-out);
+}
+@keyframes request-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 4px rgb(0 168 77 / 0.55), 0 10px 28px rgb(21 24 28 / 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-lamp.is-on,
+  .trip-flag,
+  .phrase-grid li,
+  .phrase-sos,
+  .phrase-sos-note svg,
+  .phrase-card.is-speaking .wave-1,
+  .phrase-card.is-speaking .wave-2,
+  .phrase-card.is-speaking::after,
+  .show-card-ko p,
+  .show-spinner,
+  .request.is-flash {
+    animation: none;
+  }
+  .phrase-tab-ink {
+    transition: none;
+  }
+}
+
+/* 나란히 놓인 카드 칸: 칩은 위에 붙이고, "보여주기" 버튼은 두 칸 모두 바닥에 맞춘다 */
+.show-tile:not(.is-wide) {
+  grid-template-rows: auto 1fr;
+}
+.show-tile:not(.is-wide) .diet-chips,
+.show-tile:not(.is-wide) .show-write-input {
+  align-self: start;
+}
+.show-tile:not(.is-wide) .show-open {
+  align-self: end;
+}
+.show-from {
+  display: inline-flex;
+  justify-self: start;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--ground);
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 700;
+  color: var(--ink-2);
 }

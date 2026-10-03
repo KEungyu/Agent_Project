@@ -11,6 +11,7 @@ import { getLatestReply } from "@/lib/requests/replies";
 import { evaluateAlerts } from "@/lib/proactive/rules";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import { AlertList } from "./components/AlertList";
+import { BasicPhrases } from "./components/BasicPhrases";
 import { ArrivalBoard } from "./components/ArrivalBoard";
 import { EntryIntro, IntroReplay } from "./components/EntryIntro";
 import { kstDate } from "@/lib/time";
@@ -21,17 +22,30 @@ import { LanguagePicker } from "./components/LanguagePicker";
 import { RequestList } from "./components/RequestList";
 import { TripPanel } from "./components/TripPanel";
 
-// 대화 기록에서 화면에 보일 문장만 꺼낸다 (도구 호출·결과 블록은 숨긴다)
+// 대화 기록에서 화면에 보일 문장만 꺼낸다. 도구 호출·결과 블록은 숨기되, 마중이의 답에는
+// 그 답을 내기까지 쓴 도구 이름을 붙여 둔다(출구 번호판 표와 "초안 보기" 버튼이 새로 그려도 남게).
 function toChatLines(messages: Anthropic.Beta.BetaMessageParam[]): ChatLine[] {
-  return messages.flatMap((message): ChatLine[] => {
-    if (message.role === "system") return [];
-    if (typeof message.content === "string") return [{ role: message.role, text: message.content }];
-    const text = message.content
+  const lines: ChatLine[] = [];
+  let tools: { id: string; name: string; ok: boolean }[] = [];
+  for (const message of messages) {
+    if (message.role === "system") continue;
+    const blocks = typeof message.content === "string" ? [{ type: "text" as const, text: message.content }] : message.content;
+    for (const block of blocks) {
+      if (block.type === "tool_use") tools.push({ id: block.id, name: block.name, ok: true });
+      if (block.type === "tool_result" && block.is_error) {
+        const used = tools.find((tool) => tool.id === block.tool_use_id);
+        if (used) used.ok = false;
+      }
+    }
+    const text = blocks
       .flatMap((block) => (block.type === "text" ? [block.text] : []))
       .join("\n")
       .trim();
-    return text ? [{ role: message.role, text }] : [];
-  });
+    if (!text) continue;
+    lines.push(message.role === "assistant" ? { role: "assistant", text, tools: tools.map(({ name, ok }) => ({ name, ok })) } : { role: "user", text });
+    tools = [];
+  }
+  return lines;
 }
 
 export default async function Home() {
@@ -48,6 +62,10 @@ export default async function Home() {
   const hero = buildHero(board, alerts, types, m, now);
   const chatLines = board ? toChatLines(getConversation(board.id)) : [];
   // 입국 도장: 입국일(없으면 오늘)과 도착 공항
+  const activeRequests = (board?.requests ?? []).some((request) => !["done", "declined"].includes(request.status));
+  const requestList = (
+    <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
+  );
   const entryDate = (board?.arrival?.datetime ? kstDate(board.arrival.datetime) : kstDate(now.toISOString())).replaceAll("-", ".");
 
   return (
@@ -79,8 +97,11 @@ export default async function Home() {
         <div className="platform-main">
           <ArrivalBoard model={hero} m={m} locale={language.code} />
           <AlertList alerts={alerts} m={m} />
+          {/* 승인·회신을 기다리는 요청이 있으면 요청 목록을 여행 보드 위로 올려, 마중이가 쓴 메일을 바로 보게 한다 */}
+          {activeRequests && requestList}
+          <BasicPhrases language={language.code} m={m.phrases} safety={m.safety} />
           <TripPanel board={board} m={m} language={language.code} />
-          <RequestList requests={board?.requests ?? []} types={types} stays={board?.stays ?? []} latestReplies={latestReplies} m={m} language={language.code} />
+          {!activeRequests && requestList}
         </div>
         {/* 서버에서 대화가 늘어나면(예: 수정 요청) 채팅 창을 새 기록으로 다시 그린다. 언어가 바뀌어도 다시 그린다 */}
         <Chat key={`${language.code}-${chatLines.length}`} initialLines={chatLines} m={m.chat} safety={m.safety} />

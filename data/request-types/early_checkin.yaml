@@ -1,0 +1,96 @@
+id: early_checkin
+version: 1
+label:
+  ko: 얼리 체크인 문의
+  en: Early check-in inquiry
+  ja: アーリーチェックインの問い合わせ
+  zh-CN: 提前入住咨询
+  zh-TW: 提早入住詢問
+  vi: Hỏi về nhận phòng sớm
+  th: ขอเช็กอินก่อนเวลา
+  id: Check-in lebih awal
+  es: Check-in anticipado
+journey_stage: before_arrival
+execution_level: 대행
+target: stay
+required_slots:
+  - key: stay_name
+    from_board: stays[target].name
+    ask:
+      en: "Which hotel are you staying at?"
+      ja: "どのホテルに泊まりますか？"
+      zh-CN: "你住哪家酒店？"
+      zh-TW: "你住哪一家飯店？"
+      vi: "Bạn ở khách sạn nào?"
+      th: "พักที่โรงแรมไหน?"
+      id: "Kamu menginap di hotel mana?"
+      es: "¿En qué hotel te alojas?"
+      ko: "어느 숙소에 묵어요?"
+  - key: guest_name
+    from_board: stays[target].guest_name
+    ask:
+      en: "What name is the booking under?"
+      ja: "予約は誰の名前で入っていますか？"
+      zh-CN: "是用谁的名字预订的？"
+      zh-TW: "是用誰的名字訂房的？"
+      vi: "Phòng được đặt dưới tên ai?"
+      th: "จองไว้ในชื่อใคร?"
+      id: "Pemesanan atas nama siapa?"
+      es: "¿A nombre de quién está la reserva?"
+      ko: "누구 이름으로 예약했어요?"
+  - key: booking_ref
+    from_board: stays[target].booking_ref
+    ask:
+      en: "What is your booking number?"
+      ja: "予約番号を教えてください。"
+      zh-CN: "预订号是多少？"
+      zh-TW: "訂單編號是多少？"
+      vi: "Mã đặt phòng của bạn là gì?"
+      th: "เลขการจองคืออะไร?"
+      id: "Berapa nomor pemesananmu?"
+      es: "¿Cuál es tu número de reserva?"
+      ko: "예약번호를 알려 주세요."
+  - key: check_in_date
+    from_board: stays[target].check_in_date
+    ask:
+      en: "What is your check-in date?"
+      ja: "チェックイン日はいつですか？"
+      zh-CN: "哪天入住？"
+      zh-TW: "哪一天入住？"
+      vi: "Bạn nhận phòng ngày nào?"
+      th: "เช็กอินวันไหน?"
+      id: "Check-in tanggal berapa?"
+      es: "¿Qué día haces el check-in?"
+      ko: "체크인은 며칠이에요?"
+  - key: expected_arrival
+    from_board: stays[target].expected_arrival
+    ask:
+      en: "What time do you expect to arrive at the hotel?"
+      ja: "ホテルには何時ごろ着く予定ですか？"
+      zh-CN: "大概几点到酒店？"
+      zh-TW: "大概幾點會到飯店？"
+      vi: "Khoảng mấy giờ bạn tới khách sạn?"
+      th: "น่าจะถึงโรงแรมกี่โมง?"
+      id: "Kira-kira jam berapa kamu sampai di hotel?"
+      es: "¿A qué hora crees que llegarás al hotel?"
+      ko: "숙소에는 몇 시쯤 도착해요?"
+optional_slots: [party_size, flight_no]
+channels:
+  - { type: email, requires: [stay_email] }
+  - { type: phone, requires: [stay_phone] }
+channel_rule:
+  deadline_slot: expected_arrival
+  phone_if_hours_left_lt: 4
+message_guidelines:
+  tone: 정중한 합쇼체
+  must_include: [예약자명, 예약번호, 체크인 날짜, 도착 예정 시각, 얼리 체크인 가능 여부, 불가하면 짐 보관 가능 여부]
+  must_not_include: [여권번호, 카드번호, 생년월일]
+  max_chars: 600
+reply_hints:
+  conditional: [추가 요금, 객실 준비 상황에 따라 가능, 특정 시각부터 가능]
+  declined: [만실로 불가, 정규 체크인 시각만 가능]
+  info_requested: [정확한 도착 시각, 연락 가능한 전화번호]
+follow_ups:
+  on_conditional: 요금·시각 조건을 이용자 언어로 설명하고 수락 여부를 묻는다
+  on_info_requested: 요구 정보를 보드에서 찾아 채우고, 없을 때만 이용자에게 묻는다
+  on_declined: [ask_user_for_alternative]

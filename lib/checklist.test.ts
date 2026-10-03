@@ -8,18 +8,22 @@ describe("buildChecklist", () => {
   it("starts with nothing ticked on an empty trip and skips items that do not apply", () => {
     const items = buildChecklist(createBoard(openDb(":memory:")));
     expect(items.filter((item) => item.done)).toEqual([]);
-    expect(items.map((item) => item.key)).not.toContain("lateCheckin");
-    expect(items.map((item) => item.key)).not.toContain("rides");
+    expect(items.map((item) => item.key)).toEqual(["flights", "stay", "cities"]);
   });
 
   it("ticks what the board already shows and leaves an unanswered late check-in open", () => {
-    const items = buildChecklist(seedDemoBoard(openDb(":memory:"))); // 00:40 도착, 숙소 있음, 도시 3곳
-    const byKey = Object.fromEntries(items.map((item) => [item.key, item]));
+    const byKey = Object.fromEntries(buildChecklist(seedDemoBoard(openDb(":memory:"))).map((item) => [item.key, item])); // 00:40 도착, 출국편, 숙소, 도시 3곳
     expect(byKey.flights.done).toBe(true);
     expect(byKey.stay.done).toBe(true);
-    expect(byKey.lateCheckin).toMatchObject({ auto: true, done: false });
-    expect(byKey.rides.auto).toBe(true);
-    expect(byKey.sim).toMatchObject({ auto: false, done: false });
+    expect(byKey.cities.done).toBe(true);
+    expect(byKey.lateCheckin.done).toBe(false);
+    expect(byKey.rides).toBeDefined();
+  });
+
+  it("needs both flights before ticking flights", () => {
+    const db = openDb(":memory:");
+    const board = createBoard(db, { arrival: { datetime: "2026-10-20T14:00+09:00", airport: "ICN" } });
+    expect(buildChecklist(getBoard(db, board.id)).find((item) => item.key === "flights")?.done).toBe(false);
   });
 
   it("leaves out rides between cities when every leg is by subway", () => {

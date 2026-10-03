@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendChat } from "@/app/actions";
 import type { Messages } from "@/lib/i18n/messages";
+import { EnvelopeIcon } from "./icons";
 import { SignTitle } from "./SignTitle";
 
 export type ChatLine = {
@@ -11,6 +12,19 @@ export type ChatLine = {
   tools?: { name: string; ok: boolean }[];
   safety?: "emergency" | "out_of_scope";
 };
+
+// 마중이가 쓴 메일 초안(승인 대기 요청)으로 화면을 옮기고 잠깐 반짝이게 한다
+function focusDraft() {
+  // 요청은 만든 순서대로 놓이므로 승인 대기 중 마지막 카드가 방금 쓴 초안이다
+  const target = [...document.querySelectorAll<HTMLElement>(".request.is-focus")].at(-1) ?? document.getElementById("requests-heading");
+  if (!target) return;
+  target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+  target.classList.remove("is-flash");
+  void target.offsetWidth;
+  target.classList.add("is-flash");
+}
+
+const draftedIn = (line: ChatLine) => line.tools?.some((tool) => tool.name === "draft_request" && tool.ok);
 
 // 안내 데스크: 마중에게 묻는 창. 도구 호출은 지하철 출구 번호판처럼 노란 표로 보여준다.
 export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m: Messages["chat"]; safety: Messages["safety"] }) {
@@ -38,6 +52,10 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
     if (inputRef.current) inputRef.current.value = "";
     startTransition(async () => {
       const result = await sendChat(message);
+      // 초안이 생기면 새로 그려진 요청 카드로 화면을 옮긴다
+      if (result.ok && "tools" in result && result.tools.some((tool) => tool.name === "draft_request" && tool.ok)) {
+        setTimeout(focusDraft, 450);
+      }
       setLines((current) => [
         ...current,
         !result.ok
@@ -94,6 +112,12 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
                 </div>
               )}
               <p>{line.text}</p>
+              {draftedIn(line) && (
+                <button type="button" className="say-draft" onClick={focusDraft}>
+                  <EnvelopeIcon />
+                  {m.viewDraft}
+                </button>
+              )}
             </div>
           </li>
           ),

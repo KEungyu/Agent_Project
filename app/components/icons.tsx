@@ -295,3 +295,58 @@ export function LocateIcon({ className }: Props) {
     </Svg>
   );
 }
+
+export function PillIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <rect x="2.8" y="7" width="14.4" height="6" rx="3" transform="rotate(-40 10 10)" />
+      <path d="m8.1 7.7 3.8 4.6" />
+    </Svg>
+  );
+}
+
+export function BagIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M4.5 7h11l-.8 9.5a1 1 0 0 1-1 .9H6.3a1 1 0 0 1-1-.9Z" />
+      <path d="M7.5 9V6a2.5 2.5 0 0 1 5 0v3" />
+    </Svg>
+  );
+}
+
+export function PenIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M13.5 3.5 16.5 6.5 7 16H4v-3Z" />
+      <path d="m11.5 5.5 3 3" />
+    </Svg>
+  );
+}
+
+export function SpeakerIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M3.5 8v4h3l4 3.5v-11l-4 3.5Z" />
+      <path className="wave-1" d="M13 7.5a3.5 3.5 0 0 1 0 5" />
+      <path className="wave-2" d="M15 5.5a6.5 6.5 0 0 1 0 9" />
+    </Svg>
+  );
+}
+
+export function ChatIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M3.5 5.5a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-3.5 3v-3h0a2 2 0 0 1-2-2Z" />
+      <path d="M7 8h6M7 10.5h4" />
+    </Svg>
+  );
+}
+
+export function SirenIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M5.5 15v-4a4.5 4.5 0 0 1 9 0v4" />
+      <path d="M3.5 15h13v2h-13ZM10 2.5v2M3.8 5l1.4 1.4M16.2 5l-1.4 1.4" />
+    </Svg>
+  );
+}

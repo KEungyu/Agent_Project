@@ -2,6 +2,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { MissingApiKeyError } from "@/lib/agent/llm";
 import { createLlmClient } from "@/lib/agent/provider";
 import { GeminiApiError } from "@/lib/agent/gemini";
@@ -17,6 +18,7 @@ import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from
 import { prepareFollowUp } from "@/lib/requests/followup";
 import type { FollowUpKind } from "@/lib/requests/followup-kinds";
 import { getRequest, TransitionError } from "@/lib/requests/state";
+import { sanitizeSlots } from "@/lib/requests/drafting";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
 import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
@@ -46,8 +48,10 @@ export async function startNewTripAction() {
   revalidatePath("/", "layout");
 }
 
-export async function removeItineraryAction(date: string, city: string) {
-  removeItineraryItem(getDb(), date, city);
+// 노선도의 역 하나(같은 도시에 머무는 날들)를 일정에서 뺀다
+export async function removeItineraryAction(dates: string[], city: string) {
+  const db = getDb();
+  for (const date of dates) removeItineraryItem(db, date, city);
   revalidatePath("/");
 }
 
@@ -243,5 +247,34 @@ export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: Taxi
     };
   } catch {
     return { ok: false, error: "failed" };
+  }
+}
+
+// 보여주기 카드: 이용자가 직접 쓴 말(또는 목적지 이름)을 마중이가 한국어로 바꾼다. 보드에는 저장하지 않는다.
+export type ShowTranslateResult = { ok: true; ko: string } | { ok: false; error: string };
+
+const SHOW_TRANSLATE_SYSTEM = {
+  sentence:
+    "Translate the traveler's message into short, polite, natural Korean (해요체) for a Korean shop, restaurant or hotel worker who will read it on the traveler's phone. Keep names and numbers as they are. Do not add greetings, reasons or anything that is not in the message.",
+  place:
+    "Write the name of this place in Korea the way Korean people write it in Korean (for example 'Gyeongbokgung Palace' → '경복궁', 'Myeongdong Station' → '명동역'). If it is already Korean, return it unchanged. Return only the name.",
+};
+
+export async function translateForShowAction(text: string, kind: "sentence" | "place"): Promise<ShowTranslateResult> {
+  const board = ensureBoard(getDb());
+  const m = getMessages(board.user_language).show;
+  const clean = sanitizeSlots({ text: text.trim().slice(0, 300) }).text;
+  if (!clean) return { ok: false, error: m.writeEmpty };
+  try {
+    const { ko } = await createLlmClient().structured({
+      system: SHOW_TRANSLATE_SYSTEM[kind],
+      prompt: clean,
+      schema: z.object({ ko: z.string() }),
+      effort: "low",
+    });
+    return ko.trim() ? { ok: true, ko: ko.trim() } : { ok: false, error: m.writeFailed };
+  } catch (error) {
+    console.error(`[show] translate failed: ${error instanceof Error ? error.message : String(error)}`);
+    return { ok: false, error: m.writeFailed };
   }
 }

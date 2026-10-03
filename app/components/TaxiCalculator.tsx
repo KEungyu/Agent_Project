@@ -4,14 +4,16 @@ import { useEffect, useState, useTransition } from "react";
 import { estimateTaxiAction, type TaxiPlaceInput, type TaxiResult } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { FarePeriod } from "@/lib/taxi/fare";
-import { LocateIcon, PlaneIcon, BedIcon, SwapIcon, TaxiIcon } from "./icons";
+import { LocateIcon, PlaneIcon, BedIcon, ShowIcon, SwapIcon, TaxiIcon } from "./icons";
+import { SHOW_EVENT, type ShowEventDetail, type TaxiTarget } from "./ShowCards";
 import { SignTitle } from "./SignTitle";
 
 // 택시비 계산기: 출발지와 목적지를 넣으면 서울 미터기 요금으로 적정 범위를 보여준다.
-// 결과는 택시 미터기 화면처럼 0원부터 올라가고, 지붕 표시등이 켜진다.
+// 결과는 택시 미터기 화면처럼 0원부터 올라가고, 지붕 표시등이 켜진다. 같은 출발·도착으로 택시 보여주기 카드를 바로 열 수 있다.
 
 type Pick = { lat: number; lng: number; label: string };
-type End = { text: string; pick?: Pick };
+// target: 보여주기 카드로 넘길 때 쓰는 원래 대상(숙소·공항). 현재 위치는 카드에 출발지로 쓰지 않는다.
+type End = { text: string; pick?: Pick; target?: TaxiTarget; here?: boolean };
 type Period = FarePeriod | "now";
 
 // 공항 택시 승강장 근처 좌표
@@ -40,6 +42,7 @@ export function TaxiCalculator({
   const [period, setPeriod] = useState<Period>("now");
   const [locating, setLocating] = useState(false);
   const [result, setResult] = useState<TaxiResult | null>(null);
+  const [show, setShow] = useState<ShowEventDetail | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [swapTurn, setSwapTurn] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -53,7 +56,7 @@ export function TaxiCalculator({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false);
-        setFrom({ text: m.here, pick: { lat: position.coords.latitude, lng: position.coords.longitude, label: m.here } });
+        setFrom({ text: m.here, pick: { lat: position.coords.latitude, lng: position.coords.longitude, label: m.here }, here: true });
       },
       () => {
         setLocating(false);
@@ -72,9 +75,15 @@ export function TaxiCalculator({
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setNotice(null);
+    // 결과를 낸 출발·도착을 그대로 택시 카드로 넘긴다(그 뒤에 입력을 고쳐도 결과와 카드가 어긋나지 않게)
+    const detail: ShowEventDetail = {
+      to: to.target ?? { kind: "text", text: to.text },
+      from: from.here ? undefined : (from.target ?? { kind: "text", text: from.text }),
+    };
     startTransition(async () => {
       const next = await estimateTaxiAction({ from: toInput(from), to: toInput(to), period, language });
       setResult(next);
+      setShow(detail);
       if (!next.ok) setNotice(m.errors[next.error]);
     });
   };
@@ -84,7 +93,7 @@ export function TaxiCalculator({
       {stays.map((stay) => {
         const text = stay.address ?? stay.name;
         return (
-          <button key={stay.id} type="button" className="taxi-pick" aria-pressed={!current.pick && current.text === text} onClick={() => set({ text })}>
+          <button key={stay.id} type="button" className="taxi-pick" aria-pressed={!current.pick && current.text === text} onClick={() => set({ text, target: { kind: "stay", id: stay.id } })}>
             <BedIcon />
             {stay.name}
           </button>
@@ -98,7 +107,7 @@ export function TaxiCalculator({
             type="button"
             className="taxi-pick"
             aria-pressed={current.pick?.label === label}
-            onClick={() => set({ text: label, pick: { ...point, label } })}
+            onClick={() => set({ text: label, pick: { ...point, label }, target: { kind: "airport", code } })}
           >
             <PlaneIcon />
             {label}
@@ -176,7 +185,9 @@ export function TaxiCalculator({
           {notice}
         </p>
       )}
-      {result?.ok && <TaxiMeter key={`${result.estimate.low}-${result.estimate.high}-${result.from}-${result.to}`} result={result} m={m} />}
+      {result?.ok && show && (
+        <TaxiMeter key={`${result.estimate.low}-${result.estimate.high}-${result.from}-${result.to}`} result={result} m={m} show={show} />
+      )}
       <p className="taxi-basis">
         {m.basis} {m.osm}
       </p>
@@ -184,7 +195,7 @@ export function TaxiCalculator({
   );
 }
 
-function TaxiMeter({ result, m }: { result: Extract<TaxiResult, { ok: true }>; m: Messages["taxi"] }) {
+function TaxiMeter({ result, m, show }: { result: Extract<TaxiResult, { ok: true }>; m: Messages["taxi"]; show: ShowEventDetail }) {
   const { estimate } = result;
   const low = useCountUp(estimate.low);
   const high = useCountUp(estimate.high);
@@ -220,13 +231,10 @@ function TaxiMeter({ result, m }: { result: Extract<TaxiResult, { ok: true }>; m
           </p>
         )}
       </div>
-      <div className="taxi-say">
-        <span className="taxi-say-label">{m.showDriver}</span>
-        <p className="taxi-say-ko" lang="ko">
-          미터기로 가 주세요.
-        </p>
-        <p className="taxi-say-local">{m.sayMeter}</p>
-      </div>
+      <button type="button" className="button taxi-show" onClick={() => window.dispatchEvent(new CustomEvent(SHOW_EVENT, { detail: show }))}>
+        <ShowIcon />
+        {m.showDriver}
+      </button>
       <ul className="taxi-tips">
         <li>{m.tips.meter}</li>
         <li>{m.tips.toll}</li>

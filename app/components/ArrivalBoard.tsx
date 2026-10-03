@@ -6,7 +6,16 @@ import type { Messages } from "@/lib/i18n/messages";
 import { formatKst } from "@/lib/time";
 import { EXECUTION_LEVELS, ExecutionBadge } from "./ExecutionBadge";
 import { FlapText } from "./FlapText";
-import { PlaneIcon } from "./icons";
+import type { ChecklistKey } from "@/lib/checklist";
+import { BedIcon, MoonIcon, PinIcon, PlaneIcon, TrainIcon } from "./icons";
+
+const LAMP_ICON: Record<ChecklistKey, React.ComponentType<{ className?: string }>> = {
+  flights: PlaneIcon,
+  stay: BedIcon,
+  cities: PinIcon,
+  lateCheckin: MoonIcon,
+  rides: TrainIcon,
+};
 
 // 도착 안내 전광판: 실제 지하철 안내판처럼 "이번 / 다음" 두 줄.
 // 이번 = 지금 처리할 일, 다음 = 입국(또는 귀국)까지. 윗줄에서 "어서 오세요"가 9개 언어로 돈다(마중 = 맞이함).
@@ -114,6 +123,32 @@ export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messag
               </strong>
             </li>
           )}
+          {/* 준비 줄: 여행 체크리스트와 이어진다. 끝낸 항목은 램프가 켜지고, 누르면 체크리스트로 내려간다 */}
+          <li className="board-row board-line-prep board-prep">
+            <span className="board-dot" aria-hidden="true" />
+            <RowLabel ko="준비" text={m.hero.prep} />
+            <div className="board-row-main">
+              <ul className="board-lamps">
+                {model.checklist.items.map((item, i) => {
+                  const Icon = LAMP_ICON[item.key];
+                  return (
+                    <li
+                      key={`${item.key}-${item.done}`}
+                      className={item.done ? "board-lamp is-on" : "board-lamp"}
+                      style={{ "--i": i } as React.CSSProperties}
+                      aria-label={`${m.checklist.items[item.key]}: ${item.done ? m.hero.done : m.hero.todo}`}
+                    >
+                      <Icon />
+                      <span>{m.checklist.short[item.key]}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            <a className="board-row-time board-prep-count tabular" href="#checklist" aria-label={`${m.checklist.title}: ${model.checklist.done}/${model.checklist.total}`}>
+              <FlapText text={`${model.checklist.done}/${model.checklist.total}`} className="flap-tiles" />
+            </a>
+          </li>
         </ol>
       </div>
       <div className="board-legend">

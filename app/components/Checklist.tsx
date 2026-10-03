@@ -1,50 +1,30 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
-import type { ChecklistItem, ChecklistKey } from "@/lib/checklist";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { CHECKLIST_TIPS, type ChecklistItem } from "@/lib/checklist";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import { CheckIcon, LinkIcon } from "./icons";
 import { SignTitle } from "./SignTitle";
 
-// 여행 체크리스트: 보드로 알 수 있는 항목은 자동으로 체크하고, 나머지는 직접 체크한다(이 브라우저에 저장).
-// 체크하면 표시가 그려지며 톡 튀고, 다 채우면 색종이가 터진다.
+// 여행 체크리스트: 여행 보드로 알 수 있는 항목만 두고 보드가 바뀌면 저절로 체크된다(전광판 "준비" 줄과 같은 값).
+// 보드로 알 수 없는 준비는 아래에 작은 팁으로만 적는다. 이번 화면에서 마지막 항목이 채워지면 색종이가 터진다.
 
 const CONFETTI = ["#2f86e0", "#00a5de", "#ff9a5c", "#ffd36e", "#7a63c9", "#3fb98b"];
 
-export function Checklist({ items, boardId, m }: { items: ChecklistItem[]; boardId: string; m: Messages["checklist"] }) {
-  const storageKey = `majungi-checklist-${boardId}`;
-  const [manual, setManual] = useState<Partial<Record<ChecklistKey, boolean>>>({});
-  const [burst, setBurst] = useState(0);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) setManual(JSON.parse(saved));
-    } catch {
-      // 저장소를 못 쓰면 이번 화면에서만 기억한다
-    }
-  }, [storageKey]);
-
-  const done = (item: ChecklistItem) => (item.auto ? item.done : Boolean(manual[item.key]));
-  const count = items.filter(done).length;
+export function Checklist({ items, m }: { items: ChecklistItem[]; m: Messages["checklist"] }) {
+  const count = items.filter((item) => item.done).length;
   const total = items.length;
   const complete = count === total;
+  const [burst, setBurst] = useState(0);
+  const previous = useRef(count);
 
-  const toggle = (item: ChecklistItem) => {
-    if (item.auto) return;
-    const next = { ...manual, [item.key]: !manual[item.key] };
-    setManual(next);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(next));
-    } catch {
-      // 무시
-    }
-    const willComplete = items.every((candidate) => (candidate.key === item.key ? next[item.key] : done(candidate)));
-    if (willComplete) setBurst((n) => n + 1);
-  };
+  useEffect(() => {
+    if (complete && previous.current < total) setBurst((n) => n + 1);
+    previous.current = count;
+  }, [complete, count, total]);
 
   return (
-    <div className="sign checklist">
+    <div className="sign checklist" id="checklist">
       <SignTitle as="h3" ko="여행 체크리스트" text={m.title} />
       <div className="checklist-head">
         <p className={complete ? "checklist-progress is-complete" : "checklist-progress"} aria-live="polite">
@@ -55,36 +35,27 @@ export function Checklist({ items, boardId, m }: { items: ChecklistItem[]; board
         </div>
       </div>
       <ul className="checklist-items">
-        {items.map((item) => {
-          const checked = done(item);
-          return (
-            <li key={item.key}>
-              <button
-                type="button"
-                className={`check-item${checked ? " is-done" : ""}${item.auto ? " is-auto" : ""}`}
-                role="checkbox"
-                aria-checked={checked}
-                aria-disabled={item.auto}
-                onClick={() => toggle(item)}
-                title={item.auto ? m.auto : undefined}
-              >
-                <span className="check-box" key={checked ? "on" : "off"} aria-hidden="true">
-                  {checked && <CheckIcon />}
-                </span>
-                <span className="check-label">{m.items[item.key]}</span>
-                {item.auto && (
-                  <span className="check-auto" aria-label={m.auto}>
-                    <LinkIcon />
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
+        {items.map((item) => (
+          <li key={item.key} className={`check-item${item.done ? " is-done" : ""}`}>
+            <span className="check-box" key={item.done ? "on" : "off"} aria-hidden="true">
+              {item.done && <CheckIcon />}
+            </span>
+            <span className="check-label">{m.items[item.key]}</span>
+            <span className="sr-only">{item.done ? m.doneLabel : m.todoLabel}</span>
+          </li>
+        ))}
       </ul>
       <p className="checklist-note">
         <LinkIcon /> {m.auto}
       </p>
+      <div className="checklist-tips">
+        <p className="checklist-tips-title">{m.tipsTitle}</p>
+        <ul>
+          {CHECKLIST_TIPS.map((tip) => (
+            <li key={tip}>{m.tips[tip]}</li>
+          ))}
+        </ul>
+      </div>
       {burst > 0 && (
         <div className="confetti" key={burst} aria-hidden="true">
           {Array.from({ length: 28 }, (_, i) => (

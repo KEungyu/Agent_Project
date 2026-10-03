@@ -28,7 +28,7 @@ export function TripPanel({ board, m, language }: Props) {
     <section className="panel" aria-labelledby="trip-heading">
       <SignTitle id="trip-heading" ko="여행 보드" text={b.title} icon={<SuitcaseIcon />} />
       <TripPass board={board} m={m} language={language} />
-      <Checklist items={buildChecklist(board)} boardId={board?.id ?? "none"} m={m.checklist} />
+      <Checklist items={buildChecklist(board)} m={m.checklist} />
 
       <div className="sign">
         <SignTitle as="h3" ko="도시 일정" text={b.cities} />
@@ -211,12 +211,7 @@ export function TripPanel({ board, m, language }: Props) {
         </details>
       </div>
 
-      <ShowCards
-        stays={(board?.stays ?? []).map((stay) => ({ id: stay.id, name: stay.name, address: stay.address_ko }))}
-        airport={board?.departure?.airport}
-        airportLocal={board?.departure?.airport ? m.airports[board.departure.airport as keyof Messages["airports"]] : undefined}
-        m={m.show}
-      />
+      <ShowCards stays={(board?.stays ?? []).map((stay) => ({ id: stay.id, name: stay.name, address: stay.address_ko }))} m={m.show} airports={m.airports} />
       <TaxiCalculator
         stays={(board?.stays ?? []).map((stay) => ({ id: stay.id, name: stay.name, address: stay.address_ko }))}
         language={language}

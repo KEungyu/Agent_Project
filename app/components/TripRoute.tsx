@@ -1,4 +1,4 @@
-import type { TripBoard } from "@/lib/board/types";
+import type { ItineraryItem, TripBoard } from "@/lib/board/types";
 import { removeItineraryAction } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import { cityKo } from "@/lib/i18n/places";
@@ -7,6 +7,8 @@ import { formatDate, formatKst } from "@/lib/time";
 import { XIcon } from "./icons";
 
 // 여행 일정을 노선도로 그린다: 입국 공항 → 도시들 → 출국 공항.
+// 같은 도시에 며칠 머물면 역 하나로 묶고 머무는 날 수를 적는다("서울 → 서울" 같은 구간을 만들지 않는다).
+// 항공편이 없으면 첫 도시에 "출발", 마지막 도시에 "도착" 표시를 붙여 시작과 끝을 보여준다.
 // 도시 사이 구간은 교통편 상태를 보여준다(없으면 점선).
 
 type Stop = {
@@ -15,7 +17,8 @@ type Stop = {
   meta: string;
   kind: "airport" | "city";
   segment?: "none" | "planned" | "booked_by_user" | "airport" | "free";
-  date?: string;
+  dates?: string[];
+  flag?: "start" | "finish";
 };
 
 export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Messages; locale: string }) {
@@ -28,20 +31,34 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
       meta: `${m.board.arrive} ${formatKst(board.arrival.datetime, locale)}`,
     });
   }
-  board?.itinerary.forEach((item, i) => {
+  // 이어지는 같은 도시 날짜를 하나로 묶는다. 구간 상태는 그 도시에 처음 가는 날의 교통편을 따른다.
+  const groups: { city: string; items: ItineraryItem[] }[] = [];
+  for (const item of board?.itinerary ?? []) {
+    const last = groups.at(-1);
+    if (last && last.city === item.city) last.items.push(item);
+    else groups.push({ city: item.city, items: [item] });
+  }
+  groups.forEach((group, i) => {
+    const first = group.items[0];
+    const dates = group.items.map((item) => item.date);
+    const range =
+      dates.length > 1 ? `${formatDate(dates[0], locale)} – ${formatDate(dates.at(-1), locale)}` : formatDate(dates[0], locale);
     stops.push({
-      key: `${item.date}-${item.city}`,
+      key: `${first.date}-${group.city}`,
       kind: "city",
-      name: item.city,
-      meta: formatDate(item.date, locale),
+      name: group.city,
+      meta: range,
       // 예매가 필요 없는 구간(지하철)은 "교통편 없음"이 아니라 "예매 필요 없음"으로 보여준다
       segment:
         i === 0
-          ? "airport"
-          : item.transport.status === "none" && !legNeedsBooking(board.itinerary[i - 1].city, item.city)
+          ? board?.arrival
+            ? "airport"
+            : undefined
+          : first.transport.status === "none" && !legNeedsBooking(groups[i - 1].city, group.city)
             ? "free"
-            : item.transport.status,
-      date: item.date,
+            : first.transport.status,
+      dates,
+      flag: i === 0 && !board?.arrival ? "start" : i === groups.length - 1 && !board?.departure?.datetime && groups.length > 1 ? "finish" : undefined,
     });
   });
   if (board?.departure?.datetime) {
@@ -54,7 +71,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
     });
   }
 
-  if (stops.length < 2) return <p className="empty-note">{m.board.noCities}</p>;
+  if (stops.length === 0 || (stops.length === 1 && stops[0].kind === "airport")) return <p className="empty-note">{m.board.noCities}</p>;
 
   const localName = (name: string) => localCityName(name, locale);
   const segmentLabel = { none: m.board.transportNone, planned: m.board.transportPlanned, booked_by_user: m.board.transportBooked, free: m.board.transportFree };
@@ -81,8 +98,19 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
             </span>
           )}
           <span className="trip-meta">{stop.meta}</span>
-          {stop.date && (
-            <form action={removeItineraryAction.bind(null, stop.date, stop.name)} className="trip-remove-form">
+          {(stop.flag || (stop.dates && stop.dates.length > 1)) && (
+            <span className="trip-tags">
+              {stop.dates && stop.dates.length > 1 && <span className="trip-tag">{fmt(m.board.days, { n: stop.dates.length })}</span>}
+              {stop.flag && (
+                <span className={`trip-tag trip-flag is-${stop.flag}`}>
+                  <span lang="ko">{stop.flag === "start" ? "출발" : "도착"}</span>
+                  {locale !== "ko" && <span>{stop.flag === "start" ? m.board.start : m.board.finish}</span>}
+                </span>
+              )}
+            </span>
+          )}
+          {stop.dates && (
+            <form action={removeItineraryAction.bind(null, stop.dates, stop.name)} className="trip-remove-form">
               <button
                 type="submit"
                 className="trip-remove"
