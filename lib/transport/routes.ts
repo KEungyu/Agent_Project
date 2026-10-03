@@ -117,6 +117,13 @@ function flip(option: TransportOption): TransportOption {
   return { ...option, from: option.to, to: option.from };
 }
 
+// 이 구간에 예매가 필요한지. 지하철처럼 예매할 수단만 있는 구간이 아니면(모르는 구간 포함) 필요하다고 본다.
+export function bookingNeeded(fromId?: string, toId?: string): boolean {
+  if (!fromId || !toId) return true;
+  const options = transportOptions(fromId, toId);
+  return options.length === 0 || options.some((option) => option.booking);
+}
+
 // 두 도시(지도 거점 id) 사이의 이동 방법. 모르는 구간은 빈 배열을 돌려준다.
 export function transportOptions(fromId: string, toId: string): TransportOption[] {
   const forward = LEGS.find((leg) => leg.a === fromId && leg.b === toId);

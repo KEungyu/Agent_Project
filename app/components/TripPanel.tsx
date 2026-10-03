@@ -12,7 +12,11 @@ import { BedIcon, BusIcon, CardIcon, HotelIcon, PhoneIcon, PinIcon, ExternalIcon
 import { DateField, DateTimeField } from "./DateField";
 import { SignTitle } from "./SignTitle";
 import { KoreaMap } from "./KoreaMap";
+import { Checklist } from "./Checklist";
+import { ShowCards, ShowTaxiButton } from "./ShowCards";
+import { TaxiCalculator } from "./TaxiCalculator";
 import { TransportPlanner } from "./TransportPlanner";
+import { buildChecklist } from "@/lib/checklist";
 import { TripRoute } from "./TripRoute";
 import type { LanguageCode } from "@/lib/i18n/languages";
 
@@ -24,6 +28,7 @@ export function TripPanel({ board, m, language }: Props) {
     <section className="panel" aria-labelledby="trip-heading">
       <SignTitle id="trip-heading" ko="여행 보드" text={b.title} icon={<SuitcaseIcon />} />
       <TripPass board={board} m={m} language={language} />
+      <Checklist items={buildChecklist(board)} boardId={board?.id ?? "none"} m={m.checklist} />
 
       <div className="sign">
         <SignTitle as="h3" ko="도시 일정" text={b.cities} />
@@ -178,6 +183,7 @@ export function TripPanel({ board, m, language }: Props) {
                     <PinIcon />
                     {m.map.openMap}
                   </a>
+                  <ShowTaxiButton stayId={stay.id} label={b.showTaxi} />
                   {stay.phone && (
                     <a className="stay-action" href={`tel:${stay.phone.replace(/[^\d+]/g, "")}`}>
                       <PhoneIcon />
@@ -204,6 +210,19 @@ export function TripPanel({ board, m, language }: Props) {
           <StayForm m={m} language={language} />
         </details>
       </div>
+
+      <ShowCards
+        stays={(board?.stays ?? []).map((stay) => ({ id: stay.id, name: stay.name, address: stay.address_ko }))}
+        airport={board?.departure?.airport}
+        airportLocal={board?.departure?.airport ? m.airports[board.departure.airport as keyof Messages["airports"]] : undefined}
+        m={m.show}
+      />
+      <TaxiCalculator
+        stays={(board?.stays ?? []).map((stay) => ({ id: stay.id, name: stay.name, address: stay.address_ko }))}
+        language={language}
+        m={m.taxi}
+        airports={m.airports}
+      />
     </section>
   );
 }
@@ -472,7 +491,7 @@ function isLate(value: string): boolean {
   return minutes >= 22 * 60 || minutes < 6 * 60;
 }
 
-// 도착 예정 시각과 숙소 이메일은 마중이가 대화 중에 물어보고 저장한다 (얼리·늦은 체크인 문의 메일을 쓸 때)
+// 도착 예정 시각은 마중이가 대화 중에 물어보고 저장한다 (얼리·늦은 체크인 문의 메일을 쓸 때)
 function StayForm({ stay, m, language }: { stay?: Stay; m: Messages; language: string }) {
   const b = m.board;
   return (
@@ -500,8 +519,16 @@ function StayForm({ stay, m, language }: { stay?: Stay; m: Messages; language: s
           <DateField name="check_out_date" defaultValue={stay?.check_out_date ?? ""} language={language} labels={m.date} ariaLabel={b.checkOut} />
         </div>
         <label className="label">
+          {b.hotelEmail}
+          <input className="field" type="email" name="email" defaultValue={stay?.email ?? ""} placeholder="hotel@example.com" />
+        </label>
+        <label className="label">
           {b.hotelPhone}
           <input className="field" name="phone" defaultValue={stay?.phone ?? ""} />
+        </label>
+        <label className="label label-wide">
+          {b.address}
+          <input className="field" name="address_ko" lang="ko" defaultValue={stay?.address_ko ?? ""} placeholder="서울 중구 명동8길 27" />
         </label>
       </div>
       <p className="editor-note">{b.stayChatNote}</p>

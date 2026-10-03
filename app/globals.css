@@ -1734,6 +1734,80 @@ ul {
 .station-sign-ko {
   padding: 22px 20px 20px;
 }
+/* 메일 복사 · 메일 앱으로 열기 */
+.copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.copy-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  overflow: hidden;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--sign);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out), background-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.copy-button:hover {
+  border-color: var(--arex);
+  color: var(--arex-deep);
+}
+.copy-button:active {
+  transform: scale(0.96);
+}
+.copy-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+}
+.copy-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.copy-button.is-done {
+  border-color: var(--arex-deep);
+  background: var(--arex-deep);
+  color: var(--on-dark);
+}
+.copy-button.is-done .copy-icon {
+  animation: pop 420ms var(--ease-out) both;
+}
+/* 복사되면 버튼 안에서 물결이 퍼진다 */
+.copy-button.is-done::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.45);
+  transform: translate(-50%, -50%) scale(0);
+  animation: copy-ripple 620ms var(--ease-out) both;
+}
+@keyframes copy-ripple {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(14);
+  }
+}
+.copy-button:focus-visible {
+  outline: 2px solid var(--arex-deep);
+  outline-offset: 2px;
+}
 .station-sign-subject {
   margin-bottom: 10px;
   font-size: 19px;
@@ -3324,6 +3398,10 @@ html[data-lang-swap] .empty-note {
   background: #e5eef8;
   color: var(--arex-deep);
 }
+.leg-chip.is-free {
+  background: var(--ground);
+  color: var(--ink-2);
+}
 .leg-chip.is-booked {
   background: var(--sign);
   color: var(--ink);
@@ -4908,5 +4986,844 @@ html[data-intro-seen] .intro {
   }
   .intro-plane {
     display: none;
+  }
+}
+
+/* ── 숙소 폼: 한 줄 전체를 쓰는 칸 ─────────────────────── */
+.label-wide {
+  grid-column: 1 / -1;
+}
+
+/* ── 여행 체크리스트 ──────────────────────────────────────── */
+
+.checklist {
+  position: relative;
+  overflow: visible;
+}
+.checklist-head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.checklist-progress {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.checklist-progress.is-complete {
+  color: var(--arex-deep);
+  animation: pop 480ms var(--ease-out) both;
+}
+.checklist-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ground);
+}
+.checklist-bar span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f86e0, var(--arex-deep));
+  transform: scaleX(var(--fill));
+  transform-origin: 0 50%;
+  transition: transform 700ms var(--ease-out);
+}
+.checklist-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .checklist-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.check-item {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--sign);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms var(--ease-out), background-color 200ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.check-item:hover:not(.is-auto) {
+  border-color: var(--arex);
+}
+.check-item:active:not(.is-auto) {
+  transform: scale(0.98);
+}
+.check-item.is-auto {
+  cursor: default;
+}
+.check-item.is-done {
+  border-color: #b9d4ef;
+  background: #f1f7fd;
+}
+.check-item.is-done .check-label {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-color: rgb(0 79 140 / 0.4);
+  text-decoration-thickness: 2px;
+}
+.check-box {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--sign);
+}
+.check-item.is-done .check-box {
+  border-color: var(--arex-deep);
+  background: var(--arex-deep);
+  color: var(--on-dark);
+  animation: pop 380ms var(--ease-out) both;
+}
+/* 체크 표시가 그려진다 */
+.check-box svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.6;
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: check-draw 360ms var(--ease-out) 80ms forwards;
+}
+@keyframes check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.check-auto {
+  display: grid;
+  place-items: center;
+  color: var(--arex);
+}
+.check-auto svg,
+.checklist-note svg {
+  width: 15px;
+  height: 15px;
+}
+.checklist-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.checklist-note svg {
+  color: var(--arex);
+}
+/* 다 채우면 색종이가 터진다 */
+.confetti {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  z-index: 5;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.confetti span {
+  position: absolute;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--c);
+  opacity: 0;
+  animation: confetti 1100ms cubic-bezier(0.2, 0.8, 0.3, 1) var(--d) forwards;
+}
+@keyframes confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0) scale(0.6);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), calc(var(--y) + 60px)) rotate(calc(var(--r) * 3)) scale(1);
+  }
+}
+
+/* ── 보여주기 카드 ───────────────────────────────────────── */
+
+.show-sub {
+  margin: -4px 0 14px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.show-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .show-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.show-empty {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.show-tile {
+  --t1: #fff1e3;
+  --t2: #ffe1cf;
+  --ti: #b0532a;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--t1), var(--t2));
+  transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+.show-tile:hover {
+  box-shadow: 0 10px 22px rgb(23 51 92 / 0.12);
+  transform: translateY(-2px);
+}
+.show-tile.tone-plane {
+  --t1: #e8f2fc;
+  --t2: #d4e7fa;
+  --ti: var(--arex-deep);
+}
+.show-tile.tone-food {
+  --t1: #eef7e8;
+  --t2: #f8f1de;
+  --ti: #4f7a2e;
+}
+.show-tile.is-wide {
+  grid-column: 1 / -1;
+}
+.show-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--sign);
+  box-shadow: 0 3px 8px rgb(23 51 92 / 0.1);
+  color: var(--ti);
+}
+.show-tile-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.show-tile-text {
+  display: grid;
+  min-width: 0;
+}
+.show-tile-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+.show-tile-sub {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.show-open {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 38px;
+  padding: 7px 16px;
+}
+.show-open svg {
+  width: 17px;
+  height: 17px;
+}
+.diet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 6px;
+}
+.diet-chip {
+  min-height: 34px;
+  padding: 5px 12px;
+  border: 1px solid rgb(79 122 46 / 0.35);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.diet-chip:active {
+  transform: scale(0.95);
+}
+.diet-chip[aria-pressed="true"] {
+  border-color: #4f7a2e;
+  background: #4f7a2e;
+  color: var(--on-dark);
+  animation: pop 320ms var(--ease-out) both;
+}
+.diet-chip:focus-visible,
+.check-item:focus-visible,
+.show-close:focus-visible {
+  outline: 2px solid var(--arex-deep);
+  outline-offset: 2px;
+}
+
+/* 화면 가득 펼쳐지는 카드: 3D로 뒤집히며 들어오고, 빛이 한 번 쓸고 지나간다 */
+.show-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(12 24 44 / 0.72);
+  animation: intro-in 240ms var(--ease-out) both;
+  perspective: 1400px;
+}
+.show-card {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  width: min(920px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 26px 32px 30px;
+  border-radius: 26px;
+  background: var(--sign);
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.35);
+  transform-origin: 50% 50%;
+  animation: show-flip 640ms var(--ease-out) both;
+}
+.show-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.75) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: show-shine 900ms var(--ease-out) 420ms both;
+  pointer-events: none;
+}
+@keyframes show-flip {
+  from {
+    opacity: 0;
+    transform: rotateY(-70deg) scale(0.82);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+@keyframes show-shine {
+  to {
+    transform: translateX(120%);
+  }
+}
+.show-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+.show-card-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff1e3;
+  color: #b0532a;
+}
+.show-plane .show-card-icon {
+  background: #e8f2fc;
+  color: var(--arex-deep);
+}
+.show-food .show-card-icon {
+  background: #eef7e8;
+  color: #4f7a2e;
+}
+.show-card-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.show-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  background: var(--sign);
+  color: var(--ink);
+  cursor: pointer;
+}
+.show-close svg {
+  width: 20px;
+  height: 20px;
+}
+.show-card-ko {
+  display: grid;
+  gap: 10px;
+}
+.show-lead {
+  font-size: clamp(30px, 6vw, 60px);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.show-line {
+  font-size: clamp(24px, 4.6vw, 44px);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--arex-deep);
+}
+.show-ko-sub {
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.show-card-local {
+  display: grid;
+  gap: 4px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--rule-strong);
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.show-warn {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--prep-deep);
+}
+@media (prefers-reduced-motion: reduce) {
+  .show-card,
+  .show-card::after,
+  .show-overlay,
+  .confetti span,
+  .check-box svg,
+  .check-item.is-done .check-box,
+  .diet-chip[aria-pressed="true"],
+  .copy-button.is-done::after,
+  .copy-button.is-done .copy-icon {
+    animation: none;
+  }
+  .check-box svg {
+    stroke-dashoffset: 0;
+  }
+  .confetti {
+    display: none;
+  }
+}
+
+/* ── 택시비 계산기 ───────────────────────────────────────── */
+
+.taxi-form {
+  display: grid;
+  gap: 14px;
+}
+.taxi-ends {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fff8e0, #fff1e3);
+}
+.taxi-end {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.taxi-end-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+.taxi-dot {
+  display: inline-block;
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 3px solid var(--act);
+  border-radius: 50%;
+  background: var(--sign);
+}
+.taxi-dot.is-to {
+  border-color: var(--alert);
+}
+.taxi-input-row {
+  display: flex;
+  gap: 8px;
+}
+.taxi-input-row .field {
+  flex: 1;
+}
+.taxi-here svg {
+  width: 17px;
+  height: 17px;
+  color: var(--arex-deep);
+}
+.taxi-here svg.is-spinning {
+  animation: spin 1s linear infinite;
+}
+.taxi-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.taxi-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 4px 11px;
+  overflow: hidden;
+  border: 1px solid rgb(176 83 42 / 0.3);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out), transform 120ms var(--ease-out);
+}
+.taxi-pick svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: #b0532a;
+}
+.taxi-pick:hover {
+  background: var(--sign);
+}
+.taxi-pick:active {
+  transform: scale(0.95);
+}
+.taxi-pick[aria-pressed="true"] {
+  border-color: #b0532a;
+  background: #b0532a;
+  color: var(--on-dark);
+  animation: pop 320ms var(--ease-out) both;
+}
+.taxi-pick[aria-pressed="true"] svg {
+  color: inherit;
+}
+/* 출발과 도착 사이 점선 위에 놓인 바꾸기 버튼 */
+.taxi-swap {
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin: -8px 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--sign);
+  color: var(--ink);
+  box-shadow: 0 3px 10px rgb(23 51 92 / 0.12);
+  cursor: pointer;
+  transition: transform 140ms var(--ease-out);
+}
+.taxi-swap:hover {
+  transform: scale(1.06);
+}
+.taxi-swap svg {
+  width: 18px;
+  height: 18px;
+}
+.taxi-swap svg.is-turning {
+  animation: taxi-turn 420ms var(--ease-out);
+}
+@keyframes taxi-turn {
+  from {
+    transform: rotate(-180deg);
+  }
+}
+.taxi-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.taxi-when legend {
+  float: left;
+  margin-right: 6px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink-2);
+}
+.taxi-when-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.taxi-when-option span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 5px 13px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--sign);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.taxi-when-option input:checked + span {
+  border-color: var(--signbar);
+  background: var(--signbar);
+  color: var(--on-dark);
+}
+.taxi-when-option input:focus-visible + span,
+.taxi-pick:focus-visible,
+.taxi-swap:focus-visible {
+  outline: 2px solid var(--arex-deep);
+  outline-offset: 2px;
+}
+.taxi-go {
+  justify-self: start;
+  min-height: 46px;
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #ffcd00, #ffb000);
+  color: #1b1500;
+  font-size: 15px;
+}
+.taxi-go:hover {
+  background: linear-gradient(135deg, #ffd633, #ffbe1f);
+}
+.taxi-go svg {
+  width: 20px;
+  height: 20px;
+}
+.taxi-go[aria-busy="true"] svg {
+  animation: taxi-drive 600ms ease-in-out infinite alternate;
+}
+@keyframes taxi-drive {
+  from {
+    transform: translateX(-3px);
+  }
+  to {
+    transform: translateX(3px);
+  }
+}
+.taxi-notice {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--prep-tint);
+  color: var(--prep-deep);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* 결과: 택시 미터기 화면. 지붕 표시등이 켜지고 금액이 0원부터 올라간다 */
+.taxi-result {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  animation: pop 360ms var(--ease-out) both;
+}
+.taxi-meter {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 30px 20px 18px;
+  border: 3px solid #2a3038;
+  border-radius: 18px;
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.025) 0 2px, transparent 2px 4px),
+    linear-gradient(180deg, #161b22, var(--board));
+  color: var(--led);
+  box-shadow: inset 0 2px 12px rgb(0 0 0 / 0.6), 0 12px 28px rgb(13 16 20 / 0.25);
+}
+.taxi-lamp {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  padding: 4px 16px;
+  border-radius: 10px 10px 4px 4px;
+  background: #5a5130;
+  color: #2a2510;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  animation: taxi-lamp-on 900ms var(--ease-out) 200ms both;
+}
+@keyframes taxi-lamp-on {
+  0%,
+  30% {
+    background: #5a5130;
+    color: #2a2510;
+    box-shadow: none;
+  }
+  40% {
+    background: var(--exit);
+    color: #1b1500;
+    box-shadow: 0 0 22px rgb(255 205 0 / 0.75);
+  }
+  50% {
+    background: #5a5130;
+    color: #2a2510;
+    box-shadow: none;
+  }
+  to {
+    background: var(--exit);
+    color: #1b1500;
+    box-shadow: 0 0 18px rgb(255 205 0 / 0.55);
+  }
+}
+.taxi-meter-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--on-dark-2);
+}
+.taxi-fare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+  font-family: var(--font-mono);
+  font-size: clamp(30px, 6.4vw, 46px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--led-amber);
+  text-shadow: 0 0 14px rgb(255 181 71 / 0.45);
+}
+.taxi-won {
+  font-size: 0.6em;
+}
+.taxi-dash {
+  color: rgb(255 181 71 / 0.6);
+}
+.taxi-trip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.taxi-trip .taxi-dot {
+  width: 9px;
+  height: 9px;
+  border-width: 2px;
+  background: var(--board);
+}
+.taxi-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 13px;
+  color: var(--on-dark-2);
+}
+.taxi-rate {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--board-tile);
+  color: var(--led);
+  font-size: 12px;
+  font-weight: 700;
+}
+.taxi-rate.is-night {
+  background: #3b2f6b;
+  color: #e3dcff;
+}
+.taxi-caveat {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--on-dark-2);
+}
+.taxi-say {
+  display: grid;
+  gap: 2px;
+  padding: 12px 16px;
+  border: 1px solid rgb(255 176 0 / 0.45);
+  border-radius: 14px;
+  background: #fff8e0;
+}
+.taxi-say-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.taxi-say-ko {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.taxi-say-local {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.taxi-tips {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.taxi-basis {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+@media (max-width: 560px) {
+  .taxi-input-row {
+    flex-wrap: wrap;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .taxi-result,
+  .taxi-lamp,
+  .taxi-pick[aria-pressed="true"],
+  .taxi-swap svg.is-turning,
+  .taxi-go[aria-busy="true"] svg,
+  .taxi-here svg.is-spinning {
+    animation: none;
+  }
+  .taxi-lamp {
+    background: var(--exit);
+    color: #1b1500;
   }
 }

@@ -2,7 +2,7 @@ import type { TripBoard } from "@/lib/board/types";
 import { removeItineraryAction } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import { cityKo } from "@/lib/i18n/places";
-import { localCityName } from "@/lib/map/route";
+import { legNeedsBooking, localCityName } from "@/lib/map/route";
 import { formatDate, formatKst } from "@/lib/time";
 import { XIcon } from "./icons";
 
@@ -14,7 +14,7 @@ type Stop = {
   name: string;
   meta: string;
   kind: "airport" | "city";
-  segment?: "none" | "planned" | "booked_by_user" | "airport";
+  segment?: "none" | "planned" | "booked_by_user" | "airport" | "free";
   date?: string;
 };
 
@@ -34,7 +34,13 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
       kind: "city",
       name: item.city,
       meta: formatDate(item.date, locale),
-      segment: i === 0 ? "airport" : item.transport.status,
+      // 예매가 필요 없는 구간(지하철)은 "교통편 없음"이 아니라 "예매 필요 없음"으로 보여준다
+      segment:
+        i === 0
+          ? "airport"
+          : item.transport.status === "none" && !legNeedsBooking(board.itinerary[i - 1].city, item.city)
+            ? "free"
+            : item.transport.status,
       date: item.date,
     });
   });
@@ -51,7 +57,7 @@ export function TripRoute({ board, m, locale }: { board: TripBoard | null; m: Me
   if (stops.length < 2) return <p className="empty-note">{m.board.noCities}</p>;
 
   const localName = (name: string) => localCityName(name, locale);
-  const segmentLabel = { none: m.board.transportNone, planned: m.board.transportPlanned, booked_by_user: m.board.transportBooked };
+  const segmentLabel = { none: m.board.transportNone, planned: m.board.transportPlanned, booked_by_user: m.board.transportBooked, free: m.board.transportFree };
   return (
     <ol className="trip-route" style={{ "--stops": stops.length } as React.CSSProperties}>
       {stops.map((stop) => (

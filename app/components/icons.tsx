@@ -242,3 +242,56 @@ export function PinIcon({ className }: Props) {
     </Svg>
   );
 }
+
+export function CopyIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <rect x="6.5" y="6.5" width="10" height="11" rx="2" />
+      <path d="M13.5 6.5V4.5a1 1 0 0 0-1-1h-8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2" />
+    </Svg>
+  );
+}
+
+export function LinkIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1" />
+      <path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1" />
+    </Svg>
+  );
+}
+
+export function ShowIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <rect x="5" y="2.5" width="10" height="15" rx="2" />
+      <path d="M8 6h4M8 9h4M8 12h2" />
+    </Svg>
+  );
+}
+
+export function FoodIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M6 2.5v6a2 2 0 0 0 4 0v-6M8 2.5v15M14 17.5v-15c-2 1-3 3-3 6v3h3" />
+    </Svg>
+  );
+}
+
+export function SwapIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <path d="M6.5 3.5v13M3.5 6.5l3-3 3 3M13.5 16.5v-13M10.5 13.5l3 3 3-3" />
+    </Svg>
+  );
+}
+
+export function LocateIcon({ className }: Props) {
+  return (
+    <Svg className={className}>
+      <circle cx="10" cy="10" r="5.5" />
+      <circle cx="10" cy="10" r="1.6" fill="currentColor" />
+      <path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3" />
+    </Svg>
+  );
+}

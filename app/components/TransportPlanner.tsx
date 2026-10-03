@@ -88,6 +88,8 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
     startTransition(() => markTransportBookedAction(to.date, to.city, option.mode));
   };
 
+  // 지하철처럼 예매할 수단만 있는 구간은 "교통편 없음"이 아니다
+  const free = status === "none" && options.length > 0 && options.every((item) => !item.booking);
   const bookedMode = to.transport.note && to.transport.note in MODE_ICON ? t[to.transport.note as TransportMode] : to.transport.note;
   const chip =
     status === "booked_by_user" ? (
@@ -97,6 +99,8 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
       </span>
     ) : status === "planned" ? (
       <span className="leg-chip is-planned">{m.board.transportPlanned}</span>
+    ) : free ? (
+      <span className="leg-chip is-free">{m.board.transportFree}</span>
     ) : (
       <span className="leg-chip is-none">{m.board.transportNone}</span>
     );
@@ -116,7 +120,7 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
           </span>
         </p>
         <span className="leg-date tabular">{formatDate(to.date, language)}</span>
-        {status !== "booked_by_user" && <ExecutionBadge key={phase} level="준비" m={m} />}
+        {status !== "booked_by_user" && !free && <ExecutionBadge key={phase} level="준비" m={m} />}
         {chip}
       </header>
 

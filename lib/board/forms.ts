@@ -40,7 +40,7 @@ export function saveTripForm(db: Db, form: FormData): TripBoard {
   return getCurrentBoard(db)!;
 }
 
-const STAY_TEXT_FIELDS = ["name", "email", "phone", "booking_ref", "guest_name", "check_in_date", "check_out_date"] as const;
+const STAY_TEXT_FIELDS = ["name", "address_ko", "email", "phone", "booking_ref", "guest_name", "check_in_date", "check_out_date"] as const;
 
 export function saveStayForm(db: Db, form: FormData): TripBoard {
   const board = ensureBoard(db);

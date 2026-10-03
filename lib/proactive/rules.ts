@@ -2,13 +2,13 @@ import { updateBoard } from "../board/store";
 import type { Request, Stay, TripBoard } from "../board/types";
 import type { Db } from "../db/client";
 import { fmt, getMessages, type Messages } from "../i18n/messages";
-import { localCityName } from "../map/route";
+import { legNeedsBooking, localCityName } from "../map/route";
 import { formatDate, formatKst, formatTimeKst, kstDate, kstMinutesOfDay } from "../time";
 
 // 먼저 챙겨주기 (ARCHITECTURE §7). 보드와 현재 시각만 보고 결정적으로 평가한다.
 // 조건은 규칙별 함수로 두고, 문구는 i18n 데이터(messages.proactive)에 둔다.
 
-export type RuleId = "r1" | "r2" | "r3" | "r4" | "r5";
+export type RuleId = "r1" | "r2" | "r3" | "r4" | "r5" | "r6";
 export type AlertLevel = "안내" | "준비" | "대행";
 
 export type Alert = {
@@ -66,6 +66,8 @@ const RULES: Rule[] = [
       board.itinerary.flatMap((item, i) => {
         const previous = board.itinerary[i - 1];
         if (!previous || previous.city === item.city || item.transport.status !== "none") return [];
+        // 지하철처럼 예매할 것이 없는 구간은 알리지 않는다
+        if (!legNeedsBooking(previous.city, item.city)) return [];
         const hours = hoursBetween(now, new Date(`${item.date}T00:00:00+09:00`));
         if (hours > 48 || hours < -24) return [];
         return [{ target_id: `${item.date}-${item.city}`, values: { city: localCityName(item.city, locale), from: localCityName(previous.city, locale), date: formatDate(item.date, locale) } }];
@@ -124,6 +126,22 @@ const RULES: Rule[] = [
       const arrival = board.arrival;
       if (!arrival || kstMinutesOfDay(arrival.datetime) >= 5 * 60) return [];
       return [{ target_id: "arrival", values: { time: formatKst(arrival.datetime, locale), airport: arrival.airport } }];
+    },
+  },
+  {
+    // R6 출국 전날: 한국 시각으로 출국일이 내일이다 (공항에 2~3시간 일찍 가도록 미리 알린다)
+    id: "r6",
+    level: "안내",
+    priority: "medium",
+    cooldownHours: 12,
+    find: (board, now, locale) => {
+      const departure = board.departure;
+      if (!departure?.datetime) return [];
+      const tomorrow = kstDate(new Date(now.getTime() + 24 * HOUR).toISOString());
+      if (kstDate(departure.datetime) !== tomorrow) return [];
+      const code = departure.airport ?? "";
+      const airport = getMessages(locale).airports[code as keyof Messages["airports"]] ?? code;
+      return [{ target_id: "departure", values: { time: formatTimeKst(departure.datetime, locale), airport } }];
     },
   },
 ];

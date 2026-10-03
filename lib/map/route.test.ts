@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ItineraryItem } from "../board/types";
 import { CITIES } from "./cities";
-import { cityIdOf, localCityName, routeLegs } from "./route";
+import { cityIdOf, legNeedsBooking, localCityName, routeLegs } from "./route";
 import { LANGUAGES } from "../i18n/languages";
 
 const item = (city: string, status: "none" | "booked_by_user" = "none"): ItineraryItem => ({ date: "2026-10-20", city, transport: { status } });
@@ -40,5 +40,13 @@ describe("map route", () => {
   it("shows map cities in the user's language and leaves other cities as typed", () => {
     expect(localCityName("Gyeongju", "ja")).toBe(CITIES.find((city) => city.id === "gyeongju")?.name.ja);
     expect(localCityName("Daejeon", "ja")).toBe("Daejeon");
+  });
+
+  it("treats subway-only legs as needing no booking, but not trains or unknown routes", () => {
+    expect(legNeedsBooking("Seoul", "Suwon")).toBe(false);
+    expect(legNeedsBooking("Seoul", "Gyeongju")).toBe(true);
+    expect(legNeedsBooking("Andong", "Jeju")).toBe(true);
+    const legs = routeLegs([item("Seoul"), item("Suwon"), item("Gyeongju")]);
+    expect(legs.map((leg) => leg.arranged)).toEqual([true, false]);
   });
 });

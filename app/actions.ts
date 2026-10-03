@@ -20,6 +20,9 @@ import { getRequest, TransitionError } from "@/lib/requests/state";
 import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
 import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
+import { estimateFare, farePeriod, type FareEstimate, type FarePeriod } from "@/lib/taxi/fare";
+import { drivingRoute, geocode, haversine, inSeoul } from "@/lib/taxi/lookup";
+import { kstMinutesOfDay } from "@/lib/time";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -205,5 +208,40 @@ export async function followUpAction(requestId: string, kind: FollowUpKind): Pro
     throw error;
   } finally {
     revalidatePath("/");
+  }
+}
+
+// 택시비 계산기: 출발지·목적지를 찾아 도로 거리를 구하고 서울 미터기 요금으로 적정 범위를 낸다.
+// 장소 글자와 좌표는 OpenStreetMap 서비스로만 보내고 보드에는 저장하지 않는다.
+export type TaxiPlaceInput = { text: string } | { lat: number; lng: number; label: string };
+export type TaxiResult =
+  | { ok: true; from: string; to: string; km: number; approx: boolean; outsideSeoul: boolean; estimate: FareEstimate }
+  | { ok: false; error: "fromNotFound" | "toNotFound" | "same" | "tooFar" | "failed" };
+
+export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: TaxiPlaceInput; period: FarePeriod | "now"; language: string }): Promise<TaxiResult> {
+  const language = isLanguageCode(input.language) ? input.language : "en";
+  const resolve = async (place: TaxiPlaceInput) =>
+    "text" in place ? (place.text.trim() ? await geocode(place.text.slice(0, 120), language) : null) : place;
+  try {
+    const from = await resolve(input.from);
+    if (!from) return { ok: false, error: "fromNotFound" };
+    const to = await resolve(input.to);
+    if (!to) return { ok: false, error: "toNotFound" };
+    if (haversine(from, to) < 150) return { ok: false, error: "same" };
+    const route = await drivingRoute(from, to);
+    if (route.meters > 150_000) return { ok: false, error: "tooFar" };
+    const period = input.period === "now" ? farePeriod(kstMinutesOfDay(new Date().toISOString())) : input.period;
+    const outsideSeoul = inSeoul(from) !== inSeoul(to);
+    return {
+      ok: true,
+      from: from.label,
+      to: to.label,
+      km: Math.round(route.meters / 100) / 10,
+      approx: route.approx,
+      outsideSeoul,
+      estimate: estimateFare(route.meters, route.seconds, period, { outsideSeoul }),
+    };
+  } catch {
+    return { ok: false, error: "failed" };
   }
 }

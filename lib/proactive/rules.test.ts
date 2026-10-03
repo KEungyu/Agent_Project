@@ -51,6 +51,7 @@ const FIXTURES: Record<string, () => { db: Db; board: TripBoard }> = {
       addStay(db, id, { name: "Hotel D", check_out_date: "2026-10-25", expected_arrival: "2026-10-20T15:00+09:00" }, "user");
     }),
   r5: () => board((db, id) => updateBoard(db, id, { arrival: { datetime: "2026-10-20T00:40+09:00", airport: "ICN" } })),
+  r6: () => board((db, id) => updateBoard(db, id, { departure: { datetime: "2026-10-20T18:30+09:00", airport: "GMP" } })),
 };
 
 describe("먼저 챙겨주기 규칙", () => {
@@ -94,5 +95,26 @@ describe("먼저 챙겨주기 규칙", () => {
     const [alert] = evaluateAlerts(getBoard(db, b.id)!, NOW);
     expect(alert.message).toContain("도착하네요");
     expect(alert.action).toContain("ICN");
+  });
+
+  it("출국 전날에만 출국 알림을 띄우고, 공항 이름과 시각을 이용자 언어로 넣는다", () => {
+    const { board: b } = FIXTURES.r6();
+    const [alert] = evaluateAlerts(b, NOW);
+    expect(alert.message).toContain("18:30");
+    expect(alert.message).toContain("Gimpo");
+    // 출국 당일에는 전날 알림이 아니다
+    expect(evaluateAlerts(b, new Date("2026-10-20T09:00:00+09:00")).map((a) => a.rule_id)).not.toContain("r6");
+  });
+
+  it("지하철로 가는 구간은 교통편 없음 알림을 띄우지 않는다", () => {
+    const { board: b } = board((db, id) =>
+      updateBoard(db, id, {
+        itinerary: [
+          { date: "2026-10-19", city: "Seoul", transport: { status: "none" } },
+          { date: "2026-10-20", city: "Suwon", transport: { status: "none" } },
+        ],
+      }),
+    );
+    expect(evaluateAlerts(b, NOW).map((alert) => alert.rule_id)).not.toContain("r2");
   });
 });

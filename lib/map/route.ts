@@ -1,4 +1,5 @@
 import type { ItineraryItem } from "../board/types";
+import { bookingNeeded } from "../transport/routes";
 import { CITIES } from "./cities";
 
 // 이용자가 입력한 도시 이름(로마자·한글)을 지도 거점 id로 바꾼다
@@ -11,6 +12,11 @@ export function cityIdOf(name: string): string | undefined {
 export function localCityName(name: string, language: string): string {
   const city = CITIES.find((candidate) => candidate.id === cityIdOf(name));
   return city?.name[language as keyof typeof city.name] ?? name;
+}
+
+// 두 도시(입력한 이름) 사이에 예매가 필요한지. 지하철만으로 가는 구간은 예매할 것이 없다.
+export function legNeedsBooking(fromCity: string, toCity: string): boolean {
+  return bookingNeeded(cityIdOf(fromCity), cityIdOf(toCity));
 }
 
 export type RouteLeg = { from: string; to: string; arranged: boolean };
@@ -26,7 +32,7 @@ export function routeLegs(itinerary: ItineraryItem[], arrivalAirport?: string): 
     if (!id || id === previous) continue;
     if (previous) {
       const airportLeg = fromAirport && legs.length === 0;
-      legs.push({ from: previous, to: id, arranged: airportLeg || item.transport.status !== "none" });
+      legs.push({ from: previous, to: id, arranged: airportLeg || item.transport.status !== "none" || !bookingNeeded(previous, id) });
     }
     previous = id;
   }

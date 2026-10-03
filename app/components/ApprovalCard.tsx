@@ -5,6 +5,8 @@ import { approveAndSendAction, requestChangesAction, retranslateAction } from "@
 import type { Draft } from "@/lib/board/types";
 import { getLanguage, type Language } from "@/lib/i18n/languages";
 import { fmt, type Messages } from "@/lib/i18n/messages";
+import { CopyButton } from "./CopyButton";
+import { EnvelopeIcon } from "./icons";
 import { showToast } from "./Toaster";
 
 // 역명판처럼 한국어 원문을 크게, 이용자 언어 역번역을 그 아래에 둔다.
@@ -75,6 +77,21 @@ export function ApprovalCard({
       <div className="station-sign-ko" lang="ko">
         <p className="station-sign-subject">{draft.subject_ko}</p>
         <p className="station-sign-body">{draft.body_ko}</p>
+        {/* 마중이가 쓴 메일을 바로 복사하거나, 내 메일 앱에서 직접 보낼 수 있게 한다 */}
+        <div className="copy-row" lang={language.code}>
+          <CopyButton text={`${draft.subject_ko}\n\n${draft.body_ko}`} label={m.copyKorean} copied={m.copied} />
+          {to && (
+            <a
+              className="copy-button"
+              href={`mailto:${to}?subject=${encodeURIComponent(draft.subject_ko)}&body=${encodeURIComponent(draft.body_ko)}`}
+            >
+              <span className="copy-icon">
+                <EnvelopeIcon />
+              </span>
+              {m.openMail}
+            </a>
+          )}
+        </div>
       </div>
       <div className="station-sign-translation">
         <div className="station-sign-label-row">
@@ -89,6 +106,9 @@ export function ApprovalCard({
           )}
         </div>
         <p className="station-sign-body">{draft.back_translation}</p>
+        <div className="copy-row">
+          <CopyButton text={draft.back_translation} label={m.copyTranslation} copied={m.copied} />
+        </div>
       </div>
 
       {editing ? (
