@@ -60,6 +60,8 @@ async function turn(s: Session, text: string, now: string) {
   s.messages = r.messages;
   if (r.reply && r.messages.at(-1)?.role === "user") s.messages.push({ role: "assistant", content: [{ type: "text", text: r.reply }] });
   say(`  · 도구: ${r.toolCalls.map((c) => `${c.name}${c.ok ? "" : "(오류)"}`).join(", ") || "없음"}`);
+  // 실패한 도구의 오류 내용을 남겨, LLM 공급자 지연인지 앱 규칙에 걸린 것인지 구분한다
+  for (const c of r.toolCalls.filter((call) => !call.ok)) say(`  · 오류(${c.name}): ${JSON.stringify(c.output).slice(0, 240)}`);
   say(`  · 답: ${r.reply.replace(/\n/g, " ⏎ ")}`);
   return r;
 }
@@ -109,8 +111,13 @@ const SCENARIOS: Record<string, () => Promise<void>> = {
       `T04-${code}`,
       async () => {
         start(`T04-${code}`, `좁은 수정 (${code}, 요청 카드 '고쳐 주세요' 경로)`);
-        const { s } = await firstDraft(code);
-        const before = board(s).requests[0].draft!;
+        const { s, r: first } = await firstDraft(code);
+        // 첫 초안이 없으면(LLM 공급자 지연 등) 이 검사를 진행할 수 없다: 이유를 남기고 멈춘다
+        const before = board(s).requests[0]?.draft;
+        if (!before) {
+          check("첫 초안 생성", false, `초안 없음 — 도구: ${first.toolCalls.map((c) => `${c.name}${c.ok ? "" : "(오류)"}`).join(", ")}`);
+          return;
+        }
         const message = fmt(getMessages(code).approval.changeMessage, { type: typeLabel(code), where: REVIEW_STAY.name, note: NARROW_EDITS[code] });
         check("채팅 메시지에 요청 ID·내부 지시문 없음", !LEAK.test(message));
         const r = await turn(s, message, FIXED_NOW.beforeTrip);

@@ -390,14 +390,22 @@ function OfficialLinks({ m }: { m: M }) {
 
 const STATUS_KEY = { unconfigured: "unconfigured", permission: "permission", timeout: "timeout", error: "error", empty: "empty", too_close: "tooClose", out_of_area: "outOfArea" } as const;
 
-// 교통 데이터의 한국어 역 이름을 노선도 자료의 영문 이름과 함께 보여 준다 (무료 요금제는 국문만 준다)
+// 교통 데이터의 한국어 역·노선 이름을 노선도 자료의 영문 이름과 함께 보여 준다 (무료 요금제는 국문만 준다)
 function stationText(name: string, language: string) {
   if (language === "ko") return name;
   const found = findStations(name);
   return found.length === 1 ? stationLabel(found[0], language) : name;
 }
+const lineKey = (name: string) => name.replace(/^수도권\s*/, "").replace(/[\s·]/g, "");
+function lineText(name: string, language: string) {
+  if (language === "ko") return name;
+  const line = SUBWAY.lines.find((candidate) => lineKey(candidate.ko) === lineKey(name) || lineKey(candidate.ko) === `${lineKey(name)}선`);
+  return line ? `${line.en} · ${line.ko}` : name;
+}
+const clockTime = (iso: string, language: string) =>
+  new Date(iso).toLocaleTimeString(language, { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
 
-function LastTrain({ check, m }: { check: LastTrainCheck; m: M }) {
+function LastTrain({ check, language, m }: { check: LastTrainCheck; language: string; m: M }) {
   const day = check.dayType === "weekday" ? m.dayWeekday : check.dayType === "saturday" ? m.daySaturday : m.dayHoliday;
   return (
     <div className={`last-train is-${check.status}`} role="status">
@@ -406,8 +414,8 @@ function LastTrain({ check, m }: { check: LastTrainCheck; m: M }) {
         {check.legs.map((leg, i) => (
           <li key={i}>
             {fmt(leg.status === "missed" ? m.lastLegMissed : leg.status === "ok" ? m.lastLeg : m.lastLegUnknown, {
-              station: leg.from,
-              line: leg.line,
+              station: stationText(leg.from, language),
+              line: lineText(leg.line, language),
               at: leg.reachAt,
               last: leg.last ?? "",
             })}
@@ -448,13 +456,13 @@ function OnlineResult({ result, language, m }: { result: OnlinePaths; language: 
             </p>
             <ol className="transit-path-legs">
               {path.legs.map((leg, j) =>
-                leg.kind === "walk" ? (
+                leg.kind === "walk" && leg.meters === 0 ? null : leg.kind === "walk" ? (
                   <li key={j} className="is-walk">
                     {fmt(m.walk, { n: leg.meters })}
                   </li>
                 ) : (
                   <li key={j}>
-                    <strong>{leg.name}</strong> {leg.kind === "subway" ? stationText(leg.from, language) : leg.from} →{" "}
+                    <strong>{leg.kind === "subway" ? lineText(leg.name, language) : leg.name}</strong> {leg.kind === "subway" ? stationText(leg.from, language) : leg.from} →{" "}
                     {leg.kind === "subway" ? stationText(leg.to, language) : leg.to} ({fmt(m.stops, { n: leg.stops })}
                     {leg.way ? ` · ${leg.way}` : ""})
                     {leg.exitIn && <span className="ag-note"> {fmt(m.exitIn, { n: leg.exitIn })}</span>}
@@ -463,11 +471,11 @@ function OnlineResult({ result, language, m }: { result: OnlinePaths; language: 
                 ),
               )}
             </ol>
-            {path.lastTrain && <LastTrain check={path.lastTrain} m={m} />}
+            {path.lastTrain && <LastTrain check={path.lastTrain} language={language} m={m} />}
           </li>
         ))}
       </ul>
-      {result.fetchedAt && <p className="ag-note">{fmt(m.checkedAt, { time: new Date(result.fetchedAt).toLocaleTimeString() })}</p>}
+      {result.fetchedAt && <p className="ag-note">{fmt(m.checkedAt, { time: clockTime(result.fetchedAt, language) })}</p>}
       <OfficialLinks m={m} />
     </>
   );
@@ -735,7 +743,8 @@ function BusPanel({ language, m }: { language: string; m: M }) {
       {lanes?.status === "ok" && lanes.data && (
         <div className="transit-choices" role="group" aria-label={m.busPick}>
           <p className="ag-note">{m.busPick}</p>
-          {lanes.data.map((lane) => (
+          {/* 같은 번호가 여러 도시에 있으면 서울 노선을 먼저 보여 준다 (지원 범위가 서울·수도권이라서) */}
+          {[...lanes.data].sort((a, b) => Number(b.city === "서울") - Number(a.city === "서울")).map((lane) => (
             <button key={lane.busID} type="button" className="chip" onClick={() => open(lane.busID)}>
               <strong>{lane.busNo}</strong> {lane.from} ↔ {lane.to} <span className="transit-lines">{lane.city}</span>
             </button>
@@ -786,7 +795,7 @@ function BusPanel({ language, m }: { language: string; m: M }) {
               );
             })}
           </ol>
-          {detail?.fetchedAt && <p className="ag-note">{fmt(m.checkedAt, { time: new Date(detail.fetchedAt).toLocaleTimeString() })}</p>}
+          {detail?.fetchedAt && <p className="ag-note">{fmt(m.checkedAt, { time: clockTime(detail.fetchedAt, language) })}</p>}
         </section>
       )}
     </div>

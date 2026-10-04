@@ -27,7 +27,7 @@ export type LlmClient = {
 
 export class MissingApiKeyError extends Error {
   constructor(keyName = "ANTHROPIC_API_KEY 또는 GEMINI_API_KEY") {
-    super(`${keyName}가 설정되지 않았습니다. .env.example을 .env로 복사한 뒤 값을 채우세요.`);
+    super(`${keyName}가 설정되지 않았습니다. 프로젝트 폴더의 .env에 ${keyName}=값 을 넣으세요 (README의 키 이름 표 참고).`);
     this.name = "MissingApiKeyError";
   }
 }

@@ -1,6 +1,7 @@
 // 사용법: npm run eval:replies
 // 가상 회신 20개를 실제 Claude로 분류해 정확도를 출력한다 (BACKLOG M10 완료 기준: 85% 이상).
 import Anthropic from "@anthropic-ai/sdk";
+import { GeminiApiError } from "../lib/agent/gemini";
 import { MissingApiKeyError } from "../lib/agent/llm";
 import { createLlmClient } from "../lib/agent/provider";
 import { interpretReply } from "../lib/requests/replies";
@@ -31,6 +32,7 @@ async function main() {
 
   let correct = 0;
   let flagged = 0;
+  let skipped = 0;
   // REVIEW_ONLY=1 이면 R01~R08만 다시 돌린다
   for (const [i, sample] of (process.env.REVIEW_ONLY ? [] : LATE_CHECKIN_REPLIES).entries()) {
     try {
@@ -42,15 +44,20 @@ async function main() {
         `${ok ? "✓" : "✗"} ${String(i + 1).padStart(2)} 정답 ${sample.label.padEnd(14)} 예측 ${result.class.padEnd(14)} 신뢰도 ${result.confidence.toFixed(2)}${result.needs_user_check ? " (이용자 확인)" : ""}`,
       );
     } catch (error) {
-      if (error instanceof Anthropic.APIError) {
-        console.error(`Claude API 오류 ${error.status}: ${error.message}`);
-        process.exit(1);
+      // 공급자 오류(지연·사용 한도)는 판정하지 않고 미실행으로 센다
+      if (error instanceof Anthropic.APIError || error instanceof GeminiApiError) {
+        skipped++;
+        console.log(`- ${String(i + 1).padStart(2)} 미실행 (LLM API 오류 ${error.status})`);
+        continue;
       }
       throw error;
     }
   }
-  const accuracy = process.env.REVIEW_ONLY ? 1 : correct / LATE_CHECKIN_REPLIES.length;
-  console.log(`\n정확도 ${correct}/${LATE_CHECKIN_REPLIES.length} = ${(accuracy * 100).toFixed(0)}% (목표 85%), 이용자 확인으로 넘어간 회신 ${flagged}개`);
+  const ran = LATE_CHECKIN_REPLIES.length - skipped;
+  const accuracy = process.env.REVIEW_ONLY ? 1 : ran ? correct / ran : 0;
+  console.log(
+    `\n정확도 ${correct}/${ran} = ${(accuracy * 100).toFixed(0)}% (목표 85%), 이용자 확인으로 넘어간 회신 ${flagged}개${skipped ? `, 미실행 ${skipped}개` : ""}`,
+  );
 
   // R01~R08: 요청한 날짜·시각과 함께 해석한다. 모호한 회신(R05~R08)은 이용자 확인으로 넘어가야 통과다.
   // 모델 출력이 실행마다 달라질 수 있어 RUNS번 반복하고 실행별 결과를 모두 남긴다 (기본 1번)
@@ -62,7 +69,7 @@ async function main() {
     `- 코드: ${info.commit} · Node ${info.node}`,
     `- LLM: ${info.provider} · ${info.model}`,
     `- 요청 사실: 체크인 ${REVIEW_FACTS.check_in_date}, 호텔 도착 ${REVIEW_FACTS.expected_arrival} (가상 예약 ${REVIEW_FACTS.booking_ref})`,
-    `- 기존 20개: ${process.env.REVIEW_ONLY ? "실행 안 함 (REVIEW_ONLY)" : `분류 ${correct}/${LATE_CHECKIN_REPLIES.length}, 이용자 확인으로 넘어감 ${flagged}개`}`,
+    `- 기존 20개: ${process.env.REVIEW_ONLY ? "실행 안 함 (REVIEW_ONLY)" : `분류 ${correct}/${ran}, 이용자 확인으로 넘어감 ${flagged}개${skipped ? `, 미실행 ${skipped}개 (LLM API 오류)` : ""}`}`,
     `- R01~R08 반복: ${runs}회 · 시작 ${info.startedAt}`,
     "",
     "보드 완료: 자동 처리될 때의 요청 상태. 이용자 확인으로 넘어가면 회신 대기로 남는다. 늦은 체크인 체크리스트는 done일 때만 완료다.",
@@ -104,7 +111,8 @@ async function main() {
   const file = saveRunLog("replies", log);
   console.log(`\n기록: ${file}`);
   const allPass = REVIEW_REPLIES.every((sample) => (tally.get(sample.id) ?? 0) === runs);
-  process.exit(accuracy >= 0.85 && allPass ? 0 : 1);
+  // 미실행이 있으면 통과라고 하지 않는다
+  process.exit(accuracy >= 0.85 && allPass && skipped === 0 ? 0 : 1);
 }
 
 main();
