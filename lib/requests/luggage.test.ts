@@ -8,7 +8,8 @@ import { openDb } from "../db/client";
 import { createMockMailer } from "../mail/mailer";
 import { LUGGAGE_REPLIES } from "../../tests/fixtures/luggage-replies";
 import { loadRequestTypes } from "../request-types/loader";
-import { approveAndSend } from "./approval";
+import { getRequest } from "./state";
+import { approveAndSend, currentVersion } from "./approval";
 import { checkConditions } from "./conditions";
 import { addReply, applyInterpretation } from "./replies";
 
@@ -54,7 +55,7 @@ describe("짐 보관 요청 유형 (데이터만 추가)", () => {
     expect(request).toMatchObject({ type_id: "luggage_storage", status: "pending_approval", channel: "email" });
     expect(request.slots).toMatchObject(provided);
 
-    expect(approveAndSend(db, request.id, createMockMailer(`/tmp/majung-luggage-${Date.now()}`)).status).toBe("awaiting_reply");
+    expect((await approveAndSend(db, request.id, createMockMailer(`/tmp/majung-luggage-${Date.now()}`), currentVersion(db, getRequest(db, request.id)!)!)).status).toBe("awaiting_reply");
 
     const conditional = LUGGAGE_REPLIES.find((reply) => reply.label === "conditional")!;
     const reply = addReply(db, request.id, conditional.raw_ko);

@@ -38,3 +38,22 @@ describe("taxi fare", () => {
     expect(farePeriod(4 * 60)).toBe("day");
   });
 });
+
+describe("심야 할증 시간대 경계 (KST, 화면 문구와 같은 구분)", () => {
+  const at = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return farePeriod(h * 60 + m);
+  };
+  it.each([
+    ["21:59", "day"],
+    ["22:00", "late"],
+    ["22:59", "late"],
+    ["23:00", "midnight"],
+    ["01:59", "midnight"],
+    ["02:00", "late"],
+    ["03:59", "late"],
+    ["04:00", "day"],
+  ])("%s → %s", (time, period) => {
+    expect(at(time)).toBe(period);
+  });
+});

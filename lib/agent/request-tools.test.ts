@@ -221,6 +221,52 @@ describe("board_update 입력 검사", () => {
   });
 });
 
+describe("board_update — 기존 숙소를 새 숙소로 만들지 않기 (T07)", () => {
+  const run = async (input: object) => {
+    const { db, boardId } = setup();
+    const llm = scripted(reply([toolUse("t1", "board_update", input)], "tool_use"), reply([{ type: "text", text: "ok" }], "end_turn"));
+    const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId }, messages: [{ role: "user", content: "go" }], log: () => {} });
+    return { ok: result.toolCalls[0].ok, stays: getBoard(db, boardId)!.stays };
+  };
+
+  it("stay_id 없이 같은 이름으로 도착 시각만 넣으면 기존 숙소를 고친다", async () => {
+    const { db, boardId } = setup();
+    const name = getBoard(db, boardId)!.stays[0].name;
+    const { ok, stays } = await run({ source: "user", stay: { name: name.toUpperCase(), expected_arrival: "2026-10-20T03:00+09:00" } });
+    expect(ok).toBe(true);
+    expect(stays).toHaveLength(1);
+    expect(stays[0]).toMatchObject({ booking_ref: "BK123456", expected_arrival: "2026-10-20T03:00+09:00" });
+  });
+
+  it("숙소가 있는데 체크인 날짜 없는 다른 이름을 넣으면 거부하고 stay_id를 알려 준다", async () => {
+    const { ok, stays } = await run({ source: "user", stay: { name: "the hotel", expected_arrival: "2026-10-20T03:00+09:00" } });
+    expect(ok).toBe(false);
+    expect(stays).toHaveLength(1);
+  });
+
+  it("다른 숙소와 날짜가 겹치면 저장하지 않고 확인을 요구하며, 확인 뒤에는 저장한다 (B07)", async () => {
+    const { db, boardId } = setup();
+    const existing = getBoard(db, boardId)!.stays[0];
+    const overlapping = { name: "Overlap Stay", check_in_date: existing.check_in_date!, check_out_date: existing.check_out_date! };
+    const llm = scripted(
+      reply([toolUse("t1", "board_update", { source: "user", stay: overlapping })], "tool_use"),
+      reply([toolUse("t2", "board_update", { source: "user", stay: overlapping, confirm_overlap: true })], "tool_use"),
+      reply([{ type: "text", text: "ok" }], "end_turn"),
+    );
+    const result = await runAgent({ llm, tools: createTools(), ctx: { db, boardId }, messages: [{ role: "user", content: "go" }], log: () => {} });
+    expect(result.toolCalls[0].output).toMatchObject({ saved: false });
+    expect(JSON.stringify(result.toolCalls[0].output)).toContain(existing.name);
+    expect(result.toolCalls[1].output).toMatchObject({ saved: true });
+    expect(getBoard(db, boardId)!.stays).toHaveLength(2);
+  });
+
+  it("날짜가 있는 새 숙소는 추가한다", async () => {
+    const { ok, stays } = await run({ source: "user", stay: { name: "Busan Stay", check_in_date: "2026-10-22", check_out_date: "2026-10-24" } });
+    expect(ok).toBe(true);
+    expect(stays).toHaveLength(2);
+  });
+});
+
 describe("오늘에 묶은 지난 시각", () => {
   const now = new Date("2026-10-09T21:00:00+09:00");
   it("'오늘 새벽 2시'를 다음 날로 옮기려 하면 확인할 날짜를 돌려준다", () => {

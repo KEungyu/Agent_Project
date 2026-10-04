@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { recordEvent } from "../board/store";
 import type { Db } from "../db/client";
 import { getMessages } from "../i18n/messages";
+import { isExternalAction, type ExternalAction } from "../external/links";
 import { checkSafety } from "../safety/guard";
 import { getConversation, setConversation } from "./conversation";
 import { GeminiApiError } from "./gemini";
@@ -10,7 +11,7 @@ import { runAgent } from "./loop";
 import { createTools } from "./registry";
 
 export type TurnResult =
-  | { ok: true; reply: string; tools: { name: string; ok: boolean }[] }
+  | { ok: true; reply: string; tools: { name: string; ok: boolean }[]; actions?: ExternalAction[] }
   | { ok: true; safety: "emergency" | "out_of_scope" }
   | { ok: false; error: string };
 
@@ -52,7 +53,12 @@ export async function runTurn({
         ? [...result.messages, { role: "assistant" as const, content: [{ type: "text" as const, text: result.reply }] }]
         : result.messages;
     setConversation(boardId, messages);
-    return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })) };
+    // 외부 연결 행동(Booking.com·Catchtable)은 검증한 것만 화면에 넘긴다
+    const actions = result.toolCalls.flatMap((call) => {
+      const action = call.ok ? (call.output as { action?: unknown } | null)?.action : undefined;
+      return isExternalAction(action) ? [action] : [];
+    });
+    return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })), ...(actions.length ? { actions } : {}) };
   } catch (error) {
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) {

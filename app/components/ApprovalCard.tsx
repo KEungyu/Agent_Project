@@ -19,6 +19,7 @@ export function ApprovalCard({
   facts,
   m,
   language,
+  realMail = false,
 }: {
   requestId: string;
   draft: Draft;
@@ -26,6 +27,7 @@ export function ApprovalCard({
   facts: Fact[];
   m: Messages["approval"];
   language: Language;
+  realMail?: boolean;
 }) {
   // 역번역이 지금 화면 언어와 다르면 어떤 언어인지 밝히고 다시 번역할 수 있게 한다
   const translatedIn = getLanguage(draft.back_translation_language ?? "en");
@@ -42,7 +44,8 @@ export function ApprovalCard({
     startTransition(async () => {
       const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const [result] = await Promise.all([
-        approveAndSendAction(requestId),
+        // 이 카드가 보여 준 원문 버전과 수신처를 함께 보낸다. 서버의 최신 값과 다르면 처리하지 않고 최신 내용으로 다시 그린다
+        approveAndSendAction(requestId, { hash: draft.hash, to: to ?? "" }),
         new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 520)),
       ]);
       if (result.ok) {
@@ -162,10 +165,10 @@ export function ApprovalCard({
               {m.requestChanges}
             </button>
             <p className="approve-note">{m.notSent}</p>
-            <p className="approve-demo">{m.demoNote}</p>
+            <p className="approve-demo">{realMail ? fmt(m.realNote, { to: to ?? "" }) : m.demoNote}</p>
           </div>
           <button type="button" className="button-approve" onClick={approve} disabled={pending}>
-            {pending ? m.working : m.approve}
+            {pending ? m.working : realMail ? m.approveReal : m.approve}
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>

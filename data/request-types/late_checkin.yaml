@@ -80,7 +80,7 @@ channels:
   - { type: phone, requires: [stay_phone] }      # stays[target].phone
 channel_rule:
   deadline_slot: expected_arrival
-  phone_if_hours_left_lt: 6
+  phone_within_hours: 6
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명, 예약번호, 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법]

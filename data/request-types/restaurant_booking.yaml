@@ -1,0 +1,82 @@
+id: restaurant_booking
+version: 1
+label:
+  ko: 식당 예약 문의
+  en: Restaurant reservation request
+  ja: レストランの予約問い合わせ
+  zh-CN: 餐厅预订咨询
+  zh-TW: 餐廳訂位詢問
+  vi: Hỏi đặt bàn nhà hàng
+  th: สอบถามการจองร้านอาหาร
+  id: Permintaan reservasi restoran
+  es: Solicitud de reserva en restaurante
+journey_stage: during_trip
+execution_level: 대행
+# 식당은 보드의 숙소가 아니다: 이름·지점·연락처는 이용자가 알려 준(확인된) 값만 요청에 담는다
+target: place
+required_slots:
+  - key: place_name
+    ask:
+      en: "Which restaurant, and which branch?"
+      ja: "どのお店（どの店舗）ですか？"
+      zh-CN: "哪家餐厅？哪个分店？"
+      zh-TW: "哪家餐廳？哪間分店？"
+      vi: "Nhà hàng nào, chi nhánh nào?"
+      th: "ร้านไหน สาขาไหน?"
+      id: "Restoran apa, cabang yang mana?"
+      es: "¿Qué restaurante y qué local?"
+      ko: "어느 식당, 어느 지점이에요?"
+  - key: reservation_at
+    ask:
+      en: "What date and time (Korea time)?"
+      ja: "日付と時間（韓国時間）を教えてください。"
+      zh-CN: "哪天几点（韩国时间）？"
+      zh-TW: "哪天幾點（韓國時間）？"
+      vi: "Ngày và giờ nào (giờ Hàn Quốc)?"
+      th: "วันไหน กี่โมง (เวลาเกาหลี)?"
+      id: "Tanggal dan jam berapa (waktu Korea)?"
+      es: "¿Qué día y a qué hora (hora de Corea)?"
+      ko: "며칠 몇 시(한국 시각)예요?"
+  - key: party_size
+    ask:
+      en: "How many people?"
+      ja: "何名ですか？"
+      zh-CN: "几位？"
+      zh-TW: "幾位？"
+      vi: "Bao nhiêu người?"
+      th: "กี่คน?"
+      id: "Berapa orang?"
+      es: "¿Cuántas personas?"
+      ko: "몇 명이에요?"
+  - key: guest_name
+    ask:
+      en: "What name should the reservation be under?"
+      ja: "予約はどのお名前でしますか？"
+      zh-CN: "用什么名字预订？"
+      zh-TW: "用什麼名字訂位？"
+      vi: "Đặt bàn dưới tên ai?"
+      th: "จองในชื่อใคร?"
+      id: "Reservasi atas nama siapa?"
+      es: "¿A nombre de quién hacemos la reserva?"
+      ko: "누구 이름으로 예약할까요?"
+optional_slots: [place_branch, place_email, place_phone, request_detail]
+channels:
+  - { type: email, requires: [place_email] }
+  - { type: phone, requires: [place_phone] }
+channel_rule:
+  deadline_slot: reservation_at
+  # 식당은 호텔 늦은 체크인의 6시간 기준을 쓰지 않는다: 예약 시각까지 3시간 이내면 전화를 권한다
+  phone_within_hours: 3
+message_guidelines:
+  tone: 정중한 합쇼체
+  must_include: [예약자명, 예약 날짜와 시각, 인원, 예약 가능 여부 회신 부탁]
+  must_not_include: [여권번호, 카드번호, 생년월일]
+  max_chars: 500
+reply_hints:
+  conditional: [예약금·보증금, 노쇼 위약금, 이용 시간 제한, 다른 시각 가능]
+  declined: [만석, 해당 시간 예약 불가, 예약을 받지 않음(워크인만)]
+  info_requested: [연락처, 정확한 인원, 메뉴 선택]
+follow_ups:
+  on_conditional: 보증금·시간 조건을 이용자 언어로 설명하고 수락 여부를 묻는다
+  on_info_requested: 요구 정보를 이용자에게 묻고 후속 요청문을 만든다
+  on_declined: [ask_user_for_alternative]

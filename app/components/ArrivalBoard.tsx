@@ -71,7 +71,7 @@ function RowLabel({ ko, text }: { ko: string; text: string }) {
   );
 }
 
-export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messages; locale: string }) {
+export function ArrivalBoard({ model, m, locale, realMail = false }: { model: HeroModel; m: Messages; locale: string; realMail?: boolean }) {
   const now = useNow(30_000);
   const welcome = WELCOME[useCycle(WELCOME.length, 3200)];
   const clock = now
@@ -160,7 +160,7 @@ export function ArrivalBoard({ model, m, locale }: { model: HeroModel; m: Messag
             </li>
           ))}
         </ul>
-        <span className="board-demo">{m.hero.demoNote}</span>
+        {!realMail && <span className="board-demo">{m.hero.demoNote}</span>}
       </div>
     </section>
   );

@@ -23,12 +23,14 @@ export function RequestList({
   latestReplies,
   m,
   language,
+  realMail = false,
 }: {
   requests: Request[];
   types: RequestType[];
   stays: Stay[];
   latestReplies: Record<string, Reply | null>;
   m: Messages;
+  realMail?: boolean;
   language: string;
 }) {
   const now = new Date();
@@ -51,7 +53,7 @@ export function RequestList({
             const callReason =
               request.channel === "phone" && request.status === "draft"
                 ? "noEmail"
-                : waiting && type && stay?.phone && decideChannel(type, stay, request.slots, now).reason === "deadline_soon"
+                : waiting && type && (request.slots.place_phone ?? stay?.phone) && decideChannel(type, stay, request.slots, now).reason === "deadline_soon"
                   ? "soon"
                   : null;
             return (
@@ -65,21 +67,32 @@ export function RequestList({
                       <span className="request-title-text">{type.label[language]}</span>
                     )}
                   </h3>
-                  {stay && <span className="request-target">{stay.name}</span>}
+                  {(stay || request.slots.place_name) && (
+                    <span className="request-target">
+                      {stay?.name ?? [request.slots.place_name, request.slots.place_branch].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
                   {request.round > 1 && <span className="request-round">{fmt(m.requests.round, { n: request.round })}</span>}
                 </div>
                 <RouteStrip status={request.status} line={line} m={m} />
                 {callReason && (
-                  <CallPanel requestId={request.id} phone={stay?.phone} where={stay?.name ?? m.agent.theBusiness} reason={callReason} m={m.requests.call} />
+                  <CallPanel
+                    requestId={request.id}
+                    phone={request.slots.place_phone ?? stay?.phone}
+                    where={stay?.name ?? request.slots.place_name ?? m.agent.theBusiness}
+                    reason={callReason}
+                    m={m.requests.call}
+                  />
                 )}
                 {request.status === "pending_approval" && request.draft && (
                   <ApprovalCard
                     requestId={request.id}
                     draft={request.draft}
-                    to={stay?.email}
+                    to={request.slots.place_email ?? stay?.email}
                     facts={requestFacts(request.slots, language, m.approval)}
                     m={m.approval}
                     language={getLanguage(language)}
+                    realMail={realMail}
                   />
                 )}
                 {(request.status === "awaiting_reply" || latestReplies[request.id]) && (
@@ -89,6 +102,7 @@ export function RequestList({
                   <p className="request-sent">
                     {fmt(m.sent.sentTo, { to: request.sent.to, time: formatKst(request.sent.at, language) })}
                     {request.sent.mode === "mock" && <span className="demo-tag">{m.sent.demo}</span>}
+                    {request.sent.mode === "real" && <span className="demo-tag">{m.sent.accepted}</span>}
                   </p>
                 )}
               </li>

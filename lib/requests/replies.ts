@@ -13,8 +13,6 @@ import { getRequest, INTERPRETATION_MIN_CONFIDENCE, transition, TransitionError 
 // 회신 등록·해석·분류 (ARCHITECTURE §3 ingest_reply, interpret_reply).
 // MVP에서 회신은 시연 화면에서 붙여넣는다(가정 A3).
 
-export const REPLY_CLASSES: ReplyClass[] = ["done", "conditional", "declined", "info_requested"];
-
 const interpretationSchema = z.object({
   class: z.enum(["done", "conditional", "declined", "info_requested"]),
   conditions: z.array(z.string()),
@@ -24,6 +22,7 @@ const interpretationSchema = z.object({
   // 자동 처리를 막는 신호. 저장하지 않고, 하나라도 걸리면 이용자 확인으로 넘긴다
   answers_request: z.boolean(),
   matches_requested_time: z.boolean(),
+  refuses_requested_time: z.boolean(),
   contradictory: z.boolean(),
   uncertain: z.boolean(),
 });
@@ -58,7 +57,7 @@ function interpretSystem(type: RequestType, language: string): string {
 Classes:
 - done: the reply clearly accepts THIS request, for the requested date and time, with nothing more the traveler must do or agree to.
 - conditional: accepted only if the traveler meets a condition, pays an extra fee, or follows a step (e.g. ${(hints.conditional ?? []).join(", ")}; also "complete online check-in by 22:00", "call us before you arrive"). Keep every condition and its deadline.
-- declined: the request cannot be accepted (e.g. ${(hints.declined ?? []).join(", ")}). Keep the negation and any alternative they offer.
+- declined: the request cannot be accepted (e.g. ${(hints.declined ?? []).join(", ")}). Keep the negation. If they offer an alternative (another time or date), it is an alternative to consider, not an acceptance: mention it in the summary as an alternative the traveler could ask for.
 - info_requested: the business needs more information before deciding (e.g. ${(hints.info_requested ?? []).join(", ")}; also asking for the booking number or the guest's name). This is not an acceptance.
 
 Low confidence (below ${INTERPRETATION_MIN_CONFIDENCE}) — pick the closest class but set confidence to 0.4 or lower — when:
@@ -75,9 +74,24 @@ Return:
 - confidence: 0 to 1, how sure you are of the class.
 - answers_request: false if the reply only states a general policy or does not answer this request.
 - matches_requested_time: false if the date or time the reply decides about (allows or refuses) differs from the requested ones in the facts. An alternative the business proposes (for example "please arrive by 11 PM") does not count. true when it gives no date or time.
+- refuses_requested_time: true if the reply clearly says the requested date/time is not possible (for example "새벽 1시 체크인은 불가능합니다"), even when it then proposes another time.
 - contradictory: true if one part allows and another forbids.
 - uncertain: true if it hedges ("probably", "아마", "확답은 어렵다", "확인 후 연락").
 Use only what the reply says. Do not invent times, fees, or promises.`;
+}
+
+// 회신에 요청한 날짜가 아닌 날짜("10월 11일")가 있으면 모델의 판단과 상관없이 이용자 확인으로 넘긴다 (R06).
+// 요청 사실의 날짜는 슬롯 값(YYYY-MM-DD…, KST 표기)에서 월·일만 꺼낸다
+export function mentionsOtherDate(rawKo: string, facts?: Record<string, string>): boolean {
+  if (!facts) return false;
+  const asked = new Set(
+    Object.values(facts)
+      .map((value) => /^\d{4}-(\d{2})-(\d{2})/.exec(value))
+      .filter((match): match is RegExpExecArray => !!match)
+      .map((match) => `${Number(match[1])}-${Number(match[2])}`),
+  );
+  if (asked.size === 0) return false;
+  return [...rawKo.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)].some((match) => !asked.has(`${Number(match[1])}-${Number(match[2])}`));
 }
 
 // facts: 요청한 날짜·시각 등(한국어 표기 포함). 회신이 다른 날짜를 허락했는지 가려내는 데 쓴다
@@ -93,9 +107,13 @@ export async function interpretReply(
     prompt: [facts ? `What the traveler asked (facts, JSON): ${JSON.stringify(facts)}` : "", `Reply (Korean):\n${rawKo}`].filter(Boolean).join("\n\n"),
     schema: interpretationSchema,
   });
-  const { answers_request, matches_requested_time, contradictory, uncertain, ...interpretation } = result;
+  const { answers_request, matches_requested_time, refuses_requested_time, contradictory, uncertain, ...interpretation } = result;
+  // 요청한 시각을 분명히 거절하고 다른 시각을 제안한 답(R04)은 거절이다: 제안한 시각 때문에 생긴 불일치는 확인 사유가 아니다.
+  // 다른 날짜만 허락한 답(R06)처럼 요청을 거절하지 않은 불일치는 그대로 이용자 확인으로 넘긴다
+  const clearRefusal = result.class === "declined" && refuses_requested_time;
   // 운영시간 안내·다른 날짜·상충·확답 없음은 신뢰도와 상관없이 자동으로 수락·완료하지 않는다
-  const doubtful = !answers_request || !matches_requested_time || contradictory || uncertain;
+  const doubtful =
+    !answers_request || (!matches_requested_time && !clearRefusal) || contradictory || uncertain || mentionsOtherDate(rawKo, facts);
   return { ...interpretation, needs_user_check: doubtful || result.confidence < INTERPRETATION_MIN_CONFIDENCE };
 }
 

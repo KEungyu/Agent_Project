@@ -9,7 +9,6 @@ import { kstMinutesOfDay } from "./time";
 export type ChecklistKey = "flights" | "stay" | "cities" | "lateCheckin" | "rides";
 export type ChecklistItem = { key: ChecklistKey; done: boolean };
 export const CHECKLIST_TIPS = ["transfer", "sim", "tmoney", "money", "refund", "airport"] as const;
-export type ChecklistTip = (typeof CHECKLIST_TIPS)[number];
 
 const late = (value?: string) => Boolean(value) && isLateHour(kstMinutesOfDay(value!));
 

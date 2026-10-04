@@ -28,7 +28,8 @@ export const requestTypeSchema = z
     channels: z.array(channelSchema).min(1),
     channel_rule: z.object({
       deadline_slot: nonEmpty,
-      phone_if_hours_left_lt: z.number().positive(),
+      // 마감까지 이 시간 "이내"(포함)면 전화를 권한다. 예전 이름 phone_if_hours_left_lt("미만")에서 바꿨다 (2026-10-04 검토)
+      phone_within_hours: z.number().positive(),
     }),
     message_guidelines: z.object({
       tone: nonEmpty,

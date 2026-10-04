@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendChat } from "@/app/actions";
 import type { Messages } from "@/lib/i18n/messages";
+import type { ExternalAction } from "@/lib/external/links";
+import { ActionCard } from "./ActionCard";
+import { openExternalOnce, openedResults } from "@/lib/external/open";
 import { EnvelopeIcon } from "./icons";
 import { SignTitle } from "./SignTitle";
 
@@ -10,6 +13,7 @@ export type ChatLine = {
   role: "user" | "assistant" | "error" | "safety";
   text: string;
   tools?: { name: string; ok: boolean }[];
+  actions?: ExternalAction[];
   safety?: "emergency" | "out_of_scope";
 };
 
@@ -27,8 +31,20 @@ function focusDraft() {
 const draftedIn = (line: ChatLine) => line.tools?.some((tool) => tool.name === "draft_request" && tool.ok);
 
 // 안내 데스크: 마중에게 묻는 창.
-export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m: Messages["chat"]; safety: Messages["safety"] }) {
+export function Chat({
+  initialLines,
+  m,
+  safety,
+  actionsM,
+}: {
+  initialLines: ChatLine[];
+  m: Messages["chat"];
+  safety: Messages["safety"];
+  actionsM: Messages["actions"];
+}) {
   const [lines, setLines] = useState<ChatLine[]>(initialLines);
+  // 이번 화면에서 새 탭을 열었는지 (행동 id별). 기록에서 다시 그린 카드는 자동으로 열지 않는다
+  const [openedById, setOpenedById] = useState<Record<string, boolean>>({});
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLOListElement>(null);
@@ -38,6 +54,12 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [lines.length, pending]);
+
+  // 답을 받은 뒤 채팅이 서버 기록으로 다시 마운트되어도, 이번 세션에서 열었는지·막혔는지는 다시 보여 준다
+  useEffect(() => {
+    const saved = openedResults();
+    if (Object.keys(saved).length) setOpenedById((current) => ({ ...saved, ...current }));
+  }, []);
 
   // form action은 React가 전환(transition)으로 감싸 보낸 메시지가 응답이 올 때까지 안 보인다. onSubmit으로 바로 보이게 한다
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -62,8 +84,15 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
           ? { role: "error", text: result.error }
           : "safety" in result
             ? { role: "safety", text: "", safety: result.safety }
-            : { role: "assistant", text: result.reply, tools: result.tools },
+            : { role: "assistant", text: result.reply, tools: result.tools, actions: result.actions },
       ]);
+      // 식당 예약처럼 바로 열기로 한 외부 화면은 이 응답에서 한 번만 연다. 막히면 카드의 버튼을 쓰게 한다
+      if (result.ok && "actions" in result && result.actions) {
+        for (const action of result.actions) {
+          const opened = openExternalOnce(action);
+          if (opened !== undefined) setOpenedById((current) => ({ ...current, [action.id]: opened }));
+        }
+      }
     });
   }
 
@@ -104,6 +133,7 @@ export function Chat({ initialLines, m, safety }: { initialLines: ChatLine[]; m:
             <div className="say-body">
               {/* 도구 이름(board_get 등)은 내부 동작이라 화면에 보이지 않는다. 서버 로그([agent])에서 확인한다 */}
               <p>{line.text}</p>
+              {line.actions?.map((action) => <ActionCard key={action.id} action={action} opened={openedById[action.id]} m={actionsM} />)}
               {draftedIn(line) && (
                 <button type="button" className="say-draft" onClick={focusDraft}>
                   <EnvelopeIcon />

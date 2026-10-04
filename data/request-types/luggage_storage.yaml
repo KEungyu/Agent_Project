@@ -90,7 +90,7 @@ channels:
   - { type: phone, requires: [stay_phone] }
 channel_rule:
   deadline_slot: check_out_date
-  phone_if_hours_left_lt: 6
+  phone_within_hours: 6
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명, 예약번호, 체크아웃 날짜, 짐 개수, 찾아갈 시각, 보관 가능 여부와 요금]

@@ -5,12 +5,14 @@ import { getLanguage } from "../i18n/languages";
 import type { RequestType } from "../request-types/schema";
 
 // 채널 판단 (ARCHITECTURE §3 decide_channel, 가정 A4).
-// 마감까지 channel_rule.phone_if_hours_left_lt 시간 미만이면 전화, 이메일이 없으면 전화.
+// 마감까지 channel_rule.phone_within_hours 시간 "이내"(0 이상, 그 시간 이하)면 전화를 권하고, 이메일이 없으면 전화.
+// 시간 판정은 반올림하지 않은 실제 차이로 한다. hours_left는 화면 표시용 값이다.
 
 export type ChannelDecision = {
   channel: Channel | null;
   reason: "email_default" | "deadline_soon" | "no_email" | "no_phone_but_urgent" | "no_contact";
-  hours_left?: number;
+  hours_left?: number; // 표시용 (소수 첫째 자리)
+  deadline_passed?: boolean; // 마감(예: 도착 시각)이 이미 지났다 — 급한 것이 아니라 날짜·시각 확인이 필요하다
 };
 
 // 채널 요구 키("stay_email")를 실제 값으로 바꾼다: stay_ 접두어는 숙소 필드, 나머지는 조건 값
@@ -42,10 +44,13 @@ export function decideChannel(
   const email = available("email");
   const phone = available("phone");
   const deadline = deadlineOf(slots[type.channel_rule.deadline_slot]);
-  const hours_left = deadline ? Math.round(((deadline.getTime() - now.getTime()) / 3_600_000) * 10) / 10 : undefined;
-  // 이미 지난 마감은 급한 것이 아니라 낡은 값이다 (조건 확인에서 다시 묻는다)
-  const urgent = hours_left !== undefined && hours_left >= 0 && hours_left < type.channel_rule.phone_if_hours_left_lt;
-  const withHours = hours_left === undefined ? {} : { hours_left };
+  const msLeft = deadline ? deadline.getTime() - now.getTime() : undefined;
+  // 판정은 실제 시간 차이로: 0 <= 남은 시간 <= 기준 시간이면 임박. 이미 지난 마감은 임박이 아니라 낡은 값이다
+  const urgent = msLeft !== undefined && msLeft >= 0 && msLeft <= type.channel_rule.phone_within_hours * 3_600_000;
+  const passed = msLeft !== undefined && msLeft < 0;
+  // 표시용 값은 판정과 따로 만든다 (-0이 나오지 않게 0을 더한다)
+  const hours_left = msLeft === undefined ? undefined : Math.round(msLeft / 360_000) / 10 + 0;
+  const withHours = { ...(hours_left === undefined ? {} : { hours_left }), ...(passed ? { deadline_passed: true } : {}) };
 
   if (!email && !phone) return { channel: null, reason: "no_contact", ...withHours };
   if (!email) return { channel: "phone", reason: "no_email", ...withHours };

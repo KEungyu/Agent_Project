@@ -12,8 +12,8 @@ import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
 import { fmt, getMessages } from "@/lib/i18n/messages";
-import { getMailer } from "@/lib/mail/mailer";
-import { approveAndSend, ApprovalError, retranslateDraft } from "@/lib/requests/approval";
+import { getMailer, MailError } from "@/lib/mail/mailer";
+import { approveAndSend, ApprovalError, retranslateDraft, StaleApprovalError, type SeenVersion } from "@/lib/requests/approval";
 import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from "@/lib/requests/replies";
 import { prepareFollowUp } from "@/lib/requests/followup";
 import type { FollowUpKind } from "@/lib/requests/followup-kinds";
@@ -25,9 +25,14 @@ import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
 import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
 import { estimateFare, farePeriod, type FareEstimate, type FarePeriod } from "@/lib/taxi/fare";
-import { drivingRoute, geocode, haversine, inSeoul } from "@/lib/taxi/lookup";
+import { drivingRoute, geocode, geocodeCandidates, haversine, inSeoul } from "@/lib/taxi/lookup";
 import { wonRate, type WonRate } from "@/lib/currency/rates";
 import { kstMinutesOfDay } from "@/lib/time";
+import { busLaneDetail, searchBusLanes, searchTransitPaths, subwaySchedule, type BusLane, type BusLaneDetail, type OdsayResult, type TransitPath } from "@/lib/transit/odsay";
+import { checkLastTrains, type LastTrainCheck } from "@/lib/transit/lasttrain";
+import { icnFlightStatus, type FlightStatusResult } from "@/lib/airport/flights";
+import { getStation } from "@/lib/transit/subway";
+import { nearestStations } from "@/lib/transit/nearest";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -101,14 +106,18 @@ export async function sendChat(message: string): Promise<ChatResult> {
   return result;
 }
 
-export type ApprovalResult = { ok: true } | { ok: false; error: string };
+export type ApprovalResult = { ok: true } | { ok: false; error: string; stale?: boolean };
 
-export async function approveAndSendAction(requestId: string): Promise<ApprovalResult> {
+// seen: 이용자가 카드에서 본 원문 해시와 수신처. 서버의 최신 값과 다르면 처리하지 않고 최신 내용을 다시 보여준다
+export async function approveAndSendAction(requestId: string, seen: SeenVersion): Promise<ApprovalResult> {
   try {
-    approveAndSend(getDb(), requestId, getMailer());
+    await approveAndSend(getDb(), requestId, getMailer(), seen);
     return { ok: true };
   } catch (error) {
-    if (error instanceof ApprovalError || error instanceof TransitionError) return { ok: false, error: error.message };
+    if (error instanceof StaleApprovalError) {
+      return { ok: false, stale: true, error: getMessages(ensureBoard(getDb()).user_language).approval.stale };
+    }
+    if (error instanceof ApprovalError || error instanceof TransitionError || error instanceof MailError) return { ok: false, error: error.message };
     throw error;
   } finally {
     revalidatePath("/");
@@ -310,4 +319,66 @@ export async function callScriptAction(requestId: string): Promise<CallScriptRes
     console.error(`[call] script failed: ${error instanceof Error ? error.message : String(error)}`);
     return { ok: false, error: m.failed };
   }
+}
+
+// 대중교통 경로(시간·요금·버스 포함)는 ODsay로만 조회한다. 출발·도착 좌표는 노선도 데이터의 역 좌표만 쓴다(임의 좌표 없음).
+// ODSAY_API_KEY가 없으면 호출하지 않고 "unconfigured"를 돌려준다 — 화면은 역 연결 경로와 공식 대안을 보여 준다.
+// 경로마다 지하철 구간의 막차를 확인해 함께 돌려준다 (지금 출발 기준 추정, N04)
+export async function transitPathsAction(
+  fromId: string,
+  toId: string,
+  language: string,
+): Promise<OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>> {
+  const from = getStation(fromId);
+  const to = getStation(toId);
+  if (!from || !to || from.id === to.id) return { status: "empty" };
+  const result = await searchTransitPaths(from, to, isLanguageCode(language) ? language : "en");
+  if (result.status !== "ok" || !result.data) return result;
+  const now = new Date();
+  const data = await Promise.all(
+    result.data.map(async (path) => ({ ...path, lastTrain: await checkLastTrains(path, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode)) })),
+  );
+  return { ...result, data };
+}
+
+export async function busLanesAction(busNo: string, language: string): Promise<OdsayResult<BusLane[]>> {
+  const value = busNo.trim().slice(0, 12);
+  if (!/^[0-9A-Za-z가-힣-]+$/.test(value)) return { status: "empty" };
+  return searchBusLanes(value, isLanguageCode(language) ? language : "en");
+}
+
+export async function busLaneDetailAction(busID: number, language: string): Promise<OdsayResult<BusLaneDetail>> {
+  if (!Number.isInteger(busID) || busID <= 0) return { status: "empty" };
+  return busLaneDetail(busID, isLanguageCode(language) ? language : "en");
+}
+
+// 숙소·식당·입력한 장소에서 가까운 역 (N03). 좌표는 지도 검색(OpenStreetMap Nominatim) 결과만 쓰고, 같은 이름이 여럿이면 모두 돌려준다
+export type PlaceStations =
+  | { status: "ok"; candidates: { label: string; detail: string; stations: { id: string; meters: number }[] }[] }
+  | { status: "not_found" | "out_of_area" | "error" };
+export async function placeStationsAction(query: string, language: string): Promise<PlaceStations> {
+  const text = query.trim().slice(0, 120);
+  if (!text) return { status: "not_found" };
+  try {
+    const places = await geocodeCandidates(text, isLanguageCode(language) ? language : "en");
+    if (places.length === 0) return { status: "not_found" };
+    const candidates = places
+      .map((place) => ({
+        label: place.label,
+        detail: place.detail,
+        stations: nearestStations(place.lat, place.lng).map((near) => ({ id: near.station.id, meters: near.meters })),
+      }))
+      .filter((candidate) => candidate.stations.length > 0);
+    return candidates.length ? { status: "ok", candidates: candidates.slice(0, 4) } : { status: "out_of_area" };
+  } catch {
+    return { status: "error" };
+  }
+}
+
+// 인천공항 실시간 운항 현황 (공공데이터포털). 보드의 항공편 번호·날짜로만 조회하고, 운항 당일에만 부른다
+export async function flightStatusAction(direction: "arrival" | "departure", language: string): Promise<FlightStatusResult> {
+  const board = ensureBoard(getDb());
+  const flight = direction === "arrival" ? board.arrival : board.departure;
+  if (!flight?.flight_no || !flight.datetime || flight.airport !== "ICN") return { status: "empty" };
+  return icnFlightStatus(direction, flight.flight_no, flight.datetime, isLanguageCode(language) ? language : "en");
 }

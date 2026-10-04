@@ -3,7 +3,7 @@ import { fakeLlm } from "../agent/testing";
 import { seedDemoBoard } from "../board/demo";
 import { openDb } from "../db/client";
 import { loadRequestTypes } from "../request-types/loader";
-import { hashDraft } from "./drafting";
+import { approvalHash, hashDraft } from "./drafting";
 import { addReply, applyInterpretation, confirmReplyClass, getLatestReply, interpretReply } from "./replies";
 import { createRequest, getHistory, transition, TransitionError } from "./state";
 
@@ -17,7 +17,7 @@ function awaitingReply() {
   transition(db, request.id, "pending_approval", "agent", { patch: { draft } });
   transition(db, request.id, "sent", "system", {
     patch: {
-      approval: { approved_at: "2026-10-18T10:00:00Z", approved_by: "user", draft_hash: draft.hash },
+      approval: { approved_at: "2026-10-18T10:00:00Z", approved_by: "user", draft_hash: approvalHash(draft.subject_ko, draft.body_ko, "front@hotel-example.test") },
       sent: { at: "2026-10-18T10:00:05Z", message_id: "mock-1", mode: "mock", to: "front@hotel-example.test" },
     },
   });
@@ -79,12 +79,31 @@ describe("replies", () => {
 
   it("운영시간 안내·다른 날짜·상충·확답 없음은 신뢰도가 높아도 이용자 확인으로 넘긴다", async () => {
     const answer = (flags: object) =>
-      fakeLlm([], () => ({ class: "done", conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, matches_requested_time: true, contradictory: false, uncertain: false, ...flags }));
+      fakeLlm([], () => ({ class: "done", conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, matches_requested_time: true, refuses_requested_time: false, contradictory: false, uncertain: false, ...flags }));
     expect((await interpretReply(answer({}), type, "가능합니다", "en")).needs_user_check).toBe(false);
     for (const flags of [{ answers_request: false }, { matches_requested_time: false }, { contradictory: true }, { uncertain: true }]) {
       const result = await interpretReply(answer(flags), type, "…", "en");
       expect(result.needs_user_check).toBe(true);
       expect(result).not.toHaveProperty("contradictory");
     }
+  });
+
+  it("요청 시각을 거절하고 다른 시각을 제안한 답은 거절로 처리하고, 거절하지 않은 다른 날짜 허락은 확인으로 넘긴다", async () => {
+    const reply = (fields: object) =>
+      fakeLlm([], () => ({ conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, contradictory: false, uncertain: false, ...fields }));
+    const r04 = await interpretReply(reply({ class: "declined", matches_requested_time: false, refuses_requested_time: true }), type, "…", "en");
+    expect(r04).toMatchObject({ class: "declined", needs_user_check: false });
+    const r06 = await interpretReply(reply({ class: "declined", matches_requested_time: false, refuses_requested_time: false }), type, "…", "en");
+    expect(r06.needs_user_check).toBe(true);
+    const contradictory = await interpretReply(reply({ class: "declined", matches_requested_time: true, refuses_requested_time: true, contradictory: true }), type, "…", "en");
+    expect(contradictory.needs_user_check).toBe(true);
+  });
+
+  it("R06: 모델이 '거절'로 읽어도 회신에 요청하지 않은 날짜가 있으면 코드가 이용자 확인으로 넘긴다", async () => {
+    const llm = fakeLlm([], () => ({ class: "declined", conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, matches_requested_time: false, refuses_requested_time: true, contradictory: false, uncertain: false }));
+    const facts = { check_in_date: "2026-10-09", expected_arrival: "2026-10-10T01:00+09:00" };
+    expect((await interpretReply(llm, type, "10월 11일 새벽 1시 도착은 가능합니다.", "en", facts)).needs_user_check).toBe(true);
+    expect((await interpretReply(llm, type, "새벽 1시 체크인은 불가능합니다. 밤 11시까지 도착해 주세요.", "en", facts)).needs_user_check).toBe(false);
+    expect((await interpretReply(llm, type, "10월 10일 새벽 1시 체크인은 불가능합니다.", "en", facts)).needs_user_check).toBe(false);
   });
 });

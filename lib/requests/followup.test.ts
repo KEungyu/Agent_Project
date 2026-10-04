@@ -3,7 +3,7 @@ import { seedDemoBoard } from "../board/demo";
 import type { ReplyClass } from "../board/types";
 import { openDb } from "../db/client";
 import { getMessages } from "../i18n/messages";
-import { hashDraft } from "./drafting";
+import { approvalHash, hashDraft } from "./drafting";
 import { prepareFollowUp } from "./followup";
 import { addReply, applyInterpretation } from "./replies";
 import { createRequest, transition, TransitionError } from "./state";
@@ -19,7 +19,7 @@ function answered(cls: ReplyClass, extra: { conditions?: string[]; requested_inf
   transition(db, request.id, "pending_approval", "agent", { patch: { draft } });
   transition(db, request.id, "sent", "system", {
     patch: {
-      approval: { approved_at: "2026-10-18T10:00:00Z", approved_by: "user", draft_hash: draft.hash },
+      approval: { approved_at: "2026-10-18T10:00:00Z", approved_by: "user", draft_hash: approvalHash(draft.subject_ko, draft.body_ko, "front@hotel-example.test") },
       sent: { at: "2026-10-18T10:00:05Z", message_id: "mock-1", mode: "mock", to: "front@hotel-example.test" },
     },
   });

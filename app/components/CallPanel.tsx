@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { callScriptAction } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { PhoneScript } from "@/lib/requests/channel";
+import { koreanPhone } from "@/lib/phone";
 import { PhoneIcon } from "./icons";
 
 // 요청 카드 안의 전화 칸: 이메일이 없으면 처음부터 대본을 펼치고, 시간이 촉박하면 "전화가 더 빨라요"와 함께 버튼으로 연다.
@@ -48,9 +49,15 @@ export function CallPanel({
         <div className="call-head-text">
           <p className="call-title">{fmt(m.title, { where })}</p>
           <p className="call-note">{reason === "soon" ? m.soon : m.noEmail}</p>
+          {/* 이용자가 알려 준 번호만 보여 준다. 국제 표기는 한국 밖 번호로 걸 때 쓴다. 앱은 전화를 걸지 않는다 */}
+          {phone && (
+            <p className="call-number tabular">
+              {koreanPhone(phone) ? `${koreanPhone(phone)!.local} · ${koreanPhone(phone)!.international}` : phone}
+            </p>
+          )}
         </div>
         {phone && (
-          <a className="button call-now" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
+          <a className="button call-now" href={`tel:${koreanPhone(phone)?.tel ?? phone.replace(/[^\d+]/g, "")}`}>
             <PhoneIcon />
             {m.callNow}
           </a>
@@ -72,6 +79,7 @@ export function CallPanel({
           {error}
         </p>
       )}
+      <p className="call-language">{m.languageNote}</p>
       {script && (
         <div className="call-script">
           <p className="call-label">{m.lines}</p>

@@ -18,6 +18,9 @@ import { TaxiCalculator } from "./TaxiCalculator";
 import { TransportPlanner } from "./TransportPlanner";
 import { buildChecklist } from "@/lib/checklist";
 import { TripRoute } from "./TripRoute";
+import { AirportGuide } from "./AirportGuide";
+import { TransitGuide } from "./TransitGuide";
+import { overlappingStays } from "@/lib/board/overlap";
 import type { LanguageCode } from "@/lib/i18n/languages";
 
 type Props = { board: TripBoard | null; m: Messages; language: string };
@@ -45,6 +48,11 @@ export function TripPanel({ board, m, language }: Props) {
       </div>
 
       <div className="sign">
+        <SignTitle as="h3" ko="지하철·버스" text={m.transit.title} />
+        <TransitGuide language={language} m={m.transit} places={transitPlaces(board)} />
+      </div>
+
+      <div className="sign">
         <SignTitle as="h3" ko="항공편" text={b.flights} />
         <div className="flight-cards">
           <FlightCard
@@ -60,6 +68,17 @@ export function TripPanel({ board, m, language }: Props) {
         </div>
         <AirportTransfer board={board} m={m} language={language} />
         <AirportTips board={board} m={m} />
+        <AirportGuide
+          arrivalAirport={board?.arrival?.airport}
+          arrivalTerminal={board?.arrival?.terminal}
+          departureAirport={board?.departure?.airport}
+          arrivalFlightNo={board?.arrival?.flight_no}
+          departureFlightNo={board?.departure?.flight_no}
+          language={language as LanguageCode}
+          m={m.airportGuide}
+          airports={m.airports}
+          hotelUpdate={<HotelArrivalUpdate board={board} m={m} language={language} />}
+        />
         {/* 항공편이 비어 있으면 입력 폼을 펼쳐 둔다 */}
         <details className="editor" open={!board?.arrival && !board?.departure}>
           <summary className="button-ghost">
@@ -118,6 +137,12 @@ export function TripPanel({ board, m, language }: Props) {
 
       <div className="sign">
         <SignTitle as="h3" ko="숙소" text={b.stays} />
+        {/* 날짜가 겹치는 숙소 (중복 예약인지 일정이 바뀐 것인지는 앱이 단정하지 않는다) */}
+        {overlappingStays(board?.stays ?? []).map((overlap) => (
+          <p key={`${overlap.a}-${overlap.b}`} className="ag-warn" role="status">
+            {fmt(b.stayOverlap, { a: overlap.a, b: overlap.b, from: formatDate(overlap.from, language), to: formatDate(overlap.to, language) })}
+          </p>
+        ))}
         {board?.stays.length ? null : (
           <div className="stay-empty">
             <span className="stay-empty-icon" aria-hidden="true">
@@ -393,6 +418,45 @@ function AirportTips({ board, m }: { board: TripBoard | null; m: Messages }) {
         ))}
       </div>
     </section>
+  );
+}
+
+// 지하철 경로의 출발·도착 후보: 보드의 숙소와 식당 예약 문의에 적힌 식당(지점). 좌표는 지도 검색으로 확인한다
+function transitPlaces(board: TripBoard | null) {
+  const stays = (board?.stays ?? []).map((stay) => ({ label: stay.name, query: stay.address_ko ?? stay.name_ko ?? stay.name }));
+  const restaurants = (board?.requests ?? [])
+    .filter((request) => request.slots.place_name)
+    .map((request) => {
+      const name = [request.slots.place_name, request.slots.place_branch].filter(Boolean).join(" ");
+      return { label: name, query: name };
+    });
+  return [...stays, ...restaurants].filter((place, i, all) => all.findIndex((other) => other.label === place.label) === i);
+}
+
+// 착륙 시각과 숙소 도착 시각은 다르다: 이용자가 직접 확인하고 숙소 도착 시각을 바꾼다.
+// 바뀐 도착 시각은 승인 대기 초안의 사실 확인에 걸려, 예전 시각으로 쓴 초안은 다시 써야 보낼 수 있다.
+function HotelArrivalUpdate({ board, m, language }: { board: TripBoard | null; m: Messages; language: string }) {
+  const arrivalDate = board?.arrival?.datetime ? kstDate(board.arrival.datetime) : undefined;
+  const stay = board?.stays.find((candidate) => candidate.check_in_date === arrivalDate) ?? board?.stays[0];
+  if (!stay) return null;
+  const g = m.airportGuide;
+  return (
+    <form action={saveStay} className="ag-hotel">
+      <p className="ag-hotel-title">{g.hotelTitle}</p>
+      <p className="ag-note">
+        {stay.name} · {g.hotelBody}
+      </p>
+      <input type="hidden" name="stay_id" value={stay.id} />
+      <DateTimeField name="expected_arrival" defaultValue={toLocalInput(stay.expected_arrival)} language={language} labels={m.date} ariaLabel={g.hotelTitle} />
+      <label className="ag-confirm">
+        <input type="checkbox" name="confirm_arrival" required />
+        {g.hotelConfirm}
+      </label>
+      <button type="submit" className="button-quiet">
+        {g.hotelSave}
+      </button>
+      <p className="ag-note">{g.hotelNote}</p>
+    </form>
   );
 }
 

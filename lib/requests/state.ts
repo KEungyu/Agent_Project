@@ -4,6 +4,7 @@ import { recordEvent, withoutNulls } from "../board/store";
 import type { Actor, HistoryEntry, Request, RequestStatus } from "../board/types";
 import type { Db } from "../db/client";
 import { replies, requestHistory, requests } from "../db/schema";
+import { approvalHash } from "./drafting";
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   draft: "초안",
@@ -53,8 +54,11 @@ const TRANSITIONS: Partial<Record<RequestStatus, Partial<Record<RequestStatus, R
       guard: (request) => {
         if (!request.draft) return "초안이 없다";
         if (request.approval?.approved_by !== "user") return "이용자 승인이 없다";
-        if (request.approval.draft_hash !== request.draft.hash) return "승인 후 본문이 바뀌었다: 재승인 필요";
-        if (!request.sent?.at) return "발송 기록이 없다";
+        if (!request.sent?.at || !request.sent.to) return "발송 기록이 없다";
+        // 승인 해시는 원문과 수신처를 함께 묶는다
+        if (request.approval.draft_hash !== approvalHash(request.draft.subject_ko, request.draft.body_ko, request.sent.to)) {
+          return "승인 후 본문이나 수신처가 바뀌었다: 재승인 필요";
+        }
         return null;
       },
     },

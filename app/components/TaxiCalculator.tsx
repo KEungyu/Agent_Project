@@ -168,12 +168,19 @@ export function TaxiCalculator({
         </div>
         <fieldset className="taxi-when">
           <legend>{m.when}</legend>
-          {PERIODS.map((value) => (
-            <label key={value} className="taxi-when-option">
-              <input type="radio" name="taxi-period" value={value} checked={period === value} onChange={() => setPeriod(value)} />
-              <span>{m[value]}</span>
-            </label>
-          ))}
+          {/* 시간대는 서울 중형택시 심야 할증 구분이다: 22–23시와 02–04시는 +20%, 자정을 넘는 23–02시는 +40% */}
+          {PERIODS.map((value) => {
+            const sub = value === "day" ? m.daySub : value === "late" ? m.lateSub : value === "midnight" ? m.midnightSub : undefined;
+            return (
+              <label key={value} className={`taxi-when-option is-${value}`}>
+                <input type="radio" name="taxi-period" value={value} checked={period === value} onChange={() => setPeriod(value)} />
+                <span>
+                  <strong className="tabular">{m[value]}</strong>
+                  {sub && <small>{sub}</small>}
+                </span>
+              </label>
+            );
+          })}
         </fieldset>
         <button type="submit" className="button taxi-go" disabled={pending} aria-busy={pending}>
           <TaxiIcon />

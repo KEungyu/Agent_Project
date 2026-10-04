@@ -67,7 +67,7 @@ channels:
   - { type: phone, requires: [stay_phone] }
 channel_rule:
   deadline_slot: check_out_date
-  phone_if_hours_left_lt: 2
+  phone_within_hours: 2
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명, 요청 내용, 가능 여부 회신 부탁]

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addStay, createBoard, getBoard, updateBoard } from "../board/store";
 import type { TripBoard } from "../board/types";
 import { openDb, type Db } from "../db/client";
-import { hashDraft } from "../requests/drafting";
+import { approvalHash, hashDraft } from "../requests/drafting";
 import { createRequest, transition } from "../requests/state";
 import { dismissAlert, evaluateAlerts } from "./rules";
 
@@ -22,7 +22,7 @@ function awaitingReply(db: Db, boardId: string, stayId: string, sentAt: string) 
   transition(db, request.id, "pending_approval", "agent", { patch: { draft } });
   transition(db, request.id, "sent", "system", {
     patch: {
-      approval: { approved_at: sentAt, approved_by: "user", draft_hash: draft.hash },
+      approval: { approved_at: sentAt, approved_by: "user", draft_hash: approvalHash(draft.subject_ko, draft.body_ko, "front@hotel.test") },
       sent: { at: sentAt, message_id: "mock-1", mode: "mock", to: "front@hotel.test" },
     },
   });

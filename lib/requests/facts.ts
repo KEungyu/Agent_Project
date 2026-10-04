@@ -10,5 +10,8 @@ export function requestFacts(slots: Record<string, string>, language: string, m:
   if (slots.check_in_date) facts.push({ label: m.factCheckIn, value: formatFullDate(slots.check_in_date, language) });
   if (slots.expected_arrival) facts.push({ label: m.factArrival, value: formatFullKst(slots.expected_arrival, language) });
   if (slots.check_out_date) facts.push({ label: m.factCheckOut, value: formatFullDate(slots.check_out_date, language) });
+  // 식당 예약 문의: 예약 일시(KST)·인원
+  if (slots.reservation_at) facts.push({ label: m.factReservation, value: formatFullKst(slots.reservation_at, language) });
+  if (slots.party_size) facts.push({ label: m.factParty, value: slots.party_size });
   return facts;
 }

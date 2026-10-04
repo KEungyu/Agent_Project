@@ -24,6 +24,30 @@ export async function geocode(query: string, language: string): Promise<Place | 
   return place;
 }
 
+// 같은 이름의 여러 지점을 이용자가 고를 수 있게 후보를 모두 돌려준다 (지하철 경로의 출발·도착 장소용).
+// 좌표는 Nominatim 결과만 쓴다. 찾지 못하면 빈 목록이다
+const candidateCache = new Map<string, (Place & { detail: string })[]>();
+export async function geocodeCandidates(query: string, language: string, fetcher: typeof fetch = fetch): Promise<(Place & { detail: string })[]> {
+  const key = `${language}:${query.trim().toLowerCase()}`;
+  if (candidateCache.has(key)) return candidateCache.get(key)!;
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.search = new URLSearchParams({ q: query.trim(), format: "jsonv2", limit: "5", countrycodes: "kr", "accept-language": `${language},en` }).toString();
+  const response = await fetcher(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(TIMEOUT) });
+  if (!response.ok) throw new Error(`geocode ${response.status}`);
+  const hits = (await response.json()) as { lat: string; lon: string; name?: string; display_name: string; category?: string }[];
+  const places = hits
+    .filter((hit) => hit.category !== "highway")
+    .map((hit) => ({
+      lat: Number(hit.lat),
+      lng: Number(hit.lon),
+      label: hit.name || query.trim(),
+      // 같은 이름을 구분할 수 있게 주소 앞부분(동·구)을 함께 보여 준다
+      detail: hit.display_name.split(",").slice(1, 3).map((part) => part.trim()).join(", "),
+    }));
+  candidateCache.set(key, places);
+  return places;
+}
+
 export async function drivingRoute(from: Place, to: Place): Promise<Route> {
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=false`;

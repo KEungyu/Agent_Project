@@ -145,6 +145,8 @@
 | `suggest_transport` | 공항 이동·도시 간 이동 후보와 공식 예매 링크 | 출발지, 도착지, 시각, 짐 | 후보 목록 + 링크 | 안내 / 준비 | 아니오 | P2 |
 | `interpret_photo` | 메뉴판·안내문 사진 해석 | 이미지 | 이용자 언어 설명 | 안내 | 아니오 | P3 |
 | `search_places` | 테마·지역별 장소 검색 (TourAPI) [확인 필요] | 테마, 지역 | 장소 카드 | 안내 | 아니오 | P3 |
+| `prepare_stay_booking` | 새 숙소 조건 검증 후 Booking.com 공식 화면 연결 (기존 숙소 문의에는 쓰지 않음) | 목적지, 체크인·체크아웃, 성인·객실, 아동 나이 | 외부 연결 행동(`external_link`) + 조건 요약 | 준비 | 아니오 (연결은 예약이 아님) | 2차 피드백 |
+| `open_restaurant_booking` | Catchtable Global(영어) 첫 화면을 한 번 여는 연결. 추천·취소·"예약하지 마"에는 쓰지 않음 | 식당·지점·날짜·인원(선택) | 외부 연결 행동 + 입력용 요약 | 준비 | 아니오 | 2차 피드백 |
 
 > **구현 메모 (M7·M8)**: `draft_request_ko` → `back_translate` → `request_approval`은 에이전트에게 **`draft_request` 도구 하나**로 노출한다. LLM이 역번역이나 승인 단계를 건너뛸 수 없게 하려는 것이다. 역번역은 초안 작성과 분리된 LLM 호출이 한국어 원문만 보고 수행한다. `ask_user`와 `draft_request`는 실행 후 루프를 멈추고(`awaiting_user`) 이용자의 답이나 승인을 기다린다. `draft_request`는 먼저 `decide_channel`을 실행해, 전화로 판정되면 메일 초안 대신 `make_phone_script` 결과를 채팅으로 돌려준다(M12). 이때 요청은 `channel = phone`, 상태 `초안`으로 남는다. 앱이 전화를 걸지 않으므로 승인·발송 단계가 없다.
 
@@ -154,6 +156,11 @@
 2. `approval` 기록이 있고, 승인한 주체가 이용자다.
 3. 승인 당시 본문의 해시(`approval.draft_hash`)가 현재 본문의 해시와 같다. 승인 뒤 본문이 바뀌면 다시 승인을 받는다.
 4. 실제 발송 모드에서는 수신 주소가 허용 목록(팀 소유 주소)에 있다.
+5. 화면이 승인 버튼을 누를 때 보고 있던 원문 해시·수신처가 서버의 최신 값과 같다(2차 피드백). 다르면 처리하지 않고 최신 초안을 다시 보여 준다.
+6. 초안을 쓴 뒤 보드의 예약 사실(예약번호·날짜·호텔 도착 일시 등)이 바뀌지 않았다.
+7. 같은 버전은 한 번만 처리한다(진행 중 잠금 + 멱등키). 실제 발송 결과가 불명확하면 `승인 대기`로 남기고 발송됨으로 바꾸지 않는다.
+
+외부 정보 어댑터(2차 피드백): Booking.com Demand API 3.2(`lib/booking/demand.ts`, 기본 샌드박스, 운영은 별도 허용 값 필요), ODsay 대중교통(`lib/transit/odsay.ts`), 직접 예약 모의 공급자(`lib/booking/direct.ts`). 자격 키가 없으면 호출하지 않고 `unconfigured` 상태를 돌려준다. 지하철 노선도는 OSM(ODbL) 자료를 `data/transit/seoul-subway.json`으로 받아 앱 안에서 그리고(`lib/transit/subway.ts`), 공항 안내는 공식 페이지 확인 사실을 출처·확인 날짜와 함께 `lib/airport/guide.ts`에 둔다.
 
 ---
 
@@ -299,7 +306,7 @@ stateDiagram-v2
 | `required_slots[]` | ✔ | `{ key, from_board?, ask: { en } }`. `from_board`가 있으면 보드에서 먼저 찾는다 |
 | `optional_slots[]` | | 있으면 요청문에 넣는 조건 |
 | `channels[]` | ✔ | `{ type: email \| phone, requires: [slot 키] }`. 우선순위 순서 |
-| `channel_rule` | ✔ | `{ deadline_slot, phone_if_hours_left_lt }` |
+| `channel_rule` | ✔ | `{ deadline_slot, phone_within_hours }` (마감까지 이 시간 이내면 전화 권유 — 2026-10-04 검토에서 "미만"을 "이내"로 바꾸며 이름 변경) |
 | `message_guidelines` | ✔ | `{ tone, must_include[], must_not_include[], max_chars }` |
 | `reply_hints` | | 해석을 돕는 예시 표현 `{ conditional[], declined[], info_requested[] }` |
 | `follow_ups` | ✔ | 분류별 다음 행동 `{ on_conditional, on_info_requested, on_declined[] }` |
@@ -335,7 +342,7 @@ channels:
   - { type: phone, requires: [stay_phone] }      # stays[target].phone
 channel_rule:
   deadline_slot: expected_arrival
-  phone_if_hours_left_lt: 6
+  phone_within_hours: 6
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명, 예약번호, 체크인 날짜, 도착 예정 시각, 늦은 체크인 가능 여부, 프런트 마감 후 출입 방법]
@@ -373,7 +380,7 @@ channels:
   - { type: phone, requires: [stay_phone] }
 channel_rule:
   deadline_slot: check_out_date
-  phone_if_hours_left_lt: 6
+  phone_within_hours: 6
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명, 예약번호, 체크아웃 날짜, 짐 개수, 찾아갈 시각, 보관 가능 여부와 요금]
@@ -409,7 +416,7 @@ channels:
   - { type: phone, requires: [place_phone] }
 channel_rule:
   deadline_slot: date_time
-  phone_if_hours_left_lt: 24
+  phone_within_hours: 24
 message_guidelines:
   tone: 정중한 해요체
   must_include: [예약 일시, 인원, 예약자명, 식이 제한(있으면), 외국인 손님이라 한국어가 서툴다는 점]

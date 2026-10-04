@@ -11,7 +11,10 @@
     "db:generate": "drizzle-kit generate",
     "agent": "tsx scripts/agent-cli.ts",
     "eval:drafts": "tsx scripts/eval-drafts.ts",
-    "eval:replies": "tsx scripts/eval-replies.ts"
+    "eval:replies": "tsx scripts/eval-replies.ts",
+    "qa:scenarios": "tsx scripts/qa/scenarios.ts",
+    "qa:browser": "tsx scripts/qa/browser-checks.mts",
+    "transit:fetch": "tsx scripts/transit/fetch-subway.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

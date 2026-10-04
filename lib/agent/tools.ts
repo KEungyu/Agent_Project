@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { addStay, getBoard, updateBoard, updateStay } from "../board/store";
+import { overlapsWithOthers } from "../board/overlap";
 import type { StayFields } from "../board/types";
 import type { Db } from "../db/client";
 import type { LlmClient } from "./llm";
@@ -104,6 +105,10 @@ export const boardUpdate = defineTool({
     source: z.enum(["user", "extracted"]),
     stay_id: z.string().optional(),
     stay: stayFields.optional(),
+    confirm_overlap: z
+      .boolean()
+      .optional()
+      .describe("true only after the traveler confirmed that both stays with overlapping dates are right"),
     arrival: z.object({ datetime: DATETIME, airport: z.string().min(2), flight_no: z.string().optional() }).optional(),
     departure: z
       .object({ datetime: DATETIME, airport: z.string().min(2).optional(), flight_no: z.string().optional() })
@@ -111,7 +116,7 @@ export const boardUpdate = defineTool({
   })
   // 모르는 키(예: stay 밖의 expected_arrival)를 조용히 버리고 "저장됨"이라고 답하지 않도록 거부한다
   .strict(),
-  run: ({ source, stay_id, stay, arrival, departure }, { db, boardId, now, latestUserText }) => {
+  run: ({ source, stay_id, stay, arrival, departure, confirm_overlap }, { db, boardId, now, latestUserText }) => {
     const proposed = stay?.expected_arrival && needsDateConfirmation(stay.expected_arrival, latestUserText, now?.() ?? new Date());
     // 오류가 아니라 "저장하지 않음 + 확인할 날짜"로 돌려준다: 오류로 돌리면 모델이 같은 저장을 되풀이하다 멈출 수 있다
     if (proposed) {
@@ -121,13 +126,41 @@ export const boardUpdate = defineTool({
         next_step: `Nothing was saved. The traveler tied this time to "today", but it has already passed today. Reply now with one short question asking them to confirm ${proposed} (early tomorrow morning). Do not call other tools until they answer.`,
       };
     }
+    // 날짜가 다른 숙소와 겹치면 저장 전에 이용자에게 확인한다 (B07). 중복 예약인지, 일정이 바뀐 것인지 앱이 단정하지 않는다
+    if (stay && (stay.check_in_date || stay.check_out_date) && !confirm_overlap) {
+      const stays = getBoard(db, boardId)?.stays ?? [];
+      const target = stay_id
+        ? stays.find((candidate) => candidate.id === stay_id)
+        : stays.find((candidate) => candidate.name.trim().toLowerCase() === stay.name?.trim().toLowerCase());
+      const merged = { id: target?.id, name: stay.name ?? target?.name ?? "", check_in_date: stay.check_in_date ?? target?.check_in_date, check_out_date: stay.check_out_date ?? target?.check_out_date };
+      const overlaps = overlapsWithOthers(merged, stays);
+      if (overlaps.length) {
+        return {
+          saved: false,
+          overlap: overlaps,
+          next_step: `Nothing was saved. These dates overlap another stay on the board (${overlaps.map((o) => `${o.b}: ${o.from} to ${o.to}`).join("; ")}). Ask the traveler whether they really keep both bookings or whether one changed. Save again with confirm_overlap: true only after they confirm both are right.`,
+        };
+      }
+    }
     if (arrival || departure) updateBoard(db, boardId, { ...(arrival && { arrival }), ...(departure && { departure }) });
     let savedStayId = stay_id;
     if (stay && stay_id) {
       updateStay(db, stay_id, stay, source);
     } else if (stay) {
       if (!stay.name) throw new Error("stay.name is required to add a new stay");
-      savedStayId = addStay(db, boardId, stay as StayFields, source).id;
+      // stay_id 없이 같은 이름을 다시 넣으면 새 숙소를 만들지 않고 그 숙소를 고친다 (예약 정보가 빈 두 번째 숙소가 생기지 않게)
+      const existing = getBoard(db, boardId)?.stays ?? [];
+      const same = existing.find((candidate) => candidate.name.trim().toLowerCase() === stay.name!.trim().toLowerCase());
+      if (same) {
+        updateStay(db, same.id, stay, source);
+        savedStayId = same.id;
+      } else if (existing.length > 0 && !stay.check_in_date) {
+        throw new Error(
+          `To change a stay already on the board, pass its stay_id (${existing.map((s) => `${s.id} = ${s.name}`).join("; ")}). A new stay needs its name and check-in date.`,
+        );
+      } else {
+        savedStayId = addStay(db, boardId, stay as StayFields, source).id;
+      }
     }
     return { saved: true, ...(savedStayId ? { stay_id: savedStayId } : {}) };
   },

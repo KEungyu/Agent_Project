@@ -9,7 +9,7 @@ channels:
   - { type: email, requires: [stay_email] }
 channel_rule:
   deadline_slot: expected_arrival
-  phone_if_hours_left_lt: 6
+  phone_within_hours: 6
 message_guidelines:
   tone: 정중한 합쇼체
   must_include: [예약자명]

@@ -93,25 +93,49 @@ describe("draft_request의 채널", () => {
   });
 });
 
-describe("전화 안내 경계 (호텔 도착 2026-10-10 01:00 KST)", () => {
-  const arrival = { expected_arrival: "2026-10-10T01:00+09:00" };
-  const at = (time: string) => new Date(`2026-10-09T${time}:00+09:00`);
+describe("전화 안내 경계 (호텔 도착 2026-10-10 01:00:00 KST, 6시간 이내)", () => {
+  const arrival = { expected_arrival: "2026-10-10T01:00:00+09:00" };
+  const at = (iso: string) => new Date(iso);
   const both = { email: "hotel@example.com", phone: "+82-2-000-0000" } as Stay;
+  const cases: [string, string, boolean][] = [
+    ["7시간 전", "2026-10-09T18:00:00+09:00", false],
+    ["6시간 1초 전", "2026-10-09T18:59:59+09:00", false],
+    ["정확히 6시간 전", "2026-10-09T19:00:00+09:00", true],
+    ["5시간 59분 전", "2026-10-09T19:01:00+09:00", true],
+    ["5시간 57분 전", "2026-10-09T19:03:00+09:00", true],
+    ["0초 전 (도착 시각)", "2026-10-10T01:00:00+09:00", true],
+    ["도착 후 1분", "2026-10-10T01:01:00+09:00", false],
+    ["도착 후 2분", "2026-10-10T01:02:00+09:00", false],
+  ];
+  for (const [label, now, urgent] of cases) {
+    it(`${label}: ${urgent ? "전화 권유" : "메일만"}`, () => {
+      const decision = decideChannel(type, both, arrival, at(now));
+      expect(decision.reason).toBe(urgent ? "deadline_soon" : "email_default");
+    });
+  }
 
-  it("7시간 전·정확히 6시간 전은 메일만, 5시간 전부터 전화도 권한다 (6시간 미만)", () => {
-    expect(decideChannel(type, both, arrival, at("18:00"))).toMatchObject({ channel: "email", reason: "email_default", hours_left: 7 });
-    expect(decideChannel(type, both, arrival, at("19:00"))).toMatchObject({ channel: "email", reason: "email_default", hours_left: 6 });
-    expect(decideChannel(type, both, arrival, at("20:00"))).toMatchObject({ channel: "phone", reason: "deadline_soon", hours_left: 5 });
+  it("5시간 59분 남으면 표시값은 6.0이어도 판정은 임박이다 (반올림으로 판정하지 않음)", () => {
+    expect(decideChannel(type, both, arrival, at("2026-10-09T19:01:00+09:00"))).toMatchObject({ reason: "deadline_soon", hours_left: 6 });
   });
 
-  it("이메일 없이 전화만 있으면 전화, 둘 다 없으면 판단하지 않는다", () => {
-    expect(decideChannel(type, { phone: "+82-2-000-0000" } as Stay, arrival, at("12:00")).reason).toBe("no_email");
-    expect(decideChannel(type, {} as Stay, arrival, at("12:00")).channel).toBeNull();
+  it("도착 후 1분은 -0이 아니라 지난 마감으로 표시하고 임박으로 보지 않는다", () => {
+    const decision = decideChannel(type, both, arrival, at("2026-10-10T01:01:00+09:00"));
+    expect(decision).toMatchObject({ deadline_passed: true, reason: "email_default" });
+    expect(Object.is(decision.hours_left, -0)).toBe(false);
   });
 
-  it("도착 시각이 이미 지났으면 급한 것으로 보지 않는다 (조건 확인에서 다시 묻는다)", () => {
-    const late = decideChannel(type, both, arrival, new Date("2026-10-10T03:00:00+09:00"));
-    expect(late.reason).toBe("email_default");
-    expect(late.hours_left).toBeLessThan(0);
+  it("연락처 조합: 이메일 없음 → 전화, 전화 없음 → 메일(급함 표시), 둘 다 없음 → 판단 안 함", () => {
+    const soon = at("2026-10-09T20:00:00+09:00");
+    expect(decideChannel(type, { phone: "+82-2-000-0000" } as Stay, arrival, soon)).toMatchObject({ channel: "phone", reason: "no_email" });
+    expect(decideChannel(type, { email: "hotel@example.com" } as Stay, arrival, soon)).toMatchObject({ channel: "email", reason: "no_phone_but_urgent" });
+    expect(decideChannel(type, {} as Stay, arrival, soon).channel).toBeNull();
+  });
+
+  it("지난 시각이어도 이메일이 없으면 연락처 판정으로 전화가 선택된다 (시간 판정과 별개)", () => {
+    expect(decideChannel(type, { phone: "+82-2-000-0000" } as Stay, arrival, at("2026-10-10T03:00:00+09:00"))).toMatchObject({
+      channel: "phone",
+      reason: "no_email",
+      deadline_passed: true,
+    });
   });
 });

@@ -105,6 +105,7 @@ Rules:
 - Copy names and booking numbers exactly as given.
 - Dates and times: copy the "*_ko" forms in the facts exactly. They carry the year, the date, the 24-hour time and KST (e.g. 2026년 10월 10일(토) 01:00(KST)).
 - The check-in date and the arrival time can be on different days (arriving after midnight). Keep each one as given and never move one to match the other.
+- If the facts include dietary or allergy notes, copy each one exactly, keeping what must be avoided and every negation separate (nuts and shellfish are different). Never claim or ask for a guarantee that the food is safe.
 - Ask the business to reply to this email.
 
 Also return coverage: for each required item, the exact phrase copied from body_ko that covers it.`;
@@ -193,6 +194,12 @@ export async function backTranslate(llm: LlmClient, subjectKo: string, bodyKo: s
 
 export function hashDraft(subjectKo: string, bodyKo: string): string {
   return createHash("sha256").update(`${subjectKo}\n${bodyKo}`).digest("hex");
+}
+
+// 승인 해시: 이용자가 확인한 한국어 원문과 수신처를 함께 묶는다. 수신처가 바뀌어도 재승인이 필요하다.
+// (승인 기록의 draft_hash 필드에 저장한다 — 저장 구조는 그대로 두고 담는 값의 범위만 넓혔다)
+export function approvalHash(subjectKo: string, bodyKo: string, to: string): string {
+  return createHash("sha256").update(`${subjectKo}\n${bodyKo}\nTO:${to.trim().toLowerCase()}`).digest("hex");
 }
 
 export async function composeDraft(

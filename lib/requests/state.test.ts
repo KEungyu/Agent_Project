@@ -4,11 +4,13 @@ import { listEvents } from "../board/store";
 import type { Interpretation, ReplyClass } from "../board/types";
 import { openDb } from "../db/client";
 import { replies } from "../db/schema";
+import { approvalHash } from "./drafting";
 import { createRequest, getHistory, transition, TransitionError } from "./state";
 
 const DRAFT = { subject_ko: "늦은 체크인 문의", body_ko: "안녕하세요...", back_translation: "Hello...", hash: "h1" };
-const APPROVAL = { approved_at: "2026-10-18T10:00:00Z", approved_by: "user" as const, draft_hash: "h1" };
 const SENT = { at: "2026-10-18T10:00:05Z", message_id: "mock-1", mode: "mock" as const, to: "front@hotel-example.test" };
+// 승인 해시는 이용자가 확인한 원문과 수신처를 함께 묶는다
+const APPROVAL = { approved_at: "2026-10-18T10:00:00Z", approved_by: "user" as const, draft_hash: approvalHash(DRAFT.subject_ko, DRAFT.body_ko, SENT.to) };
 
 function setup() {
   const db = openDb(":memory:");
