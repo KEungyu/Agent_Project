@@ -196,8 +196,9 @@ export function AirportGuide({ arrivalAirport, arrivalTerminal, departureAirport
         </>
       )}
 
+      {/* 인천 도착·출발은 아래에서 실시간 조회를 하므로 "실시간은 확인하지 않음" 문구를 빼고 공식 링크만 둔다 */}
       <p className="ag-live">
-        {m.liveNote}{" "}
+        {!(airport === "ICN" && stage !== "transfer") && <>{m.liveNote} </>}
         <a href={FLIGHT_INFO[airport].url} target="_blank" rel="noopener noreferrer">
           {m.liveLink}
           <ExternalIcon />
