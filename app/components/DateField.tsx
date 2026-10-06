@@ -11,7 +11,7 @@ type Labels = Messages["date"];
 type Common = { name: string; language: string; labels: Labels; ariaLabel: string };
 
 // 월요일부터 시작하는 달력이 익숙한 언어
-const MONDAY_FIRST = new Set(["es", "vi"]);
+const MONDAY_FIRST = new Set(["es", "fr", "vi"]);
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const iso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;

@@ -5,7 +5,7 @@ label:
   en: Luggage storage after check-out
   ja: チェックアウト後の荷物預かり
   zh-CN: 退房后寄存行李
-  zh-TW: 退房後寄放行李
+  fr: Garder les bagages après le départ
   vi: Gửi hành lý sau khi trả phòng
   th: ฝากกระเป๋าหลังเช็กเอาต์
   id: Titip koper setelah check-out
@@ -20,7 +20,7 @@ required_slots:
       en: "Which hotel?"
       ja: "どのホテルですか？"
       zh-CN: "哪家酒店？"
-      zh-TW: "哪一家飯店？"
+      fr: "Quel hôtel ?"
       vi: "Khách sạn nào?"
       th: "พักโรงแรมไหน?"
       id: "Hotel yang mana?"
@@ -32,7 +32,7 @@ required_slots:
       en: "What name is the booking under?"
       ja: "予約は誰の名前で入っていますか？"
       zh-CN: "预订人姓名是什么？"
-      zh-TW: "訂房人姓名是什麼？"
+      fr: "La réservation est à quel nom ?"
       vi: "Phòng được đặt dưới tên ai?"
       th: "จองไว้ในชื่อใคร?"
       id: "Pemesanan atas nama siapa?"
@@ -44,7 +44,7 @@ required_slots:
       en: "What is your booking number?"
       ja: "予約番号を教えてください。"
       zh-CN: "你的预订号是多少？"
-      zh-TW: "你的訂房編號是多少？"
+      fr: "C'est quoi votre numéro de réservation ?"
       vi: "Mã đặt phòng của bạn là gì?"
       th: "หมายเลขการจองของคุณคืออะไร"
       id: "Berapa nomor pemesananmu?"
@@ -56,7 +56,7 @@ required_slots:
       en: "What is your check-out date?"
       ja: "チェックアウト日はいつですか？"
       zh-CN: "哪天退房？"
-      zh-TW: "哪一天退房？"
+      fr: "Vous partez quel jour ?"
       vi: "Bạn trả phòng ngày nào?"
       th: "เช็กเอาต์วันไหน?"
       id: "Check-out tanggal berapa?"
@@ -67,7 +67,7 @@ required_slots:
       en: "Until what time do you need to leave your bags?"
       ja: "何時まで荷物を預けたいですか？"
       zh-CN: "你需要把行李寄存到几点？"
-      zh-TW: "你需要把行李寄放到幾點？"
+      fr: "Vous avez besoin de laisser vos bagages jusqu'à quelle heure ?"
       vi: "Bạn cần gửi hành lý đến mấy giờ?"
       th: "อยากฝากกระเป๋าถึงกี่โมง?"
       id: "Mau titip koper sampai jam berapa?"
@@ -78,7 +78,7 @@ required_slots:
       en: "How many bags?"
       ja: "荷物はいくつですか？"
       zh-CN: "有几件行李？"
-      zh-TW: "有幾件行李？"
+      fr: "Combien de bagages ?"
       vi: "Bạn có mấy túi hành lý?"
       th: "มีกระเป๋ากี่ใบ?"
       id: "Ada berapa koper?"

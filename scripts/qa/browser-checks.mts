@@ -1,4 +1,5 @@
-// 사용법: npm run build && npx tsx scripts/qa/browser-checks.mts [--chat]
+// 사용법: npm run build && npx tsx scripts/qa/browser-checks.mts [--chat] [--live]
+// --live: .env의 ODSAY_API_KEY로 실제 지하철 경로 조회까지 확인한다 (없으면 키를 비운 상태로 "연결 안 됨" 안내를 확인)
 // 빌드한 앱을 임시 DB·임시 발송함으로 3002번 포트에 띄우고, 헤드리스 Chrome(CDP)으로 화면을 조작해 확인한다.
 // 가상 예약(데모 보드)만 쓰고 메일은 모의 발송이다. --chat 을 주면 실제 LLM으로 채팅 1턴(Catchtable 연결)을 더 확인한다.
 // 결과는 docs/qa-runs/<날짜>-browser.md 에 남는다.
@@ -18,6 +19,7 @@ import { loadRequestTypes } from "../../lib/request-types/loader";
 import { runInfo, saveRunLog } from "./run-info";
 
 const PORT = 3002;
+const LIVE = process.argv.includes("--live");
 const BASE = `http://localhost:${PORT}/`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const work = mkdtempSync(path.join(tmpdir(), "majungi-browser-"));
@@ -111,7 +113,7 @@ async function startChrome() {
 let server: ChildProcess;
 async function startServer() {
   server = spawn(process.execPath, [path.join(process.cwd(), "node_modules/next/dist/bin/next"), "start", "-p", String(PORT)], {
-    env: { ...process.env, DATABASE_FILE: dbFile, OUTBOX_DIR: outbox, MAIL_MODE: "mock", ODSAY_API_KEY: "" },
+    env: { ...process.env, DATABASE_FILE: dbFile, OUTBOX_DIR: outbox, MAIL_MODE: "mock", ...(LIVE ? {} : { ODSAY_API_KEY: "" }) },
     stdio: "ignore",
   });
   for (let i = 0; i < 60; i++) {
@@ -186,28 +188,44 @@ async function main() {
   const conflict = await js<string>(`(async()=>{const g=document.querySelector('.airport-guide'); g.querySelectorAll('.ag-tab')[1].click(); await new Promise(r=>setTimeout(r,300)); const def=[...g.querySelectorAll('.ag-seg button')].find(b=>b.getAttribute('aria-pressed')==='true')?.textContent; [...g.querySelectorAll('.ag-seg button')].find(b=>b.textContent.startsWith('Incheon')).click(); await new Promise(r=>setTimeout(r,300)); return def+' | '+(g.querySelector('.ag-warn')?.textContent ?? '')})()`);
   record("A09 (출발 공항 충돌)", /Gimpo/.test(conflict) && /leave from Gimpo/.test(conflict), conflict);
 
-  // N08: 390px 노선도 경로·키보드·가로 넘침
-  const n08 = await js<{ legs: number; moved: boolean; overflow: boolean; note: string }>(`(async()=>{const t=document.querySelector('.transit'); const set=(el,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true}))}; const [a,b]=t.querySelectorAll('.transit-fields input'); set(a,'김포공항'); set(b,'강남'); await new Promise(r=>setTimeout(r,200)); t.querySelector('.transit-form button[type=submit]').click(); await new Promise(r=>setTimeout(r,1500)); const svg=t.querySelector('svg'); const vb=svg.getAttribute('viewBox'); svg.focus(); svg.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})); await new Promise(r=>setTimeout(r,300)); return {legs:t.querySelectorAll('.transit-legs li').length, moved: vb!==svg.getAttribute('viewBox'), overflow: document.documentElement.scrollWidth>document.documentElement.clientWidth, note: t.querySelector('.transit-online')?.innerText.slice(0,80) ?? ''}})()`);
-  record("N08 (390px 경로·키보드 이동·가로 넘침 없음)", n08.legs > 0 && n08.moved && !n08.overflow, JSON.stringify(n08));
-  // 키가 없거나(미설정) 인증에 실패하면(서버 IP 미등록 등) 그 사실만 안내하고 시간·요금을 지어내지 않는다
-  record("N06 (경로 시간·요금: 자격 없음·인증 실패 안내)", /ODsay|refused/.test(n08.note) && !(await js<number>(`document.querySelectorAll('.transit-paths li').length`)), n08.note);
+  // 화면 안에서 쓰는 도우미: 입력하고, 역 찾기 목록의 첫 역을 고른다
+  const HELP = `const w=(ms)=>new Promise(r=>setTimeout(r,ms)); const type=async(el,v)=>{el.focus(); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true})); await w(300);}; const pick=async(el,v)=>{await type(el,v); el.closest('.station-search').querySelector('.station-results button')?.click(); await w(300);};`;
 
-  // N06 버스: 자격 없음
-  const bus = await js<string>(`(async()=>{const t=document.querySelector('.transit'); t.querySelectorAll('.ag-tab')[1].click(); await new Promise(r=>setTimeout(r,300)); const i=t.querySelector('.transit-form.is-bus input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'6001'); i.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,100)); t.querySelector('.transit-form.is-bus button').click(); await new Promise(r=>setTimeout(r,1500)); return t.querySelector('.ag-note[role=status], .ag-warn[role=status]')?.textContent ?? ''})()`);
-  record("N06 (버스 정류장: 자격 없음·인증 실패 안내, 가짜 정류장 없음)", /ODsay|refused/.test(bus) && !(await js<number>(`document.querySelectorAll('.bus-stop-list li').length`)), bus);
+  // N01·N08: 역 찾기 (역 번호로 찾고 카드에 노선·번호가 나오는지)
+  await goto(390, true);
+  const find = await js<string>(`(async()=>{${HELP} const t=document.querySelector('.transit'); await pick(t.querySelector('.station-search.is-big input'),'424'); await w(500); return t.querySelector('.station-card')?.innerText.replace(/\\n/g,' ') ?? 'no-card'})()`);
+  record("N01 역 찾기 (역 번호 424 → 명동, 노선·번호 카드)", /Myeong-dong/.test(find) && /424/.test(find) && /Line 4/.test(find), find);
+
+  // N08: 390px 경로·키보드 이동·가로 넘침
+  const n08 = await js<{ legs: number; moved: boolean; overflow: boolean; note: string }>(`(async()=>{${HELP} const t=document.querySelector('.transit'); const [a,b]=t.querySelectorAll('.transit-fields input'); await pick(a,'김포공항'); await pick(b,'강남'); await w(1500); const svg=t.querySelector('svg'); const vb=svg.getAttribute('viewBox'); svg.focus(); svg.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowLeft',bubbles:true})); await w(300); return {legs:t.querySelectorAll('.route-diagram .rd-leg').length, moved: vb!==svg.getAttribute('viewBox'), overflow: document.documentElement.scrollWidth>document.documentElement.clientWidth, note: t.querySelector('.transit-online')?.innerText.slice(0,80) ?? ''}})()`);
+  record("N08 (390px 경로·키보드 이동·가로 넘침 없음)", n08.legs > 0 && n08.moved && !n08.overflow, JSON.stringify(n08));
+  if (!LIVE) record("N06 (경로 시간·요금: 자격 없음·인증 실패 안내)", /ODsay|refused/.test(n08.note) && !(await js<number>(`document.querySelectorAll('.transit-paths li').length`)), n08.note);
 
   // N08 한국어
   db.$client.prepare("UPDATE trip_boards SET user_language = 'ko' WHERE id = ?").run(board.id);
   await goto(1280);
-  const ko = await js<string>(`document.querySelector('.transit .ag-tab')?.textContent + ' / ' + document.querySelector('.airport-guide .ag-tab')?.textContent`);
-  record("N08 (한국어 화면)", ko === "지하철 노선도 / 도착", ko);
+  const ko = await js<string>(`(document.querySelector('.transit-area')?.textContent ?? '').slice(0, 5) + ' / ' + document.querySelector('.airport-guide .ag-tab')?.textContent`);
+  record("N08 (한국어 화면)", ko === "지원 범위 / 도착", ko);
+
+  // L01: 불어·일본어·중국어 화면에서 역 카드와 경로의 역·노선·방면 이름이 그 언어로 나오는지 (390px, 가로 넘침 없음)
+  const localized: Record<string, RegExp[]> = {
+    fr: [/Ligne 4/, /Prenez la Ligne/, /direction /, /Aéroport international de Gimpo/],
+    ja: [/ミョンドン/, /4号線/, /方面/],
+    "zh-CN": [/明洞/, /4号线/, /方向/],
+  };
+  for (const [language, expected] of Object.entries(localized)) {
+    db.$client.prepare("UPDATE trip_boards SET user_language = ? WHERE id = ?").run(language, board.id);
+    await goto(390, true);
+    const shown = await js<{ text: string; overflow: boolean }>(`(async()=>{${HELP} const t=document.querySelector('.transit'); await pick(t.querySelector('.station-search.is-big input'),'424'); await w(500); const card=t.querySelector('.station-card')?.innerText ?? 'no-card'; const [a,b]=t.querySelectorAll('.transit-fields input'); await pick(a,'명동'); await pick(b,'김포공항'); await w(1200); return {text:(card+' | '+(t.querySelector('.route-diagram')?.innerText ?? 'no-route')).replace(/\\n/g,' '), overflow: document.documentElement.scrollWidth>document.documentElement.clientWidth}})()`);
+    record(`L01 (${language} 화면의 역·노선·방면 이름)`, expected.every((re) => re.test(shown.text)) && !shown.overflow, shown.text.slice(0, 160));
+  }
   db.$client.prepare("UPDATE trip_boards SET user_language = 'en' WHERE id = ?").run(board.id);
 
   // N03: 보드의 숙소(가상 호텔)는 지도에 없으므로 "찾지 못함"이어야 하고, 실제 장소 이름은 가까운 역을 고를 수 있어야 한다 (실제 Nominatim 호출)
   await goto(390, true);
   const n03Fake = await js<string>(`(async()=>{const t=document.querySelector('.transit'); const chip=[...t.querySelectorAll('.transit-quick .chip')].find(c=>c.closest('[aria-label="My places"]')); if(!chip) return 'no-place-chip'; chip.click(); for(let k=0;k<40 && !t.querySelector('.place-candidate .chip, .transit-form .ag-warn');k++) await new Promise(r=>setTimeout(r,500)); return t.querySelector('.place-candidate .chip') ? 'found' : (t.querySelector('.transit-form .ag-warn')?.textContent ?? 'nothing')})()`);
   record("N03·N06 (가상 숙소: 좌표를 지어내지 않고 '찾지 못함')", /Couldn't find/.test(n03Fake), n03Fake);
-  const n03 = await js<string>(`(async()=>{const t=document.querySelector('.transit'); const set=(el,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true}))}; const [a,b]=t.querySelectorAll('.transit-fields input'); set(a,'Myeongdong Cathedral'); set(b,'강남'); await new Promise(r=>setTimeout(r,200)); t.querySelector('.transit-form button[type=submit]').click(); await new Promise(r=>setTimeout(r,300)); const ask=[...t.querySelectorAll('.transit-form .chip')].find(c=>c.textContent.includes('as a place')); if(!ask) return 'no-search-button'; ask.click(); await new Promise(r=>setTimeout(r,800)); for(let k=0;k<40 && !t.querySelector('.place-candidate .chip, .transit-form .ag-warn');k++) await new Promise(r=>setTimeout(r,500)); const st=t.querySelector('.place-candidate .chip'); if(!st) return 'no-candidates: '+(t.querySelector('.transit-form .ag-warn')?.textContent ?? ''); const picked=st.textContent; st.click(); await new Promise(r=>setTimeout(r,200)); t.querySelector('.transit-form button[type=submit]').click(); await new Promise(r=>setTimeout(r,1200)); return picked+' | '+(t.querySelector('.transit-walk')?.textContent ?? 'no-walk')})()`);
+  const n03 = await js<string>(`(async()=>{${HELP} const t=document.querySelector('.transit'); const [a,b]=t.querySelectorAll('.transit-fields input'); await type(a,'Myeongdong Cathedral'); const ask=a.closest('.station-search').querySelector('.sr-place'); if(!ask) return 'no-search-button'; ask.click(); await w(800); for(let k=0;k<40 && !t.querySelector('.place-candidate .chip, .transit-form .ag-warn');k++) await w(500); const st=t.querySelector('.place-candidate .chip'); if(!st) return 'no-candidates: '+(t.querySelector('.transit-form .ag-warn')?.textContent ?? ''); const picked=st.textContent; st.click(); await w(200); await pick(b,'강남'); await w(1200); return picked+' | '+(t.querySelector('.transit-walk')?.textContent ?? 'no-walk')})()`);
   record("N03 (입력한 장소 → 지도 검색 좌표 → 가까운 역 → 경로)", /Walk from Myeongdong Cathedral/.test(n03) || /Walk from .* to /.test(n03), n03);
 
   // A07: 실시간 운항 (공공데이터 키 없음 → 공식 안내)
@@ -224,6 +242,16 @@ async function main() {
   const overlap = await js<string>(`[...document.querySelectorAll('.sign .ag-warn')].map(p=>p.textContent).find(t=>t.includes('Overlap Test Stay')) ?? ''`);
   record("B07 (숙소 날짜 겹침 경고)", overlap.includes(first.name) && overlap.includes("Overlap Test Stay"), overlap);
   db.$client.prepare("DELETE FROM stays WHERE id = 'stay_overlap_test'").run();
+
+  // --live: 실제 ODsay로 지하철 경로의 시간·요금·막차가 화면에 나오는지
+  if (LIVE) {
+    await goto(390, true);
+    const liveRoute = await js<string>(`(async()=>{const t=document.querySelector('.transit'); const set=(el,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true}))}; const [a,b]=t.querySelectorAll('.transit-fields input'); const w=(ms)=>new Promise(r=>setTimeout(r,ms)); const pick=async(el,v)=>{el.focus(); set(el,v); await w(300); el.closest('.station-search').querySelector('.station-results button')?.click(); await w(300);}; await pick(a,'인천공항1터미널'); await pick(b,'명동'); for(let k=0;k<40 && !t.querySelector('.transit-paths li, .transit-online [role=status]');k++) await new Promise(r=>setTimeout(r,500)); return JSON.stringify({paths: t.querySelectorAll('.transit-paths > li').length, first: t.querySelector('.transit-paths .transit-summary')?.innerText.replace(/\\n/g,' ') ?? '', last: t.querySelector('.last-train-head')?.textContent ?? '', status: t.querySelector('.transit-online [role=status]')?.textContent ?? ''})})()`);
+    const r = JSON.parse(liveRoute);
+    record("N02·N04 실제 ODsay 경로 (시간·요금·막차)", r.paths > 0 && !!r.last, liveRoute);
+  } else {
+    say("- 미실행 실제 ODsay 경로 (--live 없이 실행: 키를 비운 상태로 안내만 확인)");
+  }
 
   // C05·C06·C08: 실제 LLM 채팅 1턴 (선택)
   if (process.argv.includes("--chat")) {

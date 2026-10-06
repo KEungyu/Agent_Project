@@ -5,7 +5,7 @@ label:
   en: Restaurant reservation request
   ja: レストランの予約問い合わせ
   zh-CN: 餐厅预订咨询
-  zh-TW: 餐廳訂位詢問
+  fr: Demande de réservation au restaurant
   vi: Hỏi đặt bàn nhà hàng
   th: สอบถามการจองร้านอาหาร
   id: Permintaan reservasi restoran
@@ -20,7 +20,7 @@ required_slots:
       en: "Which restaurant, and which branch?"
       ja: "どのお店（どの店舗）ですか？"
       zh-CN: "哪家餐厅？哪个分店？"
-      zh-TW: "哪家餐廳？哪間分店？"
+      fr: "Quel restaurant, et quelle adresse ?"
       vi: "Nhà hàng nào, chi nhánh nào?"
       th: "ร้านไหน สาขาไหน?"
       id: "Restoran apa, cabang yang mana?"
@@ -31,7 +31,7 @@ required_slots:
       en: "What date and time (Korea time)?"
       ja: "日付と時間（韓国時間）を教えてください。"
       zh-CN: "哪天几点（韩国时间）？"
-      zh-TW: "哪天幾點（韓國時間）？"
+      fr: "Quel jour et à quelle heure (heure coréenne) ?"
       vi: "Ngày và giờ nào (giờ Hàn Quốc)?"
       th: "วันไหน กี่โมง (เวลาเกาหลี)?"
       id: "Tanggal dan jam berapa (waktu Korea)?"
@@ -42,7 +42,7 @@ required_slots:
       en: "How many people?"
       ja: "何名ですか？"
       zh-CN: "几位？"
-      zh-TW: "幾位？"
+      fr: "Vous serez combien ?"
       vi: "Bao nhiêu người?"
       th: "กี่คน?"
       id: "Berapa orang?"
@@ -53,7 +53,7 @@ required_slots:
       en: "What name should the reservation be under?"
       ja: "予約はどのお名前でしますか？"
       zh-CN: "用什么名字预订？"
-      zh-TW: "用什麼名字訂位？"
+      fr: "La réservation sera à quel nom ?"
       vi: "Đặt bàn dưới tên ai?"
       th: "จองในชื่อใคร?"
       id: "Reservasi atas nama siapa?"

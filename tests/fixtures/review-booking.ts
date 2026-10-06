@@ -23,4 +23,5 @@ export const FIRST_MESSAGE =
 export const NARROW_EDITS = {
   ja: "到着時刻だけを02:00に変更してください。ほかの情報は変えないでください。",
   "zh-CN": "只把到达时间改为02:00，其他信息保持不变。",
+  fr: "Change juste l'heure d'arrivée à 02:00, ne touche à rien d'autre.",
 } as const;

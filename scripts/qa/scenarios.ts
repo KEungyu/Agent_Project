@@ -128,7 +128,7 @@ const SCENARIOS: Record<string, () => Promise<void>> = {
         check("보드: 도착만 02:00, 체크인·체크아웃 유지", Date.parse(b.stays[0].expected_arrival ?? "") === Date.parse("2026-10-10T02:00+09:00") && b.stays[0].check_in_date === "2026-10-09" && b.stays[0].check_out_date === "2026-10-11");
         check("원문 02:00, 01:00 없음, 2026년 10월 9일 유지", body.includes("02:00") && !body.includes("01:00") && /2026년 10월 9일/.test(body));
         check("수신처 유지", b.stays[0].email === REVIEW_STAY.email);
-        const label = code === "ja" ? "件名:" : "主题:";
+        const label = { ja: "件名:", "zh-CN": "主题:", fr: "Objet:" }[code];
         check(`번역 제목 ${label}`, after.draft?.back_translation.startsWith(label) === true);
         const sentences = (text: string) => text.split(/(?<=[.다요])\s+/).map((x) => x.trim()).filter(Boolean);
         const kept = sentences(before.body_ko).filter((x) => body.includes(x)).length;

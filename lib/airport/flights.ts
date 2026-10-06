@@ -25,7 +25,7 @@ export type FlightStatusResult = { status: FlightStatusState; data?: FlightStatu
 
 // 응답의 terminalId 뜻 (공식 안내): P01 제1터미널 · P02 탑승동 · P03 제2터미널
 const TERMINAL: Record<string, FlightStatus["terminal"]> = { P01: "T1", P02: "T1 Concourse", P03: "T2" };
-const LANG: Record<string, string> = { ko: "K", ja: "J", "zh-CN": "C", "zh-TW": "C" };
+const LANG: Record<string, string> = { ko: "K", ja: "J", "zh-CN": "C" };
 
 type Options = { env?: Record<string, string | undefined>; fetch?: typeof fetch; now?: () => Date };
 const cache = new Map<string, { at: number; value: FlightStatusResult }>();

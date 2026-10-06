@@ -15,6 +15,9 @@ const EMERGENCY_LATIN = [
   "kecelakaan", "terluka", "ambulans", "kebakaran", "panggil polisi", "berdarah", "darurat", "dirampok",
   // es
   "emergencia", "accidente", "herido", "herida", "ambulancia", "incendio", "llama a la policía", "sangrando", "me robaron",
+  // fr
+  "urgence", "au secours", "à l'aide", "blessé", "blessée", "incendie", "au feu", "appelez la police", "appeler la police",
+  "je saigne", "on m'a volé", "agressé", "agressée", "je ne peux pas respirer", "inconscient", "crise cardiaque",
 ];
 // 한·중·일·태국 문자 표현: 부분 문자열로 찾는다
 const EMERGENCY_SCRIPT = [
@@ -22,7 +25,7 @@ const EMERGENCY_SCRIPT = [
   "다쳤", "응급", "사고가 났", "사고 났", "구급차", "불이 났", "불났", "경찰 불러", "강도", "피가 나", "숨을 못", "쓰러졌",
   // ja
   "事故", "怪我", "けがをし", "救急", "火事", "警察を呼", "出血", "強盗", "倒れ",
-  // zh-CN / zh-TW
+  // zh (간체·번체)
   "受伤", "受傷", "救护车", "救護車", "着火", "著火", "报警", "報警", "流血", "抢劫", "搶劫", "救命",
   // th
   "อุบัติเหตุ", "บาดเจ็บ", "รถพยาบาล", "ไฟไหม้", "เรียกตำรวจ", "เลือดออก", "ฉุกเฉิน",
@@ -33,6 +36,7 @@ const ADMIN_LATIN = [
   "my visa", "a visa", "tourist visa", "visa extension", "extend my visa", "visa application", "visa expires",
   "alien registration", "residence card", "residence permit", "arc card", "immigration office", "work permit",
   "extend my stay", "overstay", "thị thực", "thẻ cư trú", "izin tinggal", "visado", "permiso de residencia",
+  "mon visa", "un visa", "prolonger mon visa", "titre de séjour", "carte de séjour", "permis de travail",
 ];
 const ADMIN_SCRIPT = [
   "비자", "외국인등록", "외국인 등록", "체류 연장", "체류기간", "출입국",

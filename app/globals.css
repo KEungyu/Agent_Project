@@ -60,9 +60,6 @@
 :lang(zh-CN) {
   --font: var(--font-pretendard), "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
 }
-:lang(zh-TW) {
-  --font: var(--font-pretendard), "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-}
 :lang(th) {
   --font: var(--font-pretendard), "Noto Sans Thai", "Sukhumvit Set", "Thonburi", "Leelawadee UI", sans-serif;
   line-height: 1.7;
@@ -7082,19 +7079,21 @@ html[data-intro-seen] .intro {
   line-height: 1.5;
   color: var(--ink-2);
 }
-.ag-tabs.is-two {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
 .transit-panel {
   display: grid;
   gap: 10px;
   min-width: 0;
+}
+.subway-wrap {
+  display: grid;
+  gap: 6px;
 }
 .subway-map {
   position: relative;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--rule);
+  background: #f4f3ef;
 }
 .subway-map svg {
   display: block;
@@ -7113,51 +7112,102 @@ html[data-intro-seen] .intro {
   outline-offset: -3px;
 }
 .subway-ground {
-  fill: #f7f9fb;
+  fill: #f4f3ef;
+}
+.subway-river {
+  fill: none;
+  stroke: #cfe1f1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.subway-road {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.subway-road.is-motorway {
+  stroke: #fdfcf8;
+}
+.subway-road.is-far {
+  stroke: #ffffff;
+  opacity: 0.75;
+}
+.subway-district {
+  fill: #c2beb4;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.subway-casing {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.subway-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .subway-station {
   cursor: pointer;
 }
 .subway-label {
-  fill: var(--ink);
-  font-weight: 700;
+  fill: #2b333d;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   paint-order: stroke;
   stroke: #ffffff;
-  stroke-width: 3px;
+  stroke-width: 3.5px;
   stroke-linejoin: round;
   pointer-events: none;
 }
+.subway-label-sub {
+  fill: #7b8591;
+  font-weight: 500;
+}
+.subway-label.is-far {
+  stroke-width: 5px;
+  font-weight: 800;
+}
+.subway-label.is-route {
+  fill: var(--signbar);
+  font-weight: 800;
+}
 .subway-controls {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 10px;
+  right: 10px;
   display: grid;
-  gap: 4px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--rule);
+  background: rgb(255 255 255 / 0.96);
+  box-shadow: 0 2px 8px rgb(21 24 28 / 0.12);
 }
 .subway-controls button {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 10px;
-  background: rgb(255 255 255 / 0.95);
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
   font: inherit;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ink);
   cursor: pointer;
 }
+.subway-controls button + button {
+  border-top: 1px solid var(--rule);
+}
+.subway-controls button:hover {
+  background: var(--ground);
+}
 .subway-hint {
-  position: absolute;
-  left: 8px;
-  bottom: 8px;
-  right: 56px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  background: rgb(255 255 255 / 0.9);
-  font-size: 11.5px;
-  color: var(--ink-2);
+  font-size: 12px;
+  color: var(--ink-3);
 }
 .subway-legend {
   display: flex;
@@ -7243,13 +7293,8 @@ html[data-intro-seen] .intro {
   font-size: 11px;
   color: var(--ink-3);
 }
-.transit-form.is-bus {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-}
 .transit-route,
-.transit-online,
-.bus-stops {
+.transit-online {
   display: grid;
   gap: 8px;
 }
@@ -7264,30 +7309,6 @@ html[data-intro-seen] .intro {
 .transit-summary strong {
   font-size: 18px;
   color: var(--ink);
-}
-.transit-legs {
-  display: grid;
-  gap: 0;
-}
-.transit-legs li {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 10px;
-  padding: 0 0 12px;
-  font-size: 13.5px;
-  line-height: 1.45;
-  border-left: 0;
-  position: relative;
-}
-.transit-legs li:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 11px;
-  top: 26px;
-  bottom: 2px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--line);
 }
 .transit-off {
   font-weight: 800;
@@ -7330,49 +7351,6 @@ html[data-intro-seen] .intro {
 }
 .transit-path-legs .is-walk {
   color: var(--ink-3);
-}
-.bus-stop-list {
-  display: grid;
-  max-height: 420px;
-  overflow-y: auto;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-}
-.bus-stop-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--rule);
-  font-size: 13px;
-}
-.bus-stop-list li.is-ride {
-  background: var(--act-tint);
-}
-.bus-stop-name {
-  display: grid;
-  min-width: 0;
-}
-.bus-stop-actions {
-  display: flex;
-  gap: 4px;
-}
-.bus-stop-actions button {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--rule-strong);
-  border-radius: 8px;
-  background: var(--sign);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.bus-stop-actions button[aria-pressed="true"] {
-  border-color: var(--act-deep);
-  background: var(--act);
-  color: #ffffff;
 }
 
 /* 장소에서 가까운 역 고르기 (지도 검색 후보) */
@@ -7465,4 +7443,251 @@ html[data-intro-seen] .intro {
 }
 .chip-name {
   white-space: nowrap;
+}
+
+/* 역 찾기 (영어·한국어 이름, 역 번호) */
+.station-search {
+  position: relative;
+  min-width: 0;
+}
+.station-search.is-big .field {
+  min-height: 48px;
+  font-size: 16px;
+  padding-left: 14px;
+}
+.station-results {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  display: grid;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--sign);
+  box-shadow: var(--shadow-lift);
+}
+.station-results li + li {
+  border-top: 1px solid var(--rule);
+}
+.station-results button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.station-results li[aria-selected="true"] button,
+.station-results button:hover {
+  background: var(--ground);
+}
+.sr-lines {
+  display: flex;
+  gap: 3px;
+}
+.sr-name {
+  display: grid;
+  line-height: 1.25;
+  font-size: 14px;
+}
+.sr-name span {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sr-codes {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.sr-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.station-results .sr-place {
+  display: block;
+  font-weight: 700;
+  color: var(--arex-deep);
+}
+
+/* 고른 역 정보 카드 */
+.station-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--rule);
+  background: var(--sign);
+  box-shadow: var(--shadow-sign);
+}
+.sc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sc-name {
+  display: grid;
+  line-height: 1.2;
+}
+.sc-name strong {
+  font-size: 20px;
+  font-weight: 800;
+}
+.sc-name span {
+  font-size: 15px;
+  color: var(--ink-2);
+}
+.sc-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ground);
+  font: inherit;
+  font-size: 20px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.sc-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.sc-lines li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.sc-code {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--rule-strong);
+  background: var(--sign);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.subway-selected {
+  fill: none;
+  stroke: var(--signbar);
+  stroke-width: 3px;
+}
+
+/* 경로 한 줄 그림: 노선 색 막대 위에 탈 역·갈아탈 역·내릴 역 */
+.route-diagram {
+  display: grid;
+}
+.rd-leg {
+  display: grid;
+}
+.rd-stop {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.rd-dot {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 4px solid var(--line);
+  background: #ffffff;
+  box-sizing: border-box;
+}
+.rd-stop.is-transfer .rd-dot,
+.rd-stop.is-end .rd-dot {
+  border-color: var(--ink);
+}
+.rd-station {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.rd-action {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.rd-ride {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px 0 12px;
+  margin-left: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  position: relative;
+}
+.rd-ride::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: -2px;
+  bottom: -2px;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--line);
+}
+.rd-ride .line-badge {
+  position: relative;
+  margin-top: 2px;
+  margin-left: -1px;
+}
+.rd-toggle {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--arex-deep);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.rd-inner {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 14px;
+  list-style: disc;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+/* 휴대폰에서는 노선 범례를 한 줄로 두고 옆으로 민다 */
+@media (max-width: 560px) {
+  .subway-legend {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .subway-legend::-webkit-scrollbar {
+    display: none;
+  }
+  .subway-legend li {
+    flex: none;
+  }
 }

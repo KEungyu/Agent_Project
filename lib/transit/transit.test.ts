@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { busLaneDetail, busRide, clearOdsayCache, searchBusLanes, searchTransitPaths, subwaySchedule } from "./odsay";
-import { SUBWAY, findStations, getLine, getStation, inSupportedArea, subwayRoute } from "./subway";
+import { clearOdsayCache, searchTransitPaths, subwaySchedule } from "./odsay";
+import { SUBWAY, findStations, getLine, getStation, inSupportedArea, legDirection, lineName, stationName, subwayRoute, terminusName } from "./subway";
 
 const ENV = { ODSAY_API_KEY: "test-key" };
 const json = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status }));
 const station = (ko: string) => findStations(ko)[0];
+// 상태 구분·캐시·키 처리는 모든 ODsay 호출이 같은 길을 쓴다: 역 시간표 조회로 확인한다 (역 코드를 달리해 캐시를 나눈다)
+const lookup = (id: number, options: Parameters<typeof subwaySchedule>[2]) => subwaySchedule(id, 1, options);
 
 describe("N01 앱 내 지하철 노선도 데이터", () => {
   it("출처·라이선스·수집일을 기록한다", () => {
@@ -37,44 +39,71 @@ describe("N01 앱 내 지하철 노선도 데이터", () => {
     expect(route.transfers).toBe(1);
   });
 
+  it("역 번호·띄어쓰기 없는 영어로도 찾는다 (표지판의 번호, 예: 424 = 명동)", () => {
+    expect(station("424").ko).toBe("명동");
+    expect(station("a10").ko).toBe("인천공항1터미널");
+    expect(station("myeongdong").ko).toBe("명동");
+    expect(station("시청").codes).toMatchObject({ L1: "132", L2: "201" });
+  });
+
+  it("방면은 운행 계통의 실제 종착역으로, 2호선 순환 구간은 내선(시계)·외선(반시계)으로 알린다", () => {
+    const dir = (line: string, a: string, b: string) => legDirection(line, station(a).id, station(b).id);
+    const toward = (line: string, a: string, b: string) => {
+      const d = dir(line, a, b);
+      return d.kind === "toward" ? d.names : [];
+    };
+    expect(toward("L4", "명동", "회현")).toContain("오이도");
+    expect(toward("L4", "서울", "회현")).toContain("진접");
+    expect(toward("AREX", "인천공항1터미널", "공항화물청사")).toEqual(["서울"]);
+    expect(dir("L2", "시청", "을지로입구")).toEqual({ kind: "loop", clockwise: true });
+    expect(dir("L2", "강남", "역삼")).toEqual({ kind: "loop", clockwise: false });
+  });
+
   it("영어·'역' 붙인 이름으로도 찾는다", () => {
     expect(station("Myeong-dong").ko).toBe("명동");
     expect(station("서울역").ko).toBe("서울");
   });
-});
 
-describe("N02 선택한 버스 노선의 정류장 순서", () => {
-  const detail = {
-    result: {
-      busID: 100,
-      busNo: "6001",
-      busStartPoint: "A",
-      busEndPoint: "C",
-      turningPointIdx: 3,
-      station: [
-        { idx: 2, stationName: "시청", arsID: "02-001", stationDirection: 1, x: 126.97, y: 37.56, nonstopStation: 0 },
-        { idx: 1, stationName: "A", arsID: "01-001", stationDirection: 1, x: 126.9, y: 37.5, nonstopStation: 0 },
-        { idx: 3, stationName: "C", arsID: "03-001", stationDirection: 0, x: 127, y: 37.6, nonstopStation: 0 },
-        { idx: 4, stationName: "시청", arsID: "02-002", stationDirection: 2, x: 126.971, y: 37.561, nonstopStation: 0 },
-      ],
-    },
-  };
-
-  beforeEach(clearOdsayCache);
-
-  it("idx 순서로 정렬하고, 같은 이름의 반대편 정류장은 ARS 번호·방향으로 구분한다", async () => {
-    const result = await busLaneDetail(100, "en", { env: ENV, fetch: json(detail) });
-    expect(result.data!.stops.map((s) => s.idx)).toEqual([1, 2, 3, 4]);
-    const cityHall = result.data!.stops.filter((s) => s.name === "시청");
-    expect(cityHall.map((s) => s.arsID)).toEqual(["02-001", "02-002"]);
-    expect(cityHall.map((s) => s.direction)).toEqual([1, 2]);
+  it("역·노선 이름을 화면 언어로 쓴다 (일·중은 OSM 이름, 라틴 문자 언어는 로마자, 한국어는 그대로)", () => {
+    const myeongdong = station("명동");
+    expect(stationName(myeongdong, "ko")).toBe("명동");
+    expect(stationName(myeongdong, "ja")).toBe("ミョンドン");
+    expect(stationName(myeongdong, "zh-CN")).toBe("明洞");
+    expect(stationName(myeongdong, "fr")).toBe(myeongdong.en);
+    expect(stationName(station("서울"), "zh-CN")).toBe("首尔");
+    expect(lineName(getLine("L4")!, "fr")).toBe("Ligne 4");
+    expect(lineName(getLine("L4")!, "ja")).toBe("4号線");
+    expect(lineName(getLine("SBD")!, "es")).toBe("Línea Shinbundang");
+    expect(lineName(getLine("AREX")!, "zh-CN")).toBe("机场铁路(AREX)");
+    // 모든 역에 화면 언어 이름이 있다 (없으면 한국어로 대신)
+    for (const language of ["en", "ja", "zh-CN", "fr", "es", "vi", "th", "id"])
+      for (const s of SUBWAY.stations) expect(stationName(s, language)).toBeTruthy();
   });
 
-  it("하차가 승차보다 앞이면 거부하고, 회차점을 지나면 알린다", async () => {
-    const { data } = await busLaneDetail(100, "en", { env: ENV, fetch: json(detail) });
-    expect(busRide(data!, 2, 1).ok).toBe(false);
-    expect(busRide(data!, 1, 2)).toEqual({ ok: true, passesTurn: false, stops: 1 });
-    expect(busRide(data!, 2, 4).passesTurn).toBe(true);
+  it("범위 밖 종착역(방면)도 화면 언어로 쓴다", () => {
+    expect(terminusName("오이도", "fr")).toBe("Oido");
+    expect(terminusName("춘천", "ja")).toBe("春川");
+    expect(terminusName("명동", "zh-CN")).toBe("明洞");
+    expect(terminusName("없는역", "fr")).toBe("없는역");
+  });
+
+  it("불어·스페인어·베트남어·인니어는 설명 단어만 옮기고, 목록에 없는 역은 표지판 영어를 쓴다", () => {
+    expect(stationName(station("시청"), "fr")).toBe("Hôtel de ville");
+    expect(stationName(station("홍대입구"), "es")).toBe("Universidad Hongik");
+    expect(stationName(station("강남구청"), "vi")).toBe("Văn phòng quận Gangnam");
+    expect(stationName(station("김포공항"), "id")).toBe("Bandara Internasional Gimpo");
+    expect(stationName(station("시청"), "th")).toBe("City Hall");
+    expect(stationName(station("명동"), "fr")).toBe(station("명동").en);
+    expect(station("정부과천청사").en).toBe("Government Complex Gwacheon");
+    // 옮긴 이름·악센트 없이도 찾는다
+    expect(station("Hôtel de ville").ko).toBe("시청");
+    expect(station("universite hongik").ko).toBe("홍대입구");
+  });
+
+  it("일본어·중국어 이름으로도 찾는다", () => {
+    expect(station("ミョンドン").ko).toBe("명동");
+    expect(station("首尔站").ko).toBe("서울");
+    expect(station("弘大入口").ko).toBe("홍대입구");
   });
 });
 
@@ -93,6 +122,12 @@ describe("N03·N05 경로 검색 요청", () => {
     expect([url.searchParams.get("EX"), url.searchParams.get("EY")]).toEqual([String(to.lon), String(to.lat)]);
     expect(url.searchParams.get("lang")).toBe("2");
     expect([...url.searchParams.keys()].some((key) => /time|date/i.test(key))).toBe(false);
+  });
+
+  it("경로 검색은 지하철만 요청한다 (SearchPathType=1, 버스 경로 없음)", async () => {
+    const fetcher = json({ error: [{ code: "-99" }] });
+    await searchTransitPaths(station("서울"), station("강남"), "en", { env: ENV, fetch: fetcher });
+    expect(new URL(String((fetcher.mock.calls[0] as unknown[])[0])).searchParams.get("SearchPathType")).toBe("1");
   });
 
   it("무료 요금제(국문만)에서는 lang을 보내지 않는다", async () => {
@@ -140,28 +175,30 @@ describe("N06 자격 부족·오류·빈 결과·캐시", () => {
 
   it("키가 없으면 호출하지 않고 unconfigured", async () => {
     const fetcher = vi.fn();
-    expect((await searchBusLanes("6001", "en", { env: {}, fetch: fetcher })).status).toBe("unconfigured");
+    expect((await lookup(100, { env: {}, fetch: fetcher })).status).toBe("unconfigured");
     expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("권한 오류·시간 초과·빈 결과·지원 지역 밖·700m 이내를 구분한다", async () => {
-    expect((await searchBusLanes("1", "en", { env: ENV, fetch: json({}, 403) })).status).toBe("permission");
-    const authFailed = await searchBusLanes("1b", "en", { env: ENV, fetch: json({ error: [{ code: "500", message: "[ApiKeyAuthFailed] ApiKey authentication failed." }] }) });
+    expect((await lookup(1, { env: ENV, fetch: json({}, 403) })).status).toBe("permission");
+    const authFailed = await lookup(11, { env: ENV, fetch: json({ error: [{ code: "500", message: "[ApiKeyAuthFailed] ApiKey authentication failed." }] }) });
     expect(authFailed).toMatchObject({ status: "permission", code: "ApiKeyAuthFailed" });
+    const quota = await lookup(12, { env: ENV, fetch: json({ error: [{ code: "429", message: "Daily quota exceeded" }] }) });
+    expect(quota).toMatchObject({ status: "limit", code: "429" });
     const timeout = vi.fn(async () => {
       throw Object.assign(new Error("t"), { name: "TimeoutError" });
     });
-    expect((await searchBusLanes("2", "en", { env: ENV, fetch: timeout })).status).toBe("timeout");
-    expect((await searchBusLanes("3", "en", { env: ENV, fetch: json({ error: [{ code: "-99" }] }) })).status).toBe("empty");
-    expect((await searchBusLanes("4", "en", { env: ENV, fetch: json({ error: { code: "6" } }) })).status).toBe("out_of_area");
-    expect((await searchBusLanes("5", "en", { env: ENV, fetch: json({ error: [{ code: "-98" }] }) })).status).toBe("too_close");
-    expect((await searchBusLanes("6", "en", { env: ENV, fetch: json({ result: { lane: [] } }) })).status).toBe("empty");
+    expect((await lookup(2, { env: ENV, fetch: timeout })).status).toBe("timeout");
+    expect((await lookup(3, { env: ENV, fetch: json({ error: [{ code: "-99" }] }) })).status).toBe("empty");
+    expect((await lookup(4, { env: ENV, fetch: json({ error: { code: "6" } }) })).status).toBe("out_of_area");
+    expect((await lookup(5, { env: ENV, fetch: json({ error: [{ code: "-98" }] }) })).status).toBe("too_close");
+    expect((await lookup(6, { env: ENV, fetch: json({ result: { weekdaySchedule: {}, saturdaySchedule: {}, holidaySchedule: {} } }) })).status).toBe("empty");
   });
 
   it("성공한 결과만 잠시 캐시하고 조회 시각을 함께 돌려준다", async () => {
-    const fetcher = json({ result: { lane: [{ busID: 1, busNo: "6001", busStartPoint: "A", busEndPoint: "B", busCityName: "서울" }] } });
-    const first = await searchBusLanes("6001", "en", { env: ENV, fetch: fetcher });
-    const second = await searchBusLanes("6001", "en", { env: ENV, fetch: fetcher });
+    const fetcher = json({ result: { weekdaySchedule: { up: [{ departureTime: "23:50", firstLastFlag: 2 }] } } });
+    const first = await lookup(7, { env: ENV, fetch: fetcher });
+    const second = await lookup(7, { env: ENV, fetch: fetcher });
     expect(first.fetchedAt).toBeTruthy();
     expect(second.cached).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -170,14 +207,14 @@ describe("N06 자격 부족·오류·빈 결과·캐시", () => {
   it("특수문자가 있는 키는 한 번만 인코딩한다 (원래 키든 이미 인코딩된 키든)", async () => {
     for (const key of ["a+b/c=", "a%2Bb%2Fc%3D"]) {
       clearOdsayCache();
-      const fetcher = json({ result: { lane: [] } });
-      await searchBusLanes("6001", "en", { env: { ODSAY_API_KEY: key }, fetch: fetcher });
+      const fetcher = json({ result: {} });
+      await lookup(8, { env: { ODSAY_API_KEY: key }, fetch: fetcher });
       expect(String((fetcher.mock.calls[0] as unknown[])[0])).toContain("apiKey=a%2Bb%2Fc%3D");
     }
   });
 
   it("키 값은 오류 결과에 담지 않는다", async () => {
-    const result = await searchBusLanes("7", "en", { env: ENV, fetch: json({}, 500) });
+    const result = await lookup(9, { env: ENV, fetch: json({}, 500) });
     expect(JSON.stringify(result)).not.toContain("test-key");
   });
 });

@@ -5,7 +5,7 @@ label:
   en: Other request to your stay
   ja: 宿へのその他のお願い
   zh-CN: 向住宿提出其他请求
-  zh-TW: 向住宿提出其他請求
+  fr: Autre demande à l'hébergement
   vi: Yêu cầu khác gửi chỗ ở
   th: คำขออื่นถึงที่พัก
   id: Permintaan lain ke penginapan
@@ -20,7 +20,7 @@ required_slots:
       en: "Which hotel?"
       ja: "どのホテルですか？"
       zh-CN: "哪家酒店？"
-      zh-TW: "哪一家飯店？"
+      fr: "Quel hôtel ?"
       vi: "Khách sạn nào?"
       th: "โรงแรมไหน?"
       id: "Hotel yang mana?"
@@ -32,7 +32,7 @@ required_slots:
       en: "What name is the booking under?"
       ja: "予約は誰の名前で入っていますか？"
       zh-CN: "是用谁的名字预订的？"
-      zh-TW: "是用誰的名字訂房的？"
+      fr: "La réservation est à quel nom ?"
       vi: "Phòng được đặt dưới tên ai?"
       th: "จองไว้ในชื่อใคร?"
       id: "Pemesanan atas nama siapa?"
@@ -44,7 +44,7 @@ required_slots:
       en: "What is your check-out date?"
       ja: "チェックアウト日はいつですか？"
       zh-CN: "哪天退房？"
-      zh-TW: "哪一天退房？"
+      fr: "Vous partez quel jour ?"
       vi: "Bạn trả phòng ngày nào?"
       th: "เช็กเอาต์วันไหน?"
       id: "Check-out tanggal berapa?"
@@ -55,7 +55,7 @@ required_slots:
       en: "What would you like to ask the hotel?"
       ja: "ホテルに何をお願いしたいですか？"
       zh-CN: "你想跟酒店说什么？"
-      zh-TW: "你想跟飯店說什麼？"
+      fr: "Qu'est-ce que vous voulez demander à l'hôtel ?"
       vi: "Bạn muốn nhờ khách sạn điều gì?"
       th: "อยากขออะไรจากโรงแรม?"
       id: "Kamu mau minta apa ke hotel?"

@@ -28,7 +28,7 @@ import { estimateFare, farePeriod, type FareEstimate, type FarePeriod } from "@/
 import { drivingRoute, geocode, geocodeCandidates, haversine, inSeoul } from "@/lib/taxi/lookup";
 import { wonRate, type WonRate } from "@/lib/currency/rates";
 import { kstMinutesOfDay } from "@/lib/time";
-import { busLaneDetail, searchBusLanes, searchTransitPaths, subwaySchedule, type BusLane, type BusLaneDetail, type OdsayResult, type TransitPath } from "@/lib/transit/odsay";
+import { searchTransitPaths, subwaySchedule, type OdsayResult, type TransitPath } from "@/lib/transit/odsay";
 import { checkLastTrains, type LastTrainCheck } from "@/lib/transit/lasttrain";
 import { icnFlightStatus, type FlightStatusResult } from "@/lib/airport/flights";
 import { getStation } from "@/lib/transit/subway";
@@ -321,7 +321,7 @@ export async function callScriptAction(requestId: string): Promise<CallScriptRes
   }
 }
 
-// 대중교통 경로(시간·요금·버스 포함)는 ODsay로만 조회한다. 출발·도착 좌표는 노선도 데이터의 역 좌표만 쓴다(임의 좌표 없음).
+// 지하철 경로의 시간·요금은 ODsay로만 조회한다 (버스는 다루지 않는다). 출발·도착 좌표는 노선도 데이터의 역 좌표만 쓴다(임의 좌표 없음).
 // ODSAY_API_KEY가 없으면 호출하지 않고 "unconfigured"를 돌려준다 — 화면은 역 연결 경로와 공식 대안을 보여 준다.
 // 경로마다 지하철 구간의 막차를 확인해 함께 돌려준다 (지금 출발 기준 추정, N04)
 export async function transitPathsAction(
@@ -334,22 +334,11 @@ export async function transitPathsAction(
   if (!from || !to || from.id === to.id) return { status: "empty" };
   const result = await searchTransitPaths(from, to, isLanguageCode(language) ? language : "en");
   if (result.status !== "ok" || !result.data) return result;
+  // 막차는 첫 번째(추천) 경로만 확인한다: 시간표 조회가 구간마다 한 번씩 들어 하루 호출 한도를 빨리 쓰기 때문
   const now = new Date();
-  const data = await Promise.all(
-    result.data.map(async (path) => ({ ...path, lastTrain: await checkLastTrains(path, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode)) })),
-  );
-  return { ...result, data };
-}
-
-export async function busLanesAction(busNo: string, language: string): Promise<OdsayResult<BusLane[]>> {
-  const value = busNo.trim().slice(0, 12);
-  if (!/^[0-9A-Za-z가-힣-]+$/.test(value)) return { status: "empty" };
-  return searchBusLanes(value, isLanguageCode(language) ? language : "en");
-}
-
-export async function busLaneDetailAction(busID: number, language: string): Promise<OdsayResult<BusLaneDetail>> {
-  if (!Number.isInteger(busID) || busID <= 0) return { status: "empty" };
-  return busLaneDetail(busID, isLanguageCode(language) ? language : "en");
+  const [first, ...rest] = result.data;
+  const lastTrain = await checkLastTrains(first, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode));
+  return { ...result, data: [{ ...first, lastTrain }, ...rest] };
 }
 
 // 숙소·식당·입력한 장소에서 가까운 역 (N03). 좌표는 지도 검색(OpenStreetMap Nominatim) 결과만 쓰고, 같은 이름이 여럿이면 모두 돌려준다

@@ -24,11 +24,11 @@ const WELCOME = [
   { text: "Welcome", lang: "en" },
   { text: "ようこそ", lang: "ja" },
   { text: "欢迎", lang: "zh-CN" },
-  { text: "歡迎", lang: "zh-TW" },
   { text: "Chào mừng", lang: "vi" },
   { text: "ยินดีต้อนรับ", lang: "th" },
   { text: "Selamat datang", lang: "id" },
   { text: "Bienvenido", lang: "es" },
+  { text: "Bienvenue", lang: "fr" },
 ];
 
 function useNow(intervalMs: number) {

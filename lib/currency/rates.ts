@@ -8,11 +8,11 @@ export const CURRENCY_BY_LANGUAGE: Record<Exclude<LanguageCode, "ko">, string> =
   en: "USD",
   ja: "JPY",
   "zh-CN": "CNY",
-  "zh-TW": "TWD",
   vi: "VND",
   th: "THB",
   id: "IDR",
   es: "EUR",
+  fr: "EUR",
 };
 
 // 1원당 외화
@@ -20,7 +20,6 @@ const FALLBACK: Record<string, number> = {
   USD: 0.000742,
   JPY: 0.116965,
   CNY: 0.004958,
-  TWD: 0.023675,
   VND: 19.166689,
   THB: 0.02489,
   IDR: 13.282819,

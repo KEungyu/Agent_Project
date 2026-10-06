@@ -169,11 +169,11 @@ const SUBJECT_LABEL: Record<string, string> = {
   en: "Subject",
   ja: "件名",
   "zh-CN": "主题",
-  "zh-TW": "主旨",
   vi: "Tiêu đề",
   th: "หัวเรื่อง",
   id: "Subjek",
   es: "Asunto",
+  fr: "Objet",
   ko: "제목",
 };
 

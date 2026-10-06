@@ -24,7 +24,7 @@ Single screen web app (Next.js) used on a laptop or phone, often late at night, 
 
 ## Capabilities and Constraints
 
-- Languages for the interface, the agent's replies, and back-translations: English, 日本語, 简体中文, 繁體中文, Tiếng Việt, ภาษาไทย, Bahasa Indonesia, Español, 한국어 (Korean is for the presentation demo). Chosen with a flag button and a dropdown panel in the header. Messages sent to businesses are always Korean.
+- Languages for the interface, the agent's replies, and back-translations: English, 日本語, 简体中文, Tiếng Việt, ภาษาไทย, Bahasa Indonesia, Español, Français, 한국어 (Korean is for the presentation demo). Chosen with a flag button and a dropdown panel in the header. Messages sent to businesses are always Korean.
 - Out of scope: payment, identity verification, confirmed bookings ("확정"), visas and immigration (point to 1345), acting in emergencies (show 112, 119, 1330 first).
 - Request types are data, not code. Approval gate is enforced in code; the language model has no send tool.
 - Personal data kept to what a request needs; pasted booking text is not stored.

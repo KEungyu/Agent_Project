@@ -5,7 +5,7 @@ label:
   en: Early check-in inquiry
   ja: アーリーチェックインの問い合わせ
   zh-CN: 提前入住咨询
-  zh-TW: 提早入住詢問
+  fr: Demande de check-in anticipé
   vi: Hỏi về nhận phòng sớm
   th: ขอเช็กอินก่อนเวลา
   id: Check-in lebih awal
@@ -20,7 +20,7 @@ required_slots:
       en: "Which hotel are you staying at?"
       ja: "どのホテルに泊まりますか？"
       zh-CN: "你住哪家酒店？"
-      zh-TW: "你住哪一家飯店？"
+      fr: "Vous dormez dans quel hôtel ?"
       vi: "Bạn ở khách sạn nào?"
       th: "พักที่โรงแรมไหน?"
       id: "Kamu menginap di hotel mana?"
@@ -32,7 +32,7 @@ required_slots:
       en: "What name is the booking under?"
       ja: "予約は誰の名前で入っていますか？"
       zh-CN: "是用谁的名字预订的？"
-      zh-TW: "是用誰的名字訂房的？"
+      fr: "La réservation est à quel nom ?"
       vi: "Phòng được đặt dưới tên ai?"
       th: "จองไว้ในชื่อใคร?"
       id: "Pemesanan atas nama siapa?"
@@ -44,7 +44,7 @@ required_slots:
       en: "What is your booking number?"
       ja: "予約番号を教えてください。"
       zh-CN: "预订号是多少？"
-      zh-TW: "訂單編號是多少？"
+      fr: "C'est quoi votre numéro de réservation ?"
       vi: "Mã đặt phòng của bạn là gì?"
       th: "เลขการจองคืออะไร?"
       id: "Berapa nomor pemesananmu?"
@@ -56,7 +56,7 @@ required_slots:
       en: "What is your check-in date?"
       ja: "チェックイン日はいつですか？"
       zh-CN: "哪天入住？"
-      zh-TW: "哪一天入住？"
+      fr: "Vous arrivez quel jour ?"
       vi: "Bạn nhận phòng ngày nào?"
       th: "เช็กอินวันไหน?"
       id: "Check-in tanggal berapa?"
@@ -68,7 +68,7 @@ required_slots:
       en: "What time do you expect to arrive at the hotel?"
       ja: "ホテルには何時ごろ着く予定ですか？"
       zh-CN: "大概几点到酒店？"
-      zh-TW: "大概幾點會到飯店？"
+      fr: "Vous pensez arriver à l'hôtel vers quelle heure ?"
       vi: "Khoảng mấy giờ bạn tới khách sạn?"
       th: "น่าจะถึงโรงแรมกี่โมง?"
       id: "Kira-kira jam berapa kamu sampai di hotel?"

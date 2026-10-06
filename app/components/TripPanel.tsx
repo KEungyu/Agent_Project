@@ -48,7 +48,7 @@ export function TripPanel({ board, m, language }: Props) {
       </div>
 
       <div className="sign">
-        <SignTitle as="h3" ko="지하철·버스" text={m.transit.title} />
+        <SignTitle as="h3" ko="지하철" text={m.transit.title} />
         <TransitGuide language={language} m={m.transit} places={transitPlaces(board)} />
       </div>
 

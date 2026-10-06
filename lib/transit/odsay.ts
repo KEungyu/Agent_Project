@@ -1,4 +1,4 @@
-// ODsay 대중교통 API 어댑터 (경로 검색 · 버스 노선 검색 · 버스 노선 정류장 순서).
+// ODsay 대중교통 API 어댑터 (지하철 경로 검색 · 지하철역 시간표). 버스는 다루지 않는다.
 // 엔드포인트·파라미터·출력 필드는 공식 레퍼런스(https://lab.odsay.com/guide/releaseReference?platform=web, 2026-10-04 확인)를 따랐다.
 // 팀에 발급된 키가 없어 실제 호출 결과는 확인하지 못했다(미완료). 키가 없으면 호출하지 않고 "unconfigured"를 돌려준다.
 // 경로 검색에는 출발 날짜·시각 파라미터가 없다: 결과는 현재 기준 일반 경로이며, 특정 시각의 운행·막차·환승 가능을 보장하지 않는다.
@@ -7,7 +7,7 @@ const BASE = "https://api.odsay.com/v1/api";
 const TIMEOUT_MS = 10_000;
 const CACHE_MS = 10 * 60_000;
 
-export type OdsayStatus = "ok" | "empty" | "too_close" | "unconfigured" | "permission" | "timeout" | "error" | "out_of_area";
+export type OdsayStatus = "ok" | "empty" | "too_close" | "unconfigured" | "permission" | "limit" | "timeout" | "error" | "out_of_area";
 export type OdsayResult<T> = { status: OdsayStatus; data?: T; fetchedAt?: string; cached?: boolean; code?: string };
 
 export type TransitLeg =
@@ -28,9 +28,6 @@ export type TransitLeg =
     };
 export type TransitPath = { minutes: number; fare: number; transfers: number; walkMeters: number; legs: TransitLeg[] };
 
-export type BusLane = { busID: number; busNo: string; from: string; to: string; city: string; first?: string; last?: string };
-export type BusStop = { idx: number; name: string; arsID: string; direction: number; x: number; y: number; nonstop: boolean };
-export type BusLaneDetail = { busID: number; busNo: string; from: string; to: string; turningPointIdx?: number; stops: BusStop[] };
 
 type Fetch = typeof fetch;
 type Options = { env?: Record<string, string | undefined>; fetch?: Fetch; now?: () => Date; cacheMs?: number };
@@ -40,7 +37,7 @@ export const clearOdsayCache = () => cache.clear();
 
 // 결과 언어: 영문(1)·일문(2)·중문 간체(3)·번체(4)·베트남어(5, 수도권만). 그 밖의 언어는 영문으로 받는다.
 // 다국어는 유료 서비스에서만 된다(무료는 국문만, 공식 가이드 2026-10-04 확인). ODSAY_MULTILANG=1일 때만 lang을 보낸다
-const LANG: Record<string, number> = { ko: 0, en: 1, ja: 2, "zh-CN": 3, "zh-TW": 4, vi: 5 };
+const LANG: Record<string, number> = { ko: 0, en: 1, ja: 2, "zh-CN": 3, vi: 5 };
 const langParam = (language: string, env: Record<string, string | undefined> = process.env): Record<string, number> =>
   env.ODSAY_MULTILANG === "1" ? { lang: LANG[language] ?? 1 } : {};
 
@@ -63,6 +60,7 @@ async function call<T>(
   try {
     const res = await fetcher(`${BASE}/${path}?${query}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (res.status === 401 || res.status === 403) return { status: "permission" };
+    if (res.status === 429) return { status: "limit", code: "429" };
     if (!res.ok) return { status: "error", code: String(res.status) };
     body = (await res.json()) as Record<string, unknown>;
   } catch (error) {
@@ -76,6 +74,8 @@ async function call<T>(
     const code = String(first?.code ?? "");
     // 키 인증 실패는 코드 500과 함께 "[ApiKeyAuthFailed]"로 온다 (2026-10-04 실제 응답 확인): 플랫폼(서버)·등록 IP 문제
     if (/ApiKeyAuthFailed/i.test(String(first?.message ?? ""))) return { status: "permission", code: "ApiKeyAuthFailed" };
+    // 하루 호출 한도 초과는 코드 429 + "Daily quota exceeded"로 온다 (2026-10-04 실제 응답 확인)
+    if (code === "429" || /quota/i.test(String(first?.message ?? ""))) return { status: "limit", code: "429" };
     if (code === "-99" || code === "3" || code === "4" || code === "5") return { status: "empty", code };
     if (code === "-98") return { status: "too_close", code }; // 출발·도착이 700m 이내
     if (code === "6") return { status: "out_of_area", code };
@@ -101,7 +101,8 @@ export function searchTransitPaths(
 ): Promise<OdsayResult<TransitPath[]>> {
   return call(
     "searchPubTransPathT",
-    { SX: from.lon, SY: from.lat, EX: to.lon, EY: to.lat, ...langParam(language, options.env) },
+    // SearchPathType 1 = 지하철만 (버스·버스+지하철 경로는 받지 않는다)
+    { SX: from.lon, SY: from.lat, EX: to.lon, EY: to.lat, SearchPathType: 1, ...langParam(language, options.env) },
     (result) => {
       const paths = list(result.path).slice(0, 3).map((path): TransitPath => {
         const info = (path.info ?? {}) as Record<string, unknown>;
@@ -136,66 +137,6 @@ export function searchTransitPaths(
     },
     options,
   );
-}
-
-// 버스 번호로 노선 찾기 (CID 1000 = 서울). 같은 번호가 여러 도시에 있으면 모두 돌려주고 이용자가 고른다
-export function searchBusLanes(busNo: string, language: string, options: Options = {}): Promise<OdsayResult<BusLane[]>> {
-  return call(
-    "searchBusLane",
-    { busNo: busNo.trim(), ...langParam(language, options.env), displayCnt: 10 },
-    (result) => {
-      const lanes = list(result.lane).map((lane) => ({
-        busID: num(lane.busID),
-        busNo: str(lane.busNo),
-        from: str(lane.busStartPoint),
-        to: str(lane.busEndPoint),
-        city: str(lane.busCityName),
-        first: lane.busFirstTime ? str(lane.busFirstTime) : undefined,
-        last: lane.busLastTime ? str(lane.busLastTime) : undefined,
-      }));
-      return lanes.length ? lanes : null;
-    },
-    options,
-  );
-}
-
-// 노선의 정류장 순서. stationDirection(1 하행·2 상행)과 arsID(정류장 고유번호)로 같은 이름의 반대편 정류장을 구분한다
-export function busLaneDetail(busID: number, language: string, options: Options = {}): Promise<OdsayResult<BusLaneDetail>> {
-  return call(
-    "busLaneDetail",
-    { busID, ...langParam(language, options.env) },
-    (result) => {
-      const stops = list(result.station).map((s) => ({
-        idx: num(s.idx),
-        name: str(s.stationName),
-        arsID: str(s.arsID),
-        direction: num(s.stationDirection),
-        x: num(s.x),
-        y: num(s.y),
-        nonstop: num(s.nonstopStation) === 1,
-      }));
-      if (!stops.length) return null;
-      return {
-        busID: num(result.busID),
-        busNo: str(result.busNo),
-        from: str(result.busStartPoint),
-        to: str(result.busEndPoint),
-        turningPointIdx: result.turningPointIdx === undefined ? undefined : num(result.turningPointIdx),
-        stops: stops.sort((a, b) => a.idx - b.idx),
-      };
-    },
-    options,
-  );
-}
-
-// 승차 정류장에서 하차 정류장까지 같은 진행 방향으로 갈 수 있는지. 회차점을 지나야 하면 그 사실을 알려 준다
-export function busRide(detail: BusLaneDetail, boardIdx: number, alightIdx: number): { ok: boolean; passesTurn: boolean; stops: number } {
-  const board = detail.stops.findIndex((s) => s.idx === boardIdx);
-  const alight = detail.stops.findIndex((s) => s.idx === alightIdx);
-  if (board < 0 || alight < 0 || alight <= board) return { ok: false, passesTurn: false, stops: 0 };
-  const turn = detail.turningPointIdx;
-  const passesTurn = turn !== undefined && boardIdx < turn && alightIdx > turn;
-  return { ok: true, passesTurn, stops: alight - board };
 }
 
 // 지하철역 시간표 (searchSubwaySchedule, 2024-05 새 형식). 평일·토요일·휴일 시간표를 따로 준다

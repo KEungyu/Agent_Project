@@ -4,11 +4,11 @@ export const LANGUAGES = [
   { code: "en", flag: "us", nativeName: "English", englishName: "English" },
   { code: "ja", flag: "jp", nativeName: "日本語", englishName: "Japanese" },
   { code: "zh-CN", flag: "cn", nativeName: "简体中文", englishName: "Simplified Chinese" },
-  { code: "zh-TW", flag: "tw", nativeName: "繁體中文", englishName: "Traditional Chinese" },
   { code: "vi", flag: "vn", nativeName: "Tiếng Việt", englishName: "Vietnamese" },
   { code: "th", flag: "th", nativeName: "ภาษาไทย", englishName: "Thai" },
   { code: "id", flag: "id", nativeName: "Bahasa Indonesia", englishName: "Indonesian" },
   { code: "es", flag: "es", nativeName: "Español", englishName: "Spanish" },
+  { code: "fr", flag: "fr", nativeName: "Français", englishName: "French" },
   { code: "ko", flag: "kr", nativeName: "한국어", englishName: "Korean" },
 ] as const;
 

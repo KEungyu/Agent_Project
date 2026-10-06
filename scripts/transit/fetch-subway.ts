@@ -31,25 +31,35 @@ const LINES: { ref: string; id: string; ko: string; en: string; short: string }[
   { ref: "서해", id: "SH", ko: "서해선", en: "Seohae", short: "SH" },
 ];
 const EXPRESS = /급행|특급|Rapid|Express/i;
+// OSM 영어 이름이 잘못 들어간 역 (2026-10-06 확인): 표지판의 영어 이름으로 바로잡는다
+const EN_FIX: Record<string, string> = { 정부과천청사: "Government Complex Gwacheon" };
 
 type OsmMember = { type: string; ref: number; role: string };
 type OsmElement = { type: "node" | "relation"; id: number; lat?: number; lon?: number; tags?: Record<string, string>; members?: OsmMember[] };
 
+// 공개 Overpass 서버는 붐비면 429·504를 준다: 잠시 쉬었다가 몇 번 다시 묻는다
 async function overpass(query: string): Promise<OsmElement[]> {
-  const res = await fetch(OVERPASS, {
-    method: "POST",
-    headers: { "User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ data: query }),
-    signal: AbortSignal.timeout(240_000),
-  });
-  if (!res.ok) throw new Error(`Overpass ${res.status}`);
-  return ((await res.json()) as { elements: OsmElement[] }).elements;
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(OVERPASS, {
+      method: "POST",
+      headers: { "User-Agent": USER_AGENT, "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ data: query }),
+      signal: AbortSignal.timeout(240_000),
+    });
+    if (res.ok) return ((await res.json()) as { elements: OsmElement[] }).elements;
+    if (attempt >= 4 || ![429, 502, 503, 504].includes(res.status)) throw new Error(`Overpass ${res.status}`);
+    console.warn(`Overpass ${res.status}, retrying (${attempt})`);
+    await new Promise((r) => setTimeout(r, 20_000 * attempt));
+  }
 }
 
 const inBox = (lat: number, lon: number) => lat >= BBOX[0] && lat <= BBOX[2] && lon >= BBOX[1] && lon <= BBOX[3];
 // "서울역", "서울 (1호선)" 같은 표기 차이를 지우고 역 이름만 남긴다
 const baseKo = (name: string) => name.replace(/\s*\(.*?\)\s*/g, "").replace(/\s*\d+호선$/, "").replace(/역$/, "").trim();
 const baseEn = (name: string) => name.replace(/\s*\(.*?\)\s*/g, "").replace(/\s+Station$/i, "").replace(/\s+Line\s*\d+$/i, "").trim();
+// 일본어·중국어 역 이름 (OSM name:ja, name:zh-Hans → name:zh). 괄호 속 읽기와 "駅"·"站"을 지운다
+const baseCjk = (name: string | undefined) => name?.replace(/\s*[(（].*?[)）]\s*/g, "").replace(/[駅站]$/, "").trim() || undefined;
+const cjkNames = (tags: Record<string, string> | undefined) => ({ ja: baseCjk(tags?.["name:ja"]), zh: baseCjk(tags?.["name:zh-Hans"] ?? tags?.["name:zh"]) });
 const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
   Math.hypot((a.lat - b.lat) * 111, (a.lon - b.lon) * 88.2);
 
@@ -69,7 +79,16 @@ async function main() {
       .filter((n) => (!ko || baseKo(n.tags!["name:ko"] ?? n.tags!.name) === ko) && km(n as { lat: number; lon: number }, point) < within)
       .sort((a, b) => km(a as { lat: number; lon: number }, point) - km(b as { lat: number; lon: number }, point))[0];
 
-  type Station = { id: string; ko: string; en: string; lat: number; lon: number; lines: Set<string> };
+  type Station = {
+    id: string;
+    ko: string;
+    en: string;
+    names: { ja?: string; zh?: string };
+    lat: number;
+    lon: number;
+    lines: Set<string>;
+    codes: Record<string, string>;
+  };
   const stations: Station[] = [];
   // 같은 이름이고 1km 안이면 같은 역(환승역)으로 합친다. 이름이 같아도 멀면 다른 역이다 (예: 양평)
   const stationFor = (node: OsmElement, line: string): Station | null => {
@@ -80,7 +99,7 @@ async function main() {
     if (!ko) return null;
     let station = stations.find((s) => s.ko === ko && km(s, point) < 1);
     if (!station) {
-      station = { id: `s${stations.length + 1}`, ko, en: baseEn(node.tags?.["name:en"] ?? ""), lat: point.lat, lon: point.lon, lines: new Set() };
+      station = { id: `s${stations.length + 1}`, ko, en: baseEn(node.tags?.["name:en"] ?? ""), names: {}, lat: point.lat, lon: point.lon, lines: new Set(), codes: {} };
       stations.push(station);
     }
     if (!station.en && node.tags?.["name:en"]) station.en = baseEn(node.tags["name:en"]);
@@ -88,11 +107,21 @@ async function main() {
       const en = nearestStation(point, ko, 1)?.tags?.["name:en"];
       if (en) station.en = baseEn(en);
     }
+    // 정차 위치에 없으면 같은 이름의 가까운 역 노드에서 가져온다
+    const cjk = cjkNames(node.tags);
+    const near: Station["names"] = !cjk.ja || !cjk.zh ? cjkNames(nearestStation(point, ko, 1)?.tags) : {};
+    station.names.ja ??= cjk.ja ?? near.ja;
+    station.names.zh ??= cjk.zh ?? near.zh;
     station.lines.add(line);
+    // 역 번호 (표지판에 쓰인 번호, 예: 명동 424). 정차 위치의 ref에 있다
+    const code = node.tags?.ref?.trim();
+    if (code && /^[A-Z]?\d{2,4}(-\d)?$|^[A-Z]{1,2}\d{1,3}$/.test(code) && !station.codes[line]) station.codes[line] = code;
     return station;
   };
 
   const edges = new Map<string, Set<string>>();
+  // 운행 계통: 노선 · 실제 종착역(표지판의 "○○ 방면") · 지원 범위 안에서 서는 역 순서
+  const services: { line: string; to: string; stops: string[] }[] = [];
   for (const line of LINES) {
     const set = new Set<string>();
     const rels = relations.filter((r) => r.tags?.ref === line.ref && !EXPRESS.test(`${r.tags?.name ?? ""} ${r.tags?.["name:en"] ?? ""}`));
@@ -103,6 +132,9 @@ async function main() {
         .filter((n): n is OsmElement => !!n)
         .map((n) => stationFor(n, line.id))
         .filter((s): s is Station => !!s);
+      const ids = stops.map((st) => st.id).filter((id, i, all) => id !== all[i - 1]);
+      const to = baseKo(rel.tags?.to ?? (rel.tags?.name ?? "").split(/→|->/).pop() ?? "");
+      if (to && ids.length > 1) services.push({ line: line.id, to, stops: ids });
       for (let i = 1; i < stops.length; i++) {
         const [a, b] = [stops[i - 1].id, stops[i].id];
         // 역 사이가 너무 멀면(영역 밖으로 나갔다 들어온 경우) 잇지 않는다
@@ -111,6 +143,23 @@ async function main() {
     }
     edges.set(line.id, set);
     if (set.size === 0) console.warn(`no edges for ${line.id}`);
+  }
+
+  // 지원 범위 밖 종착역(예: 오이도)의 영어·일본어·중국어 이름: 운행 계통의 정차 위치 노드에서 찾는다 (방면 안내용)
+  const termini: Record<string, { en: string; ja?: string; zh?: string }> = {};
+  for (const to of new Set(services.map((sv) => sv.to))) {
+    if (stations.some((st) => st.ko === to)) continue;
+    const node = [...nodes.values()].find((n) => n.tags && baseKo(n.tags["name:ko"] ?? n.tags.name ?? "") === to && n.tags["name:en"]);
+    if (node) termini[to] = { en: baseEn(node.tags!["name:en"]), ...cjkNames(node.tags) };
+  }
+  // 정차 위치에 영어 이름이 없으면 범위 밖 역 노드에서 찾는다 (순환 계통 이름은 역이 아니라 뺀다)
+  const missing = [...new Set(services.map((sv) => sv.to))].filter((to) => !termini[to] && !/순환/.test(to) && !stations.some((st) => st.ko === to));
+  if (missing.length) {
+    const far = await overpass(`[out:json][timeout:120];node["railway"="station"]["name"~"^(${missing.join("|")})(역)?$"];out body;`);
+    for (const to of missing) {
+      const node = far.find((n) => n.tags && baseKo(n.tags["name:ko"] ?? n.tags.name ?? "") === to && n.tags["name:en"]);
+      if (node) termini[to] = { en: baseEn(node.tags!["name:en"]), ...cjkNames(node.tags) };
+    }
   }
 
   const colourOf = (ref: string) => relations.find((r) => r.tags?.ref === ref && r.tags?.colour)?.tags?.colour ?? "#888888";
@@ -131,9 +180,21 @@ async function main() {
       colour: colourOf(line.ref),
       edges: [...(edges.get(line.id) ?? [])].map((key) => key.split("-")),
     })),
+    // 같은 계통은 한 번만
+    termini,
+    services: services.filter((sv, i) => services.findIndex((o) => o.line === sv.line && o.to === sv.to && o.stops.join() === sv.stops.join()) === i),
     stations: stations
       .filter((s) => [...edges.values()].some((set) => [...set].some((key) => key.split("-").includes(s.id))))
-      .map((s) => ({ id: s.id, ko: s.ko, en: s.en, lat: +s.lat.toFixed(5), lon: +s.lon.toFixed(5), lines: [...s.lines] })),
+      .map((s) => ({
+        id: s.id,
+        ko: s.ko,
+        en: EN_FIX[s.ko] ?? s.en,
+        ...(s.names.ja || s.names.zh ? { names: s.names } : {}),
+        lat: +s.lat.toFixed(5),
+        lon: +s.lon.toFixed(5),
+        lines: [...s.lines],
+        codes: s.codes,
+      })),
   };
   const file = path.join(process.cwd(), "data/transit/seoul-subway.json");
   mkdirSync(path.dirname(file), { recursive: true });

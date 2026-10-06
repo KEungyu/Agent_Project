@@ -26,7 +26,7 @@ npm run dev            # http://localhost:3000
 | `GEMINI_API_KEY` 또는 `ANTHROPIC_API_KEY` | 마중이 AI (둘 중 하나 필수. `LLM_PROVIDER`, `GEMINI_MODEL`, `GEMINI_FALLBACK_MODELS`로 고를 수 있음) |
 | `MAIL_MODE` | `mock`(기본, 모의 발송) 또는 `real` |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_ALLOWLIST` | 실제 메일 (`MAIL_MODE=real`일 때만, 허용 목록의 팀 주소로만 발송) |
-| `ODSAY_API_KEY` | 대중교통 시간·요금·막차·버스 정류장 (ODsay **서버** 플랫폼 키, 실행하는 컴퓨터·서버의 공인 IP 등록 필요). 유료 다국어 요금제면 `ODSAY_MULTILANG=1` |
+| `ODSAY_API_KEY` | 지하철 경로의 시간·요금·막차 (ODsay **서버** 플랫폼 키, 실행하는 컴퓨터·서버의 공인 IP 등록 필요). 유료 다국어 요금제면 `ODSAY_MULTILANG=1` |
 | `DATA_GO_KR_SERVICE_KEY` | 인천공항 실시간 운항 (공공데이터포털 "인천국제공항공사_여객편 운항현황(다국어)") |
 | `BOOKING_DEMAND_TOKEN`, `BOOKING_AFFILIATE_ID` | Booking.com Demand API (제휴 승인 후. 기본 샌드박스, 운영은 `BOOKING_DEMAND_ENV=production`과 `BOOKING_DEMAND_ALLOW_PRODUCTION=1`) |
 
