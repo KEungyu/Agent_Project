@@ -36,9 +36,10 @@ export const getLine = (id: string) => lineById.get(id);
 // 화면 언어로 쓴 역 이름. 일본어·중국어는 OSM 이름, 불어·스페인어·베트남어·인니어는 설명 단어만 옮긴 이름(station-names.ts),
 // 그 밖에는 영어 표기(역 표지판의 로마자)를 쓴다.
 // 중국어 이름이 없으면 영어(표지판 로마자)를 쓴다. 일본어 한자는 중국어 통용 역명과 다를 수 있어 대신 쓰지 않는다
-export function stationName(station: Pick<SubwayStation, "ko" | "en" | "names">, language: string): string {
+export function stationName(station: Pick<SubwayStation, "ko" | "en" | "names"> & Partial<Pick<SubwayStation, "lat" | "lon">>, language: string): string {
   if (language === "ko") return station.ko;
-  const local = localStationName(station.ko, language);
+  // 수도권 사전의 동명역(예: 교대=서울교육대)을 부산·대구 역에 적용하지 않는다.
+  const local = station.lat === undefined || inSupportedArea(station.lat, station.lon ?? NaN) ? localStationName(station.ko, language) : undefined;
   if (local) return local;
   const ja = station.names?.ja;
   if (language === "ja" && ja) return ja;
@@ -100,16 +101,16 @@ const norm = (text: string) =>
     .replace(/역$/, "")
     .replace(/[駅站]$/, "")
     .replace(/[\s'’.\-–]/g, "");
-const namesOf = (s: SubwayStation) => [s.ko, s.en, s.names?.ja, s.names?.zh, ...localStationNames(s.ko)].filter((name): name is string => !!name).map(norm);
-export function findStations(query: string, limit = 8): SubwayStation[] {
+const namesOf = (s: SubwayStation) => [s.ko, s.en, s.names?.ja, s.names?.zh, ...(inSupportedArea(s.lat, s.lon) ? localStationNames(s.ko) : [])].filter((name): name is string => !!name).map(norm);
+export function findStations(query: string, limit = 8, network: SubwayData = SUBWAY): SubwayStation[] {
   const q = norm(query.trim());
   if (!q) return [];
   const code = q.toUpperCase();
-  const exact = SUBWAY.stations.filter((s) => namesOf(s).includes(q) || Object.values(s.codes ?? {}).includes(code));
+  const exact = network.stations.filter((s) => namesOf(s).includes(q) || Object.values(s.codes ?? {}).includes(code));
   if (exact.length) return exact;
   // 앞부분이 맞는 역을 먼저, 그다음 중간에 들어 있는 역
-  const starts = SUBWAY.stations.filter((s) => namesOf(s).some((name) => name.startsWith(q)));
-  const contains = SUBWAY.stations.filter((s) => !starts.includes(s) && namesOf(s).some((name) => name.includes(q)));
+  const starts = network.stations.filter((s) => namesOf(s).some((name) => name.startsWith(q)));
+  const contains = network.stations.filter((s) => !starts.includes(s) && namesOf(s).some((name) => name.includes(q)));
   return [...starts, ...contains].slice(0, limit);
 }
 

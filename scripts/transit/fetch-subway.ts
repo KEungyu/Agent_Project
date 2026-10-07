@@ -1,16 +1,20 @@
-// 수도권 전철 노선·역 데이터를 OpenStreetMap(Overpass API)에서 받아 data/transit/seoul-subway.json으로 저장한다.
+// 지역별 전철 노선·역 데이터를 OpenStreetMap(Overpass API)에서 받아 data/transit/<region>-subway.json으로 저장한다.
 // 데이터: © OpenStreetMap contributors, ODbL 1.0. 앱은 저장된 파일만 읽고 실행 중에 OSM을 부르지 않는다.
-// 실행: npx tsx scripts/transit/fetch-subway.ts
-import { mkdirSync, writeFileSync } from "node:fs";
+// 실행: npm run transit:fetch -- [seoul|busan|daegu] [cached-overpass.json]
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 const USER_AGENT = "MajungiClassProject/1.0 (student demo app)";
 // 서울과 인천·김포공항까지 (남, 서, 북, 동)
-const BBOX = [37.4, 126.4, 37.72, 127.18] as const;
+const region = process.argv[2] ?? "seoul";
+if (!["seoul", "busan", "daegu"].includes(region)) throw new Error("region: seoul | busan | daegu");
+// optional cached Overpass JSON avoids repeating public API calls while reviewing data.
+const cached: OsmElement[] | undefined = process.argv[3] ? JSON.parse(readFileSync(process.argv[3], "utf8")).elements : undefined;
+const BBOX = region === "busan" ? [35.0, 128.75, 35.6, 129.4] : region === "daegu" ? [35.65, 128.40, 36.1, 128.95] : [37.4, 126.4, 37.72, 127.18];
 
 // 앱에서 보여 줄 노선: OSM ref → 화면 표기. 급행·특급 운행 계통은 정차역이 일부라서 뺀다.
-const LINES: { ref: string; id: string; ko: string; en: string; short: string }[] = [
+const SEOUL_LINES: { ref: string; id: string; ko: string; en: string; short: string }[] = [
   { ref: "1", id: "L1", ko: "1호선", en: "Line 1", short: "1" },
   { ref: "2", id: "L2", ko: "2호선", en: "Line 2", short: "2" },
   { ref: "3", id: "L3", ko: "3호선", en: "Line 3", short: "3" },
@@ -29,6 +33,13 @@ const LINES: { ref: string; id: string; ko: string; en: string; short: string }[
   { ref: "Silim", id: "SL", ko: "신림선", en: "Sillim", short: "SL" },
   { ref: "김포 골드라인", id: "GG", ko: "김포골드라인", en: "Gimpo Goldline", short: "G" },
   { ref: "서해", id: "SH", ko: "서해선", en: "Seohae", short: "SH" },
+];
+const LINES = region === "seoul" ? SEOUL_LINES : [
+  ...SEOUL_LINES.slice(0, region === "busan" ? 4 : 3),
+  ...(region === "busan" ? [
+    { ref: "BGL", id: "BGL", ko: "부산김해경전철", en: "Busan–Gimhae Light Rail", short: "BGL" },
+    { ref: "동해", id: "DH", ko: "동해선", en: "Donghae", short: "DH" },
+  ] : []),
 ];
 const EXPRESS = /급행|특급|Rapid|Express/i;
 // OSM 영어 이름이 잘못 들어간 역 (2026-10-06 확인): 표지판의 영어 이름으로 바로잡는다
@@ -65,13 +76,14 @@ const km = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) =>
 
 async function main() {
   const bbox = BBOX.join(",");
-  const elements = await overpass(
-    `[out:json][timeout:220];rel["route"~"^(subway|train|light_rail)$"](${bbox})->.r;.r out body;node(r.r);out body;`,
+  const elements = cached ?? await overpass(
+    `[out:json][timeout:220];rel["route"~"^(subway|train|light_rail|monorail)$"](${bbox})->.r;.r out body;node(r.r);out body;`,
   );
   const nodes = new Map(elements.filter((e) => e.type === "node").map((e) => [e.id, e]));
   const relations = elements.filter((e) => e.type === "relation");
   // 역 노드: 이름이 빠진 정차 위치의 이름과, 정차 위치에 없는 영어 이름을 채우는 데 쓴다
   const stationNodes = (
+    cached?.filter((n) => n.type === "node" && (n.tags?.railway === "station" || n.tags?.public_transport === "station")) ??
     await overpass(`[out:json][timeout:120];(node["railway"="station"](${bbox});node["public_transport"="station"](${bbox}););out body;`)
   ).filter((n) => n.lat !== undefined && n.lon !== undefined && (n.tags?.["name:ko"] ?? n.tags?.name));
   const nearestStation = (point: { lat: number; lon: number }, ko?: string, within = 0.5) =>
@@ -97,7 +109,9 @@ async function main() {
     const named = node.tags?.["name:ko"] ?? node.tags?.name ?? nearestStation(point)?.tags?.["name:ko"] ?? nearestStation(point)?.tags?.name ?? "";
     const ko = baseKo(named);
     if (!ko) return null;
-    let station = stations.find((s) => s.ko === ko && km(s, point) < 1);
+    // 부전 도시철도역과 동해선역은 가까워도 공식 환승역이 아니다. 별도 점으로 보존한다.
+    let station = stations.find((s) => s.ko === ko && km(s, point) < 1 &&
+      !(region === "busan" && ko === "부전" && (s.lines.has("DH") !== (line === "DH"))));
     if (!station) {
       station = { id: `s${stations.length + 1}`, ko, en: baseEn(node.tags?.["name:en"] ?? ""), names: {}, lat: point.lat, lon: point.lon, lines: new Set(), codes: {} };
       stations.push(station);
@@ -132,6 +146,15 @@ async function main() {
         .filter((n): n is OsmElement => !!n)
         .map((n) => stationFor(n, line.id))
         .filter((s): s is Station => !!s);
+      // OSM 동해선 관계의 누락 보완: 공식 노선도 안락↔부산원동↔재송, 좌표·이름은 OSM 역 노드.
+      // https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do (2026-10-07)
+      if (region === "busan" && line.id === "DH" && !stops.some((s) => s.ko === "부산원동")) {
+        const node = stationNodes.find((n) => n.tags?.name === "부산원동");
+        const station = node && stationFor(node, line.id);
+        const gap = stops.findIndex((s, i) => [s.ko, stops[i + 1]?.ko].sort().join() === ["안락", "재송"].sort().join());
+        if (!station || gap < 0) throw new Error("Check Busanwondong against the official map");
+        stops.splice(gap + 1, 0, station);
+      }
       const ids = stops.map((st) => st.id).filter((id, i, all) => id !== all[i - 1]);
       const to = baseKo(rel.tags?.to ?? (rel.tags?.name ?? "").split(/→|->/).pop() ?? "");
       if (to && ids.length > 1) services.push({ line: line.id, to, stops: ids });
@@ -154,7 +177,7 @@ async function main() {
   }
   // 정차 위치에 영어 이름이 없으면 범위 밖 역 노드에서 찾는다 (순환 계통 이름은 역이 아니라 뺀다)
   const missing = [...new Set(services.map((sv) => sv.to))].filter((to) => !termini[to] && !/순환/.test(to) && !stations.some((st) => st.ko === to));
-  if (missing.length) {
+  if (missing.length && !cached) {
     const far = await overpass(`[out:json][timeout:120];node["railway"="station"]["name"~"^(${missing.join("|")})(역)?$"];out body;`);
     for (const to of missing) {
       const node = far.find((n) => n.tags && baseKo(n.tags["name:ko"] ?? n.tags.name ?? "") === to && n.tags["name:en"]);
@@ -196,7 +219,7 @@ async function main() {
         codes: s.codes,
       })),
   };
-  const file = path.join(process.cwd(), "data/transit/seoul-subway.json");
+  const file = path.join(process.cwd(), `data/transit/${region}-subway.json`);
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, JSON.stringify(out));
   console.log(`saved ${out.stations.length} stations, ${out.lines.reduce((n, l) => n + l.edges.length, 0)} edges → ${file}`);

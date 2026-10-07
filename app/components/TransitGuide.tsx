@@ -16,14 +16,17 @@ import {
   getStation,
   legDirection,
   lineName,
-  project,
+  project as seoulProject,
   smoothPath,
   stationName,
   subwayRoute,
   terminusName,
+  type SubwayData,
   type SubwayRoute,
   type SubwayStation,
 } from "@/lib/transit/subway";
+import busanData from "../../data/transit/busan-subway.json";
+import daeguData from "../../data/transit/daegu-subway.json";
 import { ExternalIcon } from "./icons";
 
 // 지하철 안내. 지도 위에 실제 선로 모양으로 노선을 그리고(OSM, ODbL), 시간·요금·막차는 ODsay가 연결됐을 때만 보여 준다.
@@ -97,12 +100,12 @@ export function TransitGuide({ language, m, places = [], arrival }: { language: 
       {region === "seoul" ? <>
         <p className="transit-area">{m.area}</p>
         <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
-      </> : <RegionalTransitNotice region={region === "busan" ? "busan" : "daegu"} m={m} />}
+      </> : <RegionalSubwayPanel key={region} region={region === "busan" ? "busan" : "daegu"} language={language} m={m} />}
     </section>
   );
 }
 
-// 김은규 님의 지역별 지도 데이터가 합쳐지기 전에는 수도권 경로·요금을 대신 표시하지 않는다.
+// ponytail: 지역 지도는 정적 연결도. 운행 경로가 필요하면 검증된 시간표/API를 별도 연결한다.
 export function RegionalTransitNotice({ region, m }: { region: "busan" | "daegu"; m: M }) {
   const busan = region === "busan";
   return <div className="transit-regional" role="status">
@@ -112,6 +115,26 @@ export function RegionalTransitNotice({ region, m }: { region: "busan" | "daegu"
         {busan ? "Busan Transportation Corporation" : "Daegu Transportation Corporation"} <ExternalIcon />
       </a>
     </p>
+  </div>;
+}
+
+export function RegionalSubwayPanel({ region, language, m }: { region: "busan" | "daegu"; language: string; m: M }) {
+  const network = (region === "busan" ? busanData : daeguData) as unknown as SubwayData;
+  const example = network.stations.find((s) => s.ko === (region === "busan" ? "서면" : "반월당"))!;
+  const [selected, setSelected] = useState<SubwayStation | null>(null);
+  const [focusLine, setFocusLine] = useState<string | null>(null);
+  return <div className="transit-panel">
+    <RegionalTransitNotice region={region} m={m} />
+    <StationSearch label={m.findStation} placeholder={`${stationLabel(example, language)} · ${Object.values(example.codes).join(" / ")}`} language={language} m={m} network={network} value={selected} onPick={setSelected} big />
+    <SubwayMap network={network} route={null} selected={selected} focusLine={focusLine} language={language} m={m} onPick={(id) => setSelected(network.stations.find((s) => s.id === id) ?? null)} />
+    {selected && <StationCard station={selected} network={network} language={language} m={m} onClose={() => setSelected(null)} />}
+    <ul className="subway-legend" aria-label={m.legend}>
+      <li><button type="button" aria-pressed={focusLine === null} onClick={() => setFocusLine(null)}>{m.allLines}</button></li>
+      {network.lines.map((line) => <li key={line.id}><button type="button" aria-pressed={focusLine === line.id} onClick={() => setFocusLine(focusLine === line.id ? null : line.id)}>
+        <LineBadge id={line.id} network={network} />{lineName(line, language)}
+      </button></li>)}
+    </ul>
+    <p className="ag-source"><a href={network.source.url} target="_blank" rel="noopener noreferrer">{fmt(m.source, { date: network.fetchedAt })}<ExternalIcon /></a></p>
   </div>;
 }
 
@@ -311,6 +334,7 @@ function StationSearch({
   onPick,
   onPlace,
   big = false,
+  network = SUBWAY,
 }: {
   label: string;
   placeholder: string;
@@ -320,13 +344,14 @@ function StationSearch({
   onPick: (station: SubwayStation) => void;
   onPlace?: (text: string) => void;
   big?: boolean;
+  network?: SubwayData;
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const listId = useId();
   const editing = open || text !== "";
-  const results = useMemo(() => (text.trim() ? findStations(text, 7) : []), [text]);
+  const results = useMemo(() => (text.trim() ? findStations(text, 7, network) : []), [text, network]);
   const pick = (station: SubwayStation) => {
     onPick(station);
     setText("");
@@ -375,7 +400,7 @@ function StationSearch({
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(station)}>
                 <span className="sr-lines">
                   {station.lines.map((id) => (
-                    <LineBadge key={id} id={id} />
+                    <LineBadge key={id} id={id} network={network} />
                   ))}
                 </span>
                 <span className="sr-name">
@@ -408,13 +433,15 @@ function StationCard({
   onFrom,
   onTo,
   onClose,
+  network = SUBWAY,
 }: {
   station: SubwayStation;
   language: string;
   m: M;
-  onFrom: () => void;
-  onTo: () => void;
+  onFrom?: () => void;
+  onTo?: () => void;
   onClose: () => void;
+  network?: SubwayData;
 }) {
   const primary = stationName(station, language);
   return (
@@ -436,10 +463,10 @@ function StationCard({
       </header>
       <ul className="sc-lines">
         {station.lines.map((id) => {
-          const line = getLine(id)!;
+          const line = network.lines.find((l) => l.id === id)!;
           return (
             <li key={id}>
-              <LineBadge id={id} />
+              <LineBadge id={id} network={network} />
               <span>{lineName(line, language)}</span>
               {station.codes?.[id] && <span className="sc-code tabular" title={m.stationNo}>{station.codes[id]}</span>}
             </li>
@@ -447,20 +474,20 @@ function StationCard({
         })}
       </ul>
       {station.lines.length > 1 && <p className="ag-note">{m.transferStation}</p>}
-      <div className="sc-actions">
+      {onFrom && onTo && <div className="sc-actions">
         <button type="button" className="button" onClick={onFrom}>
           {m.startHere}
         </button>
         <button type="button" className="button-quiet" onClick={onTo}>
           {m.goHere}
         </button>
-      </div>
+      </div>}
     </section>
   );
 }
 
-function LineBadge({ id }: { id: string }) {
-  const line = getLine(id);
+function LineBadge({ id, network = SUBWAY }: { id: string; network?: SubwayData }) {
+  const line = network.lines.find((l) => l.id === id);
   if (!line) return null;
   return (
     <span className="line-badge" style={{ "--line": line.colour } as React.CSSProperties} aria-hidden="true">
@@ -765,9 +792,10 @@ const districtName = (d: MapData["districts"][number], language: string) =>
   language === "ko" ? d.ko : (language === "ja" && d.ja) || (language === "zh-CN" && d.zh) || d.en || d.ko;
 
 let mapDataPromise: Promise<MapData | null> | null = null;
-function useMapData(): MapData | null {
+function useMapData(enabled: boolean): MapData | null {
   const [data, setData] = useState<MapData | null>(null);
   useEffect(() => {
+    if (!enabled) return;
     mapDataPromise ??= fetch("/transit/map.json")
       .then((res) => (res.ok ? (res.json() as Promise<MapData>) : null))
       .catch(() => null);
@@ -776,58 +804,84 @@ function useMapData(): MapData | null {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [enabled]);
   return data;
 }
 
-// 화면은 배경 지도 범위(MAP_BBOX) 안에서만 움직인다
-const [SOUTH, WEST, NORTH, EAST] = MAP_BBOX;
-const NW = project(NORTH, WEST);
-const SE = project(SOUTH, EAST);
-const FULL = { x: NW.x, y: NW.y, width: SE.x - NW.x, height: SE.y - NW.y };
 const ASPECT = 0.8; // 높이 / 너비
-const POINTS = new Map(SUBWAY.stations.map((s) => [s.id, project(s.lat, s.lon)]));
-const toPath = (line: LatLon[]) => line.map(([lat, lon], i) => {
-  const p = project(lat, lon);
-  return `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-}).join("");
+function mapLayout(network: SubwayData) {
+  const projectPoint = (lat: number, lon: number) => ({
+    x: (lon - network.bbox[1]) * Math.cos(((network.bbox[0] + network.bbox[2]) / 2 * Math.PI) / 180) * 4000,
+    y: (network.bbox[2] - lat) * 4000,
+  });
+  const project = network === SUBWAY ? seoulProject : projectPoint;
+  // 화면은 배경 지도 범위(MAP_BBOX) 안에서만 움직인다
+  const [SOUTH, WEST, NORTH, EAST] = network === SUBWAY ? MAP_BBOX : [
+    Math.min(...network.stations.map((s) => s.lat)), Math.min(...network.stations.map((s) => s.lon)),
+    Math.max(...network.stations.map((s) => s.lat)), Math.max(...network.stations.map((s) => s.lon)),
+  ];
+  const NW = project(NORTH, WEST);
+  const SE = project(SOUTH, EAST);
+  const FULL = { x: NW.x, y: NW.y, width: SE.x - NW.x, height: SE.y - NW.y };
+  // 지역 전체를 처음부터 담되, 기존 지도 높이/너비 비율에 맞춰 여백을 확장한다.
+  if (network !== SUBWAY) {
+    const w = Math.max(FULL.width, FULL.height / ASPECT) * 1.1;
+    FULL.x -= (w - FULL.width) / 2;
+    FULL.y -= (w * ASPECT - FULL.height) / 2;
+    FULL.width = w;
+    FULL.height = w * ASPECT;
+  }
+  const POINTS = new Map(network.stations.map((s) => [s.id, project(s.lat, s.lon)]));
+  const toPath = (line: LatLon[]) => line.map(([lat, lon], i) => {
+    const p = project(lat, lon);
+    return `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join("");
 
-function initialView(narrow = false): View {
-  // 처음에는 여행자가 많이 다니는 서울 도심(홍대~잠실, 강북~강남)을 보여 준다. 휴대폰은 도심만 더 확대한다
-  const c = project(37.548, 126.99);
-  const half = narrow ? 0.07 : 0.135;
-  const w = project(37.548, 126.99 + half).x - project(37.548, 126.99 - half).x;
-  return { x: c.x - w / 2, y: c.y - (w * ASPECT) / 2, w, h: w * ASPECT };
-}
+  function initialView(narrow = false): View {
+    if (network !== SUBWAY) return { x: FULL.x, y: FULL.y, w: FULL.width, h: FULL.height };
+    // 처음에는 여행자가 많이 다니는 서울 도심(홍대~잠실, 강북~강남)을 보여 준다. 휴대폰은 도심만 더 확대한다
+    const c = project(37.548, 126.99);
+    const half = narrow ? 0.07 : 0.135;
+    const w = project(37.548, 126.99 + half).x - project(37.548, 126.99 - half).x;
+    return { x: c.x - w / 2, y: c.y - (w * ASPECT) / 2, w, h: w * ASPECT };
+  }
 
-// 여행자가 자주 찾는 역: 축소해도 이름을 먼저 붙인다
-const HUBS = new Set(
-  ["서울", "시청", "명동", "을지로입구", "종각", "광화문", "경복궁", "안국", "종로3가", "동대문역사문화공원", "동대문", "홍대입구", "신촌", "이태원", "용산", "여의도", "강남", "압구정", "잠실", "삼성", "고속터미널", "김포공항", "인천공항1터미널", "인천공항2터미널", "건대입구", "성수", "왕십리", "사당", "합정", "공덕"]
-    .map((ko) => SUBWAY.stations.find((s) => s.ko === ko)?.id)
-    .filter(Boolean) as string[],
-);
+  // 여행자가 자주 찾는 역: 축소해도 이름을 먼저 붙인다
+  const HUBS = new Set(
+    ["서울", "시청", "명동", "을지로입구", "종각", "광화문", "경복궁", "안국", "종로3가", "동대문역사문화공원", "동대문", "홍대입구", "신촌", "이태원", "용산", "여의도", "강남", "압구정", "잠실", "삼성", "고속터미널", "김포공항", "인천공항1터미널", "인천공항2터미널", "건대입구", "성수", "왕십리", "사당", "합정", "공덕", "부산", "서면", "해운대", "사상", "대저", "부산원동", "태화강", "하양", "동대구", "반월당", "명덕", "청라언덕"]
+      .map((ko) => network.stations.find((s) => s.ko === ko)?.id)
+      .filter(Boolean) as string[],
+  );
 
-// 멀리 축소했을 때 원과 이름을 붙이는 대표 역 (그 밖의 역은 노선만 보이게)
-const OVERVIEW = new Set(
-  ["인천공항1터미널", "김포공항", "서울", "홍대입구", "명동", "강남", "잠실", "여의도", "왕십리", "고속터미널", "종로3가"]
-    .map((ko) => SUBWAY.stations.find((s) => s.ko === ko)?.id)
-    .filter(Boolean) as string[],
-);
+  // 멀리 축소했을 때 원과 이름을 붙이는 대표 역 (그 밖의 역은 노선만 보이게)
+  const SEOUL_OVERVIEW = new Set(
+    ["인천공항1터미널", "김포공항", "서울", "홍대입구", "명동", "강남", "잠실", "여의도", "왕십리", "고속터미널", "종로3가"]
+      .map((ko) => network.stations.find((s) => s.ko === ko)?.id)
+      .filter(Boolean) as string[],
+  );
 
-// 지도 범위 밖(자료가 없는 빈 곳)이 보이지 않게 화면을 범위 안에 묶는다
-// 가장 멀리 축소해도 인천공항부터 서울 동쪽까지만 (그보다 넓으면 노선이 작아져 알아보기 어렵다)
-const MAX_W = Math.min(FULL.width, FULL.height / ASPECT, project(37.55, 127.3).x - project(37.55, 126.36).x);
-function clampView(v: View): View {
-  const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w));
-  const h = w * ASPECT;
-  const cx = v.x + v.w / 2;
-  const cy = v.y + v.h / 2;
-  const x = Math.min(FULL.x + FULL.width - w, Math.max(FULL.x, cx - w / 2));
-  const y = Math.min(FULL.y + FULL.height - h, Math.max(FULL.y, cy - h / 2));
-  return { x, y, w, h };
+  const OVERVIEW = network === SUBWAY ? SEOUL_OVERVIEW : new Set([
+    ...HUBS,
+    ...network.stations.filter((s) => s.lines.length > 1).map((s) => s.id),
+  ]);
+  // 지도 범위 밖(자료가 없는 빈 곳)이 보이지 않게 화면을 범위 안에 묶는다
+  // 가장 멀리 축소해도 인천공항부터 서울 동쪽까지만 (그보다 넓으면 노선이 작아져 알아보기 어렵다)
+  const MAX_W = network !== SUBWAY ? FULL.width : Math.min(FULL.width, FULL.height / ASPECT, project(37.55, 127.3).x - project(37.55, 126.36).x);
+  function clampView(v: View): View {
+    const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w));
+    const h = w * ASPECT;
+    const cx = v.x + v.w / 2;
+    const cy = v.y + v.h / 2;
+    const x = Math.min(FULL.x + FULL.width - w, Math.max(FULL.x, cx - w / 2));
+    const y = Math.min(FULL.y + FULL.height - h, Math.max(FULL.y, cy - h / 2));
+    return { x, y, w, h };
+  }
+
+  return { project, FULL, MAX_W, POINTS, HUBS, OVERVIEW, toPath, initialView, clampView };
 }
 
 function SubwayMap({
+  network = SUBWAY,
   route,
   selected,
   focusLine,
@@ -835,6 +889,7 @@ function SubwayMap({
   m,
   onPick,
 }: {
+  network?: SubwayData;
   route: SubwayRoute | null;
   selected: SubwayStation | null;
   focusLine: string | null;
@@ -842,10 +897,12 @@ function SubwayMap({
   m: M;
   onPick: (id: string) => void;
 }) {
+  const { project, FULL, MAX_W, POINTS, HUBS, OVERVIEW, toPath, initialView, clampView } = useMemo(() => mapLayout(network), [network]);
   const [view, setRawView] = useState<View>(() => clampView(initialView()));
   const viewRef = useRef(view);
   viewRef.current = view;
   const anim = useRef<number | null>(null);
+  useEffect(() => () => { if (anim.current) cancelAnimationFrame(anim.current); }, []);
   const setView = (next: View | ((v: View) => View)) => {
     if (anim.current) cancelAnimationFrame(anim.current);
     setRawView((v) => clampView(typeof next === "function" ? next(v) : next));
@@ -869,7 +926,7 @@ function SubwayMap({
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const moved = useRef(0);
   const pinch = useRef<number | null>(null);
-  const data = useMapData();
+  const data = useMapData(network === SUBWAY);
 
   const scaled = (v: View, factor: number, cx: number, cy: number): View => {
     const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w * factor));
@@ -947,7 +1004,7 @@ function SubwayMap({
   // 노선: 실제 선로 모양. 지도 자료를 받기 전에는 역과 역을 곧게 잇는다
   const linePaths = useMemo(
     () =>
-      SUBWAY.lines.map((line) => {
+      network.lines.map((line) => {
         const tracks = data?.tracks.find((t) => t.line === line.id)?.paths;
         const paths = tracks?.length
           ? tracks.map(toPath)
@@ -961,7 +1018,7 @@ function SubwayMap({
   const riverPath = useMemo(() => (data ? data.river.map((line) => smoothPath(line.map(([lat, lon]) => project(lat, lon)))).join("") : ""), [data]);
   // 경로 강조: 지나는 역을 부드럽게 잇는다
   const routePaths = useMemo(
-    () => (route?.legs ?? []).map((leg) => ({ colour: getLine(leg.line)!.colour, d: smoothPath(leg.stations.map((id) => points.get(id)!)) })),
+    () => (route?.legs ?? []).map((leg) => ({ colour: network.lines.find((l) => l.id === leg.line)!.colour, d: smoothPath(leg.stations.map((id) => points.get(id)!)) })),
     [route, points],
   );
 
@@ -1016,10 +1073,10 @@ function SubwayMap({
     const fs = (far ? 12.5 : 11) * k;
     const sub = (far ? 10 : 9) * k;
     const center = { x: view.x + view.w / 2, y: view.y + view.h / 2 };
-    const candidates = SUBWAY.stations
+    const candidates = network.stations
       .filter((s) => inView(points.get(s.id)!))
       .filter((s) => s.id === selected?.id || routeStations.has(s.id) || (route ? false : far ? OVERVIEW.has(s.id) : zoomedIn || HUBS.has(s.id) || s.lines.length >= 2))
-      .filter((s) => !focusLine || route || s.lines.includes(focusLine))
+      .filter((s) => s.id === selected?.id || !focusLine || route || s.lines.includes(focusLine))
       .map((s) => {
         const p = points.get(s.id)!;
         // 경로에서는 출발·환승·도착 역을 먼저 붙인다
@@ -1033,7 +1090,7 @@ function SubwayMap({
     const placed: Box[] = [
       { x: view.x + view.w - 56 * k, y: view.y, w: 56 * k, h: 130 * k },
       // 흐리게 그린 역(경로 밖·고른 노선 밖)은 이름표가 덮어도 된다
-      ...SUBWAY.stations
+      ...network.stations
         // 멀리서는 대표 역 원끼리 몰려 있어 이름이 들어갈 자리가 없으니, 이름표끼리만 겹치지 않게 한다
         .filter(() => !far || route)
         .filter((s) => (route ? routeStations.has(s.id) : (s.lines.length > 1 || zoomedIn) && (!focusLine || s.lines.includes(focusLine))))
@@ -1123,7 +1180,7 @@ function SubwayMap({
               <path d={leg.d} className="subway-line" stroke={leg.colour} strokeWidth={7} vectorEffect="non-scaling-stroke" />
             </g>
           ))}
-          {SUBWAY.stations.map((s) => {
+          {network.stations.map((s) => {
             const p = points.get(s.id)!;
             const transfer = s.lines.length > 1;
             const onRoute = routeStations.has(s.id);
@@ -1139,7 +1196,7 @@ function SubwayMap({
                   cy={p.y}
                   r={(far ? 4.2 : transfer ? (zoomedIn ? 5.4 : 4.4) : onRoute ? 4 : 2.8) * k}
                   fill="#fff"
-                  stroke={transfer ? "#4b5560" : getLine(s.lines[0])?.colour}
+                  stroke={transfer ? "#4b5560" : network.lines.find((l) => l.id === s.lines[0])?.colour}
                   strokeWidth={far ? 2 : 1.8}
                   vectorEffect="non-scaling-stroke"
                 >

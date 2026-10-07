@@ -9,17 +9,20 @@ vi.mock("@/lib/i18n/messages", () => import("../../lib/i18n/messages"));
 vi.mock("@/lib/transit/schedule-time", () => import("../../lib/transit/schedule-time"));
 vi.mock("@/lib/transit/routes", () => import("../../lib/transit/routes"));
 vi.mock("@/lib/transit/subway", () => import("../../lib/transit/subway"));
-const { RegionalTransitNotice } = await import("./TransitGuide");
+const { RegionalSubwayPanel } = await import("./TransitGuide");
 
-it("부산·대구는 모든 화면 언어에서 해당 공식 안내만 제공하며 수도권 경로·요금을 섞지 않는다", () => {
+it("부산·대구는 모든 화면 언어에서 해당 지역의 검색·지도와 공식 안내를 제공하며 수도권 경로·요금을 섞지 않는다", () => {
   for (const { code } of LANGUAGES) {
     const m = getMessages(code).transit;
     for (const region of ["busan", "daegu"] as const) {
-      const html = renderToStaticMarkup(createElement(RegionalTransitNotice, { region, m }));
+      const html = renderToStaticMarkup(createElement(RegionalSubwayPanel, { region, language: code, m }));
       expect(html).toContain(region === "busan" ? m.regionBusan : m.regionDaegu);
       expect(html).toContain(region === "busan" ? "https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do" : "https://www.dtro.or.kr/");
       expect(html).toContain('rel="noopener noreferrer"');
-      expect(html).not.toMatch(/\{region\}|Seoul Metro|Seoul TOPIS|transit-panel|transit-map|₩/);
+      expect(html).toContain('<svg');
+      expect(html).toContain('role="combobox"');
+      expect(html).toContain(region === 'busan' ? 'BGL' : m.allLines);
+      expect(html).not.toMatch(/\{region\}|Seoul Metro|Seoul TOPIS|transit-form|Times &amp; fares|₩/);
     }
   }
 });
