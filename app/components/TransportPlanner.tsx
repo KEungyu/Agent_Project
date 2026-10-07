@@ -71,14 +71,17 @@ function TransportExplore({ language, m }: Pick<Props, "language" | "m">) {
       {from !== to && date && <LegCard key={`${from}-${to}-${date}`} from={item(from)} to={item(to)} language={language} m={m} preview />}
       <p className="label">{m.transport.official}</p>
       <div className="travel-links">
-        {[
-          ["KTX · KORAIL", "https://www.letskorail.com/"],
-          ["SRT · SR", "https://etk.srail.kr/main.do?language=EN"],
-          ["Express bus · KOBUS", "https://www.kobus.co.kr/"],
-          ["Intercity bus · T-money (English)", "https://intercitybuse.tmoney.co.kr/"],
-          [m.airports.GMP, "https://www.airport.co.kr/gimpoeng/index.do"],
-          [m.airports.ICN, "https://www.airport.kr/ap_en/index.do"],
-        ].map(([name, url]) => <a key={url} href={url} target="_blank" rel="noopener noreferrer">{name}<ExternalIcon /></a>)}
+        {([
+          ["KTX · KORAIL", "https://www.letskorail.com/", "ktx"],
+          ["SRT · SR", "https://etk.srail.kr/main.do?language=EN", "ktx"],
+          ["Express bus · KOBUS", "https://www.kobus.co.kr/", "bus"],
+          ["Intercity bus · T-money (English)", "https://intercitybuse.tmoney.co.kr/", "bus"],
+          [m.airports.GMP, "https://www.airport.co.kr/gimpoeng/index.do", "flight"],
+          [m.airports.ICN, "https://www.airport.kr/ap_en/index.do", "flight"],
+        ] as [string, string, TransportMode][]).map(([name, url, mode]) => {
+          const Icon = MODE_ICON[mode];
+          return <a key={url} className={`travel-link is-${mode}`} href={url} target="_blank" rel="noopener noreferrer"><Icon className="travel-link-mode" /><span>{name}</span><ExternalIcon className="travel-link-go" /></a>;
+        })}
       </div>
     </div>
   </details>;
@@ -237,7 +240,7 @@ function LegCard({ from, to, language, m, preview = false }: { from: ItineraryIt
             {bookable.length === 0 ? (
               <p className="leg-free">{t.noBooking}</p>
             ) : preview ? (
-              <div className="travel-links">{bookable.map((segment) => <a key={segment.mode + segment.from.en} href={segment.booking!.url} target="_blank" rel="noopener noreferrer">{fmt(t.open, { site: segment.booking!.name })}<ExternalIcon /></a>)}</div>
+              <div className="travel-links">{bookable.map((segment) => <a key={segment.mode + segment.from.en} className={`travel-link is-${segment.mode}`} href={segment.booking!.url} target="_blank" rel="noopener noreferrer">{(() => { const Icon = MODE_ICON[segment.mode]; return <Icon className="travel-link-mode" />; })()}<span>{fmt(t.open, { site: segment.booking!.name })}</span><ExternalIcon className="travel-link-go" /></a>)}</div>
             ) : phase === "idle" ? (
               <button type="button" className="button leg-ask" onClick={run}>
                 <img className="leg-avatar" src="/mascot/majung-panda.png" alt="" width={28} height={28} />

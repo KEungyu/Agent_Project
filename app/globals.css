@@ -3856,6 +3856,38 @@ html[data-lang-swap] .empty-note {
   flex-direction: column;
   transform: translate(-50%, -11px);
 }
+/* 대각선 자리: 거점이 몰린 곳(대구 주변 등)에서 이름표가 이웃 점·이름표를 피하게 한다. 점 가운데가 거점 좌표에 온다 */
+.map-pin.label-bottom-left,
+.map-pin.label-bottom-right,
+.map-pin.label-top-left,
+.map-pin.label-top-right {
+  flex-direction: column;
+  gap: 3px;
+}
+.map-pin.label-top-left,
+.map-pin.label-top-right {
+  flex-direction: column-reverse;
+}
+.map-pin.label-bottom-left,
+.map-pin.label-top-left {
+  align-items: flex-end;
+}
+.map-pin.label-bottom-right,
+.map-pin.label-top-right {
+  align-items: flex-start;
+}
+.map-pin.label-bottom-left {
+  transform: translate(calc(-100% + 11px), -11px);
+}
+.map-pin.label-bottom-right {
+  transform: translate(-11px, -11px);
+}
+.map-pin.label-top-left {
+  transform: translate(calc(-100% + 11px), calc(-100% + 11px));
+}
+.map-pin.label-top-right {
+  transform: translate(-11px, calc(-100% + 11px));
+}
 .map-pin.is-selected {
   z-index: 2;
 }
@@ -3912,17 +3944,34 @@ html[data-lang-swap] .empty-note {
   white-space: nowrap;
   text-align: left;
 }
-.map-pin.label-left .map-label {
+.map-pin.label-left .map-label,
+.map-pin.label-bottom-left .map-label,
+.map-pin.label-top-left .map-label {
   text-align: right;
 }
 .map-pin.label-top .map-label,
 .map-pin.label-bottom .map-label {
   text-align: center;
 }
+/* :lang(th)의 넓은 줄 높이가 span마다 붙어 이름표가 커지고 대전·전주가 겹친다: 이름표 안에서는 위 값을 따른다 */
+.map-label span {
+  line-height: inherit;
+}
 .map-label span + span {
   font-size: 10px;
   font-weight: 600;
   color: var(--ink-2);
+}
+/* 휴대폰 폭에서는 지도가 작아져도 이름표 크기는 그대로라 거점이 몰린 곳(대전·전주·대구)에서 맞닿는다: 조금 줄인다 */
+@media (max-width: 480px) {
+  .map-label {
+    padding: 1px 5px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  .map-label span + span {
+    font-size: 9px;
+  }
 }
 .map-pin.is-selected .map-label {
   background: var(--arex-deep);
@@ -7129,11 +7178,24 @@ html[data-intro-seen] .intro {
 .subway-ground {
   fill: #fbfcff;
 }
+.subway-tint {
+  stroke: #fff;
+  stroke-width: 1.4px;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.subway-ground.is-land {
+  fill: #f3f1e8;
+}
 .subway-river {
   fill: none;
-  stroke: #cfe1f1;
+  stroke: #bcd9f0;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.subway-river.is-coast {
+  stroke: #c7dcf0;
 }
 .subway-road {
   fill: none;
@@ -7153,6 +7215,9 @@ html[data-intro-seen] .intro {
   font-weight: 600;
   letter-spacing: 0.04em;
   pointer-events: none;
+}
+.subway-ground.is-land ~ .subway-district {
+  fill: #9d988a;
 }
 .subway-casing {
   fill: none;
@@ -7720,8 +7785,41 @@ html[data-intro-seen] .intro {
 .time-compare-body, .transport-explore-body { display: grid; gap: 12px; margin-top: 14px; min-width: 0; }
 .time-compare output { display: grid; gap: 10px; padding: 12px; border-radius: 10px; background: var(--ground); font-size: 14px; }
 .time-compare output strong { display: block; font-size: 18px; overflow-wrap: anywhere; }
-.travel-links { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; }
-.travel-links a { display: inline-flex; gap: 4px; align-items: center; text-decoration: underline; }
+.travel-links { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; }
+/* 공식 예매·안내 링크: 수단별 색 아이콘 칩 (색은 장식, 이름이 먼저 읽힌다) */
+.travel-link {
+  --tone: var(--arex);
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 12px 6px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.travel-link.is-ktx { --tone: #0b4ea2; }
+.travel-link.is-bus { --tone: #1f8a5b; }
+.travel-link.is-flight { --tone: #0a8fb8; }
+.travel-link.is-subway { --tone: #6a4fb3; }
+.travel-link:hover { border-color: var(--tone); box-shadow: 0 2px 10px rgb(24 45 76 / 0.1); transform: translateY(-1px); }
+.travel-link:focus-visible { outline: 3px solid var(--arex); outline-offset: 2px; }
+.travel-link-mode {
+  flex: none;
+  box-sizing: content-box;
+  width: 18px;
+  height: 18px;
+  padding: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 13%, #fff);
+  color: var(--tone);
+}
+.travel-link-go { flex: none; width: 13px; height: 13px; color: var(--ink-2); opacity: .7; }
 .transport-explore .leg { margin-top: 6px; }
 
 .transport-explore .leg-stations > span, .leg-options .leg-stations > span { display: block; font-size: .85em; }

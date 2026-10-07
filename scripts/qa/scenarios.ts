@@ -160,8 +160,10 @@ const SCENARIOS: Record<string, (id?: string) => Promise<void>> = {
     check("날짜를 확정하지 않음 (요청 없음, 도착 미저장)", b.requests.length === 0 && !b.stays[0].expected_arrival);
     // F2-06: 확인 질문은 한 날짜(10월 10일)만 묻고 "오늘 새벽"과 섞지 않는다
     // 물음표로 끝나는 질문 문장만 본다 (이용자 말을 되짚는 "오늘 새벽 2시라고 하셨는데"는 질문이 아니다)
+    // 실제로 묻는 부분은 물음표 앞 마지막 구절이다. 앞 구절에서 "오늘(10월 9일)은 이미 지났으니"처럼 이유를 대는 것은 괜찮다
     const question = r.reply.split(/(?<=[?？])/).find((part) => /[?？]/.test(part)) ?? "";
-    check("F2-06 확인 질문이 10월 10일 하나만 물음", /10월\s*10일|2026-10-10/.test(question) && !/오늘/.test(question), question.trim());
+    const asked = question.split(/[,，.。]/).filter((part) => part.trim()).at(-1) ?? "";
+    check("F2-06 확인 질문이 10월 10일 하나만 물음", /10월\s*10일|2026-10-10/.test(asked) && !/오늘|10월\s*9일/.test(asked), question.trim());
     check("F2-06 도착 시각으로 물음 (체크인과 섞지 않음)", /도착/.test(question) && !/체크인/.test(question));
     await turn(s, "응 맞아, 10월 10일 새벽 2시야.", "2026-10-09T21:01:00+09:00");
     const b2 = board(s);

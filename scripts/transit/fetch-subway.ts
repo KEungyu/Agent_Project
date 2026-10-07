@@ -1,6 +1,6 @@
 // 지역별 전철 노선·역 데이터를 OpenStreetMap(Overpass API)에서 받아 data/transit/<region>-subway.json으로 저장한다.
 // 데이터: © OpenStreetMap contributors, ODbL 1.0. 앱은 저장된 파일만 읽고 실행 중에 OSM을 부르지 않는다.
-// 실행: npm run transit:fetch -- [seoul|busan|daegu] [cached-overpass.json]
+// 실행: npm run transit:fetch -- [seoul|busan|daegu|daejeon|gwangju] [cached-overpass.json]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -8,10 +8,10 @@ const OVERPASS = "https://overpass-api.de/api/interpreter";
 const USER_AGENT = "MajungiClassProject/1.0 (student demo app)";
 // 수도권 외곽 연결까지 포함한다 (남, 서, 북, 동). 화면 초기 범위와 데이터 수집 범위는 별개다.
 const region = process.argv[2] ?? "seoul";
-if (!["seoul", "busan", "daegu"].includes(region)) throw new Error("region: seoul | busan | daegu");
+if (!["seoul", "busan", "daegu", "daejeon", "gwangju"].includes(region)) throw new Error("region: seoul | busan | daegu | daejeon | gwangju");
 // optional cached Overpass JSON avoids repeating public API calls while reviewing data.
 const cached: OsmElement[] | undefined = process.argv[3] ? JSON.parse(readFileSync(process.argv[3], "utf8")).elements : undefined;
-const BBOX = region === "busan" ? [35.0, 128.75, 35.6, 129.4] : region === "daegu" ? [35.65, 128.40, 36.1, 128.95] : [36.7, 126.3, 38.15, 128.0];
+const BBOX = region === "busan" ? [35.0, 128.75, 35.6, 129.4] : region === "daegu" ? [35.65, 128.40, 36.1, 128.95] : region === "daejeon" ? [36.2, 127.2, 36.5, 127.6] : region === "gwangju" ? [35.0, 126.7, 35.25, 127.0] : [36.7, 126.3, 38.15, 128.0];
 
 // 앱에서 보여 줄 노선: OSM ref → 화면 표기. 급행·특급 운행 계통은 정차역이 일부라서 뺀다.
 const SEOUL_LINES: { ref: string; id: string; ko: string; en: string; short: string }[] = [
@@ -35,7 +35,7 @@ const SEOUL_LINES: { ref: string; id: string; ko: string; en: string; short: str
   { ref: "서해", id: "SH", ko: "서해선", en: "Seohae", short: "SH" },
 ];
 const LINES = region === "seoul" ? SEOUL_LINES : [
-  ...SEOUL_LINES.slice(0, region === "busan" ? 4 : 3),
+  ...SEOUL_LINES.slice(0, region === "busan" ? 4 : region === "daegu" ? 3 : 1),
   ...(region === "busan" ? [
     { ref: "BGL", id: "BGL", ko: "부산김해경전철", en: "Busan–Gimhae Light Rail", short: "BGL" },
     { ref: "동해", id: "DH", ko: "동해선", en: "Donghae", short: "DH" },
@@ -128,7 +128,8 @@ async function main() {
     station.names.zh ??= cjk.zh ?? near.zh;
     station.lines.add(line);
     // 역 번호 (표지판에 쓰인 번호, 예: 명동 424). 정차 위치의 ref에 있다
-    const code = node.tags?.ref?.trim();
+    // 대전 월드컵경기장의 OSM 정차점 ref=122는 반석과 중복된다. 확인 전 번호를 표시하지 않는다.
+    const code = region === "daejeon" && ko === "월드컵경기장" ? undefined : node.tags?.ref?.trim();
     if (code && /^[A-Z]?\d{2,4}(-\d)?$|^[A-Z]{1,2}\d{1,3}$/.test(code) && !station.codes[line]) station.codes[line] = code;
     return station;
   };
