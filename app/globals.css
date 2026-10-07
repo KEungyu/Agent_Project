@@ -7087,6 +7087,12 @@ html[data-intro-seen] .intro {
   line-height: 1.5;
   color: var(--ink-2);
 }
+
+.transit-region { display: grid; gap: 5px; max-width: 320px; }
+.transit-tmoney { border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.6; }
+.transit-tmoney summary { cursor: pointer; font-weight: 700; }
+.transit-tmoney p { margin-top: 8px; }
+.transit-regional { display: grid; gap: 10px; min-width: 0; }
 .transit-panel {
   display: grid;
   gap: 10px;
