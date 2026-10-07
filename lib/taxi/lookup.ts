@@ -1,5 +1,6 @@
 // 택시비 계산기용 위치 찾기(OpenStreetMap Nominatim)와 도로 경로(OSRM 공개 서버).
 // 두 서비스 모두 키가 필요 없다. 이용 정책에 따라 User-Agent를 밝히고, 같은 질문은 메모리에 담아 다시 묻지 않는다.
+import { AIRPORT_TAXI_POINTS } from "./fare";
 
 export type Place = { lat: number; lng: number; label: string };
 export type Route = { meters: number; seconds: number; approx: boolean };
@@ -74,4 +75,13 @@ export function haversine(a: { lat: number; lng: number }, b: { lat: number; lng
 // 서울시 경계를 사각형으로 어림한다. 시계외 할증 여부를 가늠하는 데만 쓴다.
 export function inSeoul({ lat, lng }: { lat: number; lng: number }): boolean {
   return lat > 37.413 && lat < 37.715 && lng > 126.764 && lng < 127.184;
+}
+
+export function outsideSeoulSurcharge(from: Pick<Place, "lat" | "lng">, to: Pick<Place, "lat" | "lng">): boolean {
+  const icn = AIRPORT_TAXI_POINTS.ICN;
+  const selectedIcn = (p: Pick<Place, "lat" | "lng">) => p.lat === icn.lat && p.lng === icn.lng;
+  // 서울 중형택시 기준: 인천공항↔서울은 공동사업구역으로 시계외 할증이 없다 (서울시 공식 요금표).
+  if ((selectedIcn(from) && inSeoul(to)) || (selectedIcn(to) && inSeoul(from))) return false;
+  // ponytail: 공항 버튼만 예외를 확정한다. 자유 입력의 공동사업구역 전체 판정은 검증된 경계 자료가 있을 때 추가한다.
+  return inSeoul(from) !== inSeoul(to);
 }

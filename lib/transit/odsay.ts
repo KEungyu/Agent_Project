@@ -1,6 +1,6 @@
 // ODsay 대중교통 API 어댑터 (지하철 경로 검색 · 지하철역 시간표). 버스는 다루지 않는다.
 // 엔드포인트·파라미터·출력 필드는 공식 레퍼런스(https://lab.odsay.com/guide/releaseReference?platform=web, 2026-10-04 확인)를 따랐다.
-// 서버 플랫폼 키로 로컬에서 실제 호출을 확인했다(2026-10-04·06). 키는 서버에서만 읽고 화면으로 보내지 않는다. 키가 없으면 호출하지 않고 "unconfigured".
+// 기본은 서버 플랫폼 키. WEB 호출자는 브라우저용 키만 담은 env를 넘긴다. 서버 키를 브라우저로 보내지 않는다.
 // 상태: 미설정 / 권한 거부(키·등록 IP) / 하루 한도 / 시간 초과 / 오류 / 빈 결과 / 지역 밖 / 700m 이내. 성공한 결과만 잠시 캐시한다(실패는 캐시하지 않음).
 // 여기서 쓰는 경로 검색(searchPubTransPathT)에는 출발 시각 파라미터가 없다: 결과는 "지금 기준" 일반 경로다.
 // 시각 지정 조회는 scheduled.ts의 subwayPathSchedule 경로를 사용한다.
@@ -35,6 +35,7 @@ type Fetch = typeof fetch;
 type Options = { env?: Record<string, string | undefined>; fetch?: Fetch; now?: () => Date; cacheMs?: number };
 
 const cache = new Map<string, { at: number; value: OdsayResult<unknown> }>();
+const pending = new Map<string, Promise<OdsayResult<unknown>>>();
 export const clearOdsayCache = () => cache.clear();
 
 // 결과 언어: 영문(1)·일문(2)·중문 간체(3)·번체(4)·베트남어(5, 수도권만). 그 밖의 언어는 영문으로 받는다.
@@ -52,19 +53,27 @@ export async function callOdsay<T>(
   const apiKey = env.ODSAY_API_KEY?.trim();
   if (!apiKey) return { status: "unconfigured" };
   const query = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
-  const cacheKey = `${path}?${query}`;
+  // 키가 바뀌면 이전 키의 성공 결과를 재사용하지 않는다. 이 식별자는 메모리에서만 사용하고 출력하지 않는다.
+  const cacheKey = `${apiKey}:${path}?${query}`;
   const hit = cache.get(cacheKey);
   if (hit && now().getTime() - hit.at < cacheMs) return { ...(hit.value as OdsayResult<T>), cached: true };
+  const ongoing = pending.get(cacheKey);
+  if (ongoing) return ongoing as Promise<OdsayResult<T>>;
+
+  // 같은 화면의 중복 effect가 한도(기본 30회/일)를 두 번 쓰지 않도록 진행 중인 요청도 공유한다.
+  const request = (async (): Promise<OdsayResult<T>> => {
 
   // 키에 특수문자(+, / 등)가 있을 수 있어 인코딩해 보낸다. 이미 인코딩된 키(%2B 등)를 넣었으면 한 번 풀어서 이중 인코딩을 막는다
-  query.set("apiKey", apiKey.includes("%") ? decodeURIComponent(apiKey) : apiKey);
   let body: Record<string, unknown>;
   try {
+    query.set("apiKey", apiKey.includes("%") ? decodeURIComponent(apiKey) : apiKey);
     const res = await fetcher(`${BASE}/${path}?${query}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
     if (res.status === 401 || res.status === 403) return { status: "permission" };
     if (res.status === 429) return { status: "limit", code: "429" };
     if (!res.ok) return { status: "error", code: String(res.status) };
-    body = (await res.json()) as Record<string, unknown>;
+    const parsed: unknown = await res.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { status: "error", code: "invalid_response" };
+    body = parsed as Record<string, unknown>;
   } catch (error) {
     return { status: error instanceof Error && error.name === "TimeoutError" ? "timeout" : "error" };
   }
@@ -84,10 +93,22 @@ export async function callOdsay<T>(
     // 키 오류의 코드는 문서에 없다: 그 밖의 코드는 모두 오류로 보고 코드만 남긴다
     return { status: "error", code };
   }
-  const data = parse((body.result ?? {}) as Record<string, unknown>);
+  let data: T | null;
+  try {
+    data = parse((body.result ?? {}) as Record<string, unknown>);
+  } catch {
+    return { status: "error", code: "invalid_response" };
+  }
   const value: OdsayResult<T> = data ? { status: "ok", data, fetchedAt: now().toISOString() } : { status: "empty" };
   if (value.status === "ok") cache.set(cacheKey, { at: now().getTime(), value });
   return value;
+  })();
+  pending.set(cacheKey, request);
+  try {
+    return await request;
+  } finally {
+    pending.delete(cacheKey); // 실패를 캐시하지 않는다. 설정 수정 뒤 새 사용자 조회는 가능하다.
+  }
 }
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0)) || 0;
@@ -106,7 +127,12 @@ export function searchTransitPaths(
     // SearchPathType 1 = 지하철만 (버스·버스+지하철 경로는 받지 않는다)
     { SX: from.lon, SY: from.lat, EX: to.lon, EY: to.lat, SearchPathType: 1, ...langParam(language, options.env) },
     (result) => {
-      const paths = list(result.path).slice(0, 3).map((path): TransitPath => {
+      const paths = list(result.path).filter((path) => {
+        const info = path.info as Record<string, unknown> | undefined;
+        // 누락·null·비수치 요금을 0원으로 바꾸지 않는다. 유효한 결과만 화면에 전달한다.
+        return info && typeof info.totalTime === "number" && Number.isFinite(info.totalTime) && info.totalTime > 0 &&
+          typeof info.payment === "number" && Number.isFinite(info.payment) && info.payment >= 0;
+      }).slice(0, 3).map((path): TransitPath => {
         const info = (path.info ?? {}) as Record<string, unknown>;
         return {
           minutes: num(info.totalTime),
@@ -135,6 +161,7 @@ export function searchTransitPaths(
           }),
         };
       });
+      if (list(result.path).length && !paths.length) throw new Error("invalid_transit_path");
       return paths.length ? paths : null;
     },
     options,

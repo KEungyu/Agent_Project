@@ -25,14 +25,11 @@ import { loadRequestTypes } from "@/lib/request-types/loader";
 import type { ReplyClass } from "@/lib/board/types";
 import { dismissAlert, type RuleId } from "@/lib/proactive/rules";
 import { estimateFare, farePeriod, type FareEstimate, type FarePeriod } from "@/lib/taxi/fare";
-import { drivingRoute, geocode, geocodeCandidates, haversine, inSeoul } from "@/lib/taxi/lookup";
+import { drivingRoute, geocode, geocodeCandidates, haversine, inSeoul, outsideSeoulSurcharge } from "@/lib/taxi/lookup";
 import { wonRate, type WonRate } from "@/lib/currency/rates";
 import { kstMinutesOfDay } from "@/lib/time";
-import { searchTransitPaths, subwaySchedule, type OdsayResult, type TransitPath } from "@/lib/transit/odsay";
-import { checkLastTrains, type LastTrainCheck } from "@/lib/transit/lasttrain";
-import { searchScheduledRoutes } from "@/lib/transit/scheduled";
+import { scheduledTransit, transitPaths } from "@/lib/transit/routes";
 import { icnFlightStatus, type FlightStatusResult } from "@/lib/airport/flights";
-import { getStation } from "@/lib/transit/subway";
 import { nearestStations } from "@/lib/transit/nearest";
 import { EXTERNAL_RESULTS, externalResults, recordExternalResult, type ExternalResult } from "@/lib/external/results";
 import { isExternalAction } from "@/lib/external/links";
@@ -252,7 +249,7 @@ export async function estimateTaxiAction(input: { from: TaxiPlaceInput; to: Taxi
     const route = await drivingRoute(from, to);
     if (route.meters > 150_000) return { ok: false, error: "tooFar" };
     const period = input.period === "now" ? farePeriod(kstMinutesOfDay(new Date().toISOString())) : input.period;
-    const outsideSeoul = inSeoul(from) !== inSeoul(to);
+    const outsideSeoul = outsideSeoulSurcharge(from, to);
     return {
       ok: true,
       from: from.label,
@@ -328,10 +325,7 @@ export async function callScriptAction(requestId: string): Promise<CallScriptRes
 // ODSAY_API_KEY가 없으면 호출하지 않고 "unconfigured"를 돌려준다 — 화면은 역 연결 경로와 공식 대안을 보여 준다.
 // 경로마다 지하철 구간의 막차를 확인해 함께 돌려준다 (지금 출발 기준 추정, N04)
 export async function scheduledTransitAction(fromId: string, toId: string, departure: string, holiday = false) {
-  const from = getStation(fromId);
-  const to = getStation(toId);
-  if (!from || !to || from.id === to.id) return { status: "empty" as const };
-  return searchScheduledRoutes(from, to, departure, holiday);
+  return scheduledTransit(fromId, toId, departure, holiday);
 }
 
 export async function transitPathsAction(
@@ -339,17 +333,8 @@ export async function transitPathsAction(
   toId: string,
   language: string,
   holiday = false,
-): Promise<OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>> {
-  const from = getStation(fromId);
-  const to = getStation(toId);
-  if (!from || !to || from.id === to.id) return { status: "empty" };
-  const result = await searchTransitPaths(from, to, isLanguageCode(language) ? language : "en");
-  if (result.status !== "ok" || !result.data) return result;
-  // 막차는 첫 번째(추천) 경로만 확인한다: 시간표 조회가 구간마다 한 번씩 들어 하루 호출 한도를 빨리 쓰기 때문
-  const now = new Date();
-  const [first, ...rest] = result.data;
-  const lastTrain = await checkLastTrains(first, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode), undefined, holiday);
-  return { ...result, data: [{ ...first, lastTrain }, ...rest] };
+) {
+  return transitPaths(fromId, toId, language, holiday);
 }
 
 // 숙소·식당·입력한 장소에서 가까운 역 (N03). 좌표는 지도 검색(OpenStreetMap Nominatim) 결과만 쓰고, 같은 이름이 여럿이면 모두 돌려준다

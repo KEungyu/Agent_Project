@@ -7,6 +7,7 @@ import type { OdsayResult, TransitPath } from "@/lib/transit/odsay";
 import type { LastTrainCheck } from "@/lib/transit/lasttrain";
 import type { ScheduledRoutes } from "@/lib/transit/scheduled";
 import { scheduledDeparture } from "@/lib/transit/schedule-time";
+import { scheduledTransit, transitPaths } from "@/lib/transit/routes";
 import {
   MAP_BBOX,
   SUBWAY,
@@ -29,6 +30,13 @@ import { ExternalIcon } from "./icons";
 // 위치 권한을 쓰지 않는다: 출발·도착은 이용자가 역 이름을 넣거나, 노선도에서 고르거나, 숙소·식당·입력한 장소의 가까운 역을 고른다.
 
 type M = Messages["transit"];
+// 브라우저용 WEB 플랫폼 키만 공개한다. 서버용 ODSAY_API_KEY는 이 경계로 전달하지 않는다.
+// NEXT_PUBLIC 값은 next build 때 고정되므로 설정 변경 후 반드시 다시 빌드한다.
+const webOptions = { env: {
+  ODSAY_API_KEY: process.env.NEXT_PUBLIC_ODSAY_WEB_KEY,
+  ODSAY_MULTILANG: process.env.NEXT_PUBLIC_ODSAY_MULTILANG,
+} };
+const webEnabled = !!webOptions.env.ODSAY_API_KEY?.trim();
 const OFFICIAL = [
   { name: "Seoul Metro", url: "https://www.seoulmetro.co.kr/" },
   { name: "Seoul TOPIS", url: "https://topis.seoul.go.kr/" },
@@ -98,10 +106,14 @@ function SubwayPanel({ language, m, places, arrival }: { language: string; m: M;
     let active = true;
     startTransition(async () => {
       if (selectedDeparture) {
-        const result = await scheduledTransitAction(from.id, to.id, selectedDeparture, holiday);
+        const result = webEnabled
+          ? await scheduledTransit(from.id, to.id, selectedDeparture, holiday, webOptions)
+          : await scheduledTransitAction(from.id, to.id, selectedDeparture, holiday);
         if (active) setScheduled(result);
       } else {
-        const result = await transitPathsAction(from.id, to.id, language, holiday);
+        const result = webEnabled
+          ? await transitPaths(from.id, to.id, language, holiday, webOptions)
+          : await transitPathsAction(from.id, to.id, language, holiday);
         if (active) setOnline(result);
       }
     });

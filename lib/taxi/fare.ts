@@ -5,6 +5,12 @@
 
 export type FarePeriod = "day" | "late" | "midnight";
 
+// 기존 공항 버튼의 택시 승강장 좌표. 화면 선택과 공동사업구역 예외 판정이 같은 값을 쓴다.
+export const AIRPORT_TAXI_POINTS: Record<string, { lat: number; lng: number }> = {
+  ICN: { lat: 37.4492, lng: 126.4509 },
+  GMP: { lat: 37.5583, lng: 126.7906 },
+};
+
 export const FARE_RATES: Record<FarePeriod, { base: number; unit: number; surcharge: number }> = {
   day: { base: 4800, unit: 100, surcharge: 0 },
   late: { base: 5800, unit: 120, surcharge: 20 },
@@ -42,7 +48,8 @@ export function estimateFare(
   const slowLow = (durationSeconds * 0.3 * urban) / UNIT_SECONDS;
   const slowHigh = (durationSeconds * 1.3 * urban) / UNIT_SECONDS;
   // 서울 경계를 넘으면 넘은 구간에만 시계외 할증이 붙는다. 그 비율을 모르므로 높은 쪽에만 20%를 더한다.
-  const highFactor = options.outsideSeoul ? 1.2 : 1;
+  // 심야 요금에 다시 1.2를 곱하면 40%+20%가 68%가 된다. 공식 중복 상한 60%에 맞게 가산 비율로 환산한다.
+  const highFactor = options.outsideSeoul ? (100 + FARE_RATES[period].surcharge + 20) / (100 + FARE_RATES[period].surcharge) : 1;
   const round = (won: number) => Math.round(won / 100) * 100;
   return {
     low: round(meter + Math.floor(slowLow) * unit),
