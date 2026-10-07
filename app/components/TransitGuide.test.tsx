@@ -26,3 +26,15 @@ it("부산·대구는 모든 화면 언어에서 해당 지역의 검색·지도
     }
   }
 });
+
+it("대전·광주도 각 도시의 지도와 공식 링크를 표시한다", () => {
+  for (const { code } of LANGUAGES) {
+    const m = getMessages(code).transit;
+    for (const [region, domain, station] of [["daejeon", "www.djtc.kr", "대전"], ["gwangju", "www.grtc.co.kr", "문화전당"]] as const) {
+      const html = renderToStaticMarkup(createElement(RegionalSubwayPanel, { region, language: code, m }));
+      expect(html).toContain(domain);
+      expect(html).toContain(station);
+      expect(html).not.toMatch(/\{region\}|Seoul Metro|transit-form|₩/);
+    }
+  }
+});

@@ -105,7 +105,7 @@ Rules:
 - Copy names and booking numbers exactly as given.
 - Dates and times: copy the "*_ko" forms in the facts exactly. They carry the year, the date, the 24-hour time and KST (e.g. 2026년 10월 10일(토) 01:00(KST)).
 - The check-in date and the arrival time can be on different days (arriving after midnight). Keep each one as given and never move one to match the other.
-- If the facts include dietary or allergy notes, copy each one exactly, keeping what must be avoided and every negation separate (nuts and shellfish are different). Never claim or ask for a guarantee that the food is safe.
+- If the facts include dietary or allergy notes, write each one in Korean (for example 땅콩 알레르기) and keep the traveler's own words right after it in parentheses, so staff can read it and nothing is lost. Keep what must be avoided and every negation separate (nuts and shellfish are different). Never leave a note only in a foreign language, and never claim or ask for a guarantee that the food is safe.
 - Ask the business to reply to this email.
 
 Also return coverage: for each required item, the exact phrase copied from body_ko that covers it.`;

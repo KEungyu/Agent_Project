@@ -27,6 +27,8 @@ import {
 } from "@/lib/transit/subway";
 import busanData from "../../data/transit/busan-subway.json";
 import daeguData from "../../data/transit/daegu-subway.json";
+import daejeonData from "../../data/transit/daejeon-subway.json";
+import gwangjuData from "../../data/transit/gwangju-subway.json";
 import { ExternalIcon } from "./icons";
 
 // 지하철 안내. 지도 위에 실제 선로 모양으로 노선을 그리고(OSM, ODbL), 시간·요금·막차는 ODsay가 연결됐을 때만 보여 준다.
@@ -64,6 +66,15 @@ type PlaceNote = { label: string; meters: number };
 type OnlinePaths = OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>;
 type Arrival = { airport?: string; datetime?: string };
 
+const REGIONAL_NETWORKS = {
+  busan: { data: busanData, label: "regionBusan", example: "서면", url: "https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do", operator: "Busan Transportation Corporation" },
+  daegu: { data: daeguData, label: "regionDaegu", example: "반월당", url: "https://www.dtro.or.kr/", operator: "Daegu Transportation Corporation" },
+  daejeon: { data: daejeonData, label: "regionDaejeon", example: "대전", url: "https://www.djtc.kr/kor/cyberStation.do", operator: "Daejeon Transportation Corporation" },
+  gwangju: { data: gwangjuData, label: "regionGwangju", example: "문화전당", url: "https://www.grtc.co.kr/cyber", operator: "Gwangju Transportation Corporation" },
+} as const;
+type RegionalCity = keyof typeof REGIONAL_NETWORKS;
+const isRegionalCity = (value: string | null): value is RegionalCity => value !== null && Object.hasOwn(REGIONAL_NETWORKS, value);
+
 export function TransitGuide({ language, m, places = [], arrival }: { language: string; m: M; places?: TransitPlace[]; arrival?: Arrival }) {
   const [region, setRegion] = useState("seoul");
   const regionId = useId();
@@ -71,7 +82,7 @@ export function TransitGuide({ language, m, places = [], arrival }: { language: 
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("majungi-transit-region");
-      if (saved === "busan" || saved === "daegu") setRegion(saved);
+      if (isRegionalCity(saved)) setRegion(saved);
     } catch { /* 저장소를 차단한 브라우저에서는 기본 지역을 쓴다. */ }
   }, []);
   const changeRegion = (value: string) => {
@@ -84,8 +95,7 @@ export function TransitGuide({ language, m, places = [], arrival }: { language: 
         <span className="label">{m.region}</span>
         <select id={regionId} className="field" value={region} onChange={(event) => changeRegion(event.target.value)}>
           <option value="seoul">{m.regionSeoul}</option>
-          <option value="busan">{m.regionBusan}</option>
-          <option value="daegu">{m.regionDaegu}</option>
+          {Object.entries(REGIONAL_NETWORKS).map(([id, config]) => <option key={id} value={id}>{m[config.label]}</option>)}
         </select>
       </label>
       <details className="transit-tmoney">
@@ -101,33 +111,34 @@ export function TransitGuide({ language, m, places = [], arrival }: { language: 
         <p className="transit-area">{m.area}</p>
         <p className="ag-note">{m.graphScope}</p>
         <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
-      </> : <RegionalSubwayPanel key={region} region={region === "busan" ? "busan" : "daegu"} language={language} m={m} />}
+      </> : <RegionalSubwayPanel key={region} region={isRegionalCity(region) ? region : "busan"} language={language} m={m} />}
     </section>
   );
 }
 
 // ponytail: 지역 지도는 정적 연결도. 운행 경로가 필요하면 검증된 시간표/API를 별도 연결한다.
-export function RegionalTransitNotice({ region, m }: { region: "busan" | "daegu"; m: M }) {
-  const busan = region === "busan";
+export function RegionalTransitNotice({ region, m }: { region: RegionalCity; m: M }) {
+  const config = REGIONAL_NETWORKS[region];
   return <div className="transit-regional" role="status">
-    <p className="ag-note">{fmt(m.regionalExternal, { region: busan ? m.regionBusan : m.regionDaegu })}</p>
+    <p className="ag-note">{fmt(m.regionalExternal, { region: m[config.label] })}</p>
     <p className="transit-official"><span>{m.officialTitle}</span>
-      <a href={busan ? "https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do" : "https://www.dtro.or.kr/"} target="_blank" rel="noopener noreferrer">
-        {busan ? "Busan Transportation Corporation" : "Daegu Transportation Corporation"} <ExternalIcon />
+      <a href={config.url} target="_blank" rel="noopener noreferrer">
+        {config.operator} <ExternalIcon />
       </a>
     </p>
   </div>;
 }
 
-export function RegionalSubwayPanel({ region, language, m }: { region: "busan" | "daegu"; language: string; m: M }) {
-  const network = (region === "busan" ? busanData : daeguData) as unknown as SubwayData;
-  const example = network.stations.find((s) => s.ko === (region === "busan" ? "서면" : "반월당"))!;
+export function RegionalSubwayPanel({ region, language, m }: { region: RegionalCity; language: string; m: M }) {
+  const config = REGIONAL_NETWORKS[region];
+  const network = config.data as unknown as SubwayData;
+  const example = network.stations.find((s) => s.ko === config.example)!;
   const [selected, setSelected] = useState<SubwayStation | null>(null);
   const [focusLine, setFocusLine] = useState<string | null>(null);
   return <div className="transit-panel">
     <RegionalTransitNotice region={region} m={m} />
     <StationSearch label={m.findStation} placeholder={`${stationLabel(example, language)} · ${Object.values(example.codes).join(" / ")}`} language={language} m={m} network={network} value={selected} onPick={setSelected} big />
-    <SubwayMap network={network} route={null} selected={selected} focusLine={focusLine} language={language} m={m} onPick={(id) => setSelected(network.stations.find((s) => s.id === id) ?? null)} />
+    <SubwayMap network={network} mapUrl={`/transit/map-${region}.json`} route={null} selected={selected} focusLine={focusLine} language={language} m={m} onPick={(id) => setSelected(network.stations.find((s) => s.id === id) ?? null)} />
     {selected && <StationCard station={selected} network={network} language={language} m={m} onClose={() => setSelected(null)} />}
     <ul className="subway-legend" aria-label={m.legend}>
       <li><button type="button" aria-pressed={focusLine === null} onClick={() => setFocusLine(null)}>{m.allLines}</button></li>
@@ -787,11 +798,13 @@ function ScheduledResult({ result, departure, language, m, holiday }: { result: 
 // ── 지하철 지도 ───────────────────────────────────────────
 type View = { x: number; y: number; w: number; h: number };
 type LatLon = [number, number];
-// public/transit/map.json (scripts/transit/fetch-map.ts): 실제 선로·한강·큰 도로·구 이름
+// public/transit/map.json·map-<지역>.json (scripts/transit/fetch-map.ts): 실제 선로·강·큰 도로·구 이름 (지역은 도심 하천·해안선도)
 type MapData = {
   bbox: number[];
   tracks: { line: string; paths: LatLon[][] }[];
   river: LatLon[][];
+  streams?: LatLon[][];
+  coast?: LatLon[][];
   motorways?: LatLon[][];
   roads: LatLon[][];
   districts: { ko: string; en: string; ja?: string; zh?: string; lat: number; lon: number }[];
@@ -803,20 +816,25 @@ const textWidth = (text: string, size: number) => [...text].reduce((w, ch) => w 
 const districtName = (d: MapData["districts"][number], language: string) =>
   language === "ko" ? d.ko : (language === "ja" && d.ja) || (language === "zh-CN" && d.zh) || d.en || d.ko;
 
-let mapDataPromise: Promise<MapData | null> | null = null;
-function useMapData(enabled: boolean): MapData | null {
+// 배경 지도는 지역마다 한 번만 받는다
+const mapDataPromises = new Map<string, Promise<MapData | null>>();
+function useMapData(url: string | undefined): MapData | null {
   const [data, setData] = useState<MapData | null>(null);
   useEffect(() => {
-    if (!enabled) return;
-    mapDataPromise ??= fetch("/transit/map.json")
-      .then((res) => (res.ok ? (res.json() as Promise<MapData>) : null))
-      .catch(() => null);
+    if (!url) return;
+    if (!mapDataPromises.has(url))
+      mapDataPromises.set(
+        url,
+        fetch(url)
+          .then((res) => (res.ok ? (res.json() as Promise<MapData>) : null))
+          .catch(() => null),
+      );
     let alive = true;
-    mapDataPromise.then((value) => alive && setData(value));
+    mapDataPromises.get(url)!.then((value) => alive && setData(value));
     return () => {
       alive = false;
     };
-  }, [enabled]);
+  }, [url]);
   return data;
 }
 
@@ -850,7 +868,16 @@ function mapLayout(network: SubwayData) {
   }).join("");
 
   function initialView(narrow = false): View {
-    if (network !== SUBWAY) return { x: FULL.x, y: FULL.y, w: FULL.width, h: FULL.height };
+    if (network !== SUBWAY) {
+      // 지역은 노선망 끝(울산·공항 등 멀리 떨어진 역)을 빼고, 역이 모인 도심을 처음에 보여 준다
+      const xs = network.stations.map((st) => project(st.lat, st.lon).x).sort((a, b) => a - b);
+      const ys = network.stations.map((st) => project(st.lat, st.lon).y).sort((a, b) => a - b);
+      const q = (arr: number[], f: number) => arr[Math.min(arr.length - 1, Math.max(0, Math.round((arr.length - 1) * f)))];
+      const x0 = q(xs, 0.1), x1 = q(xs, 0.9), y0 = q(ys, 0.1), y1 = q(ys, 0.9);
+      const w = Math.min(FULL.width, Math.max((x1 - x0) * 1.5, ((y1 - y0) * 1.5) / ASPECT, FULL.width * 0.35));
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      return clampView({ x: cx - w / 2, y: cy - (w * ASPECT) / 2, w, h: w * ASPECT });
+    }
     // 처음에는 여행자가 많이 다니는 서울 도심(홍대~잠실, 강북~강남)을 보여 준다. 휴대폰은 도심만 더 확대한다
     const c = project(37.548, 126.99);
     const half = narrow ? 0.07 : 0.135;
@@ -860,7 +887,7 @@ function mapLayout(network: SubwayData) {
 
   // 여행자가 자주 찾는 역: 축소해도 이름을 먼저 붙인다
   const HUBS = new Set(
-    ["서울", "시청", "명동", "을지로입구", "종각", "광화문", "경복궁", "안국", "종로3가", "동대문역사문화공원", "동대문", "홍대입구", "신촌", "이태원", "용산", "여의도", "강남", "압구정", "잠실", "삼성", "고속터미널", "김포공항", "인천공항1터미널", "인천공항2터미널", "건대입구", "성수", "왕십리", "사당", "합정", "공덕", "부산", "서면", "해운대", "사상", "대저", "부산원동", "태화강", "하양", "동대구", "반월당", "명덕", "청라언덕"]
+    ["서울", "시청", "명동", "을지로입구", "종각", "광화문", "경복궁", "안국", "종로3가", "동대문역사문화공원", "동대문", "홍대입구", "신촌", "이태원", "용산", "여의도", "강남", "압구정", "잠실", "삼성", "고속터미널", "김포공항", "인천공항1터미널", "인천공항2터미널", "건대입구", "성수", "왕십리", "사당", "합정", "공덕", "부산", "서면", "해운대", "사상", "대저", "부산원동", "태화강", "하양", "동대구", "반월당", "명덕", "청라언덕", "대전", "정부청사", "시청", "유성온천", "서대전네거리", "중앙로", "광주송정", "공항", "상무", "양동시장", "문화전당", "남광주"]
       .map((ko) => network.stations.find((s) => s.ko === ko)?.id)
       .filter(Boolean) as string[],
   );
@@ -872,9 +899,12 @@ function mapLayout(network: SubwayData) {
       .filter(Boolean) as string[],
   );
 
+  // 지역: 대표 역·환승역에 노선 끝 역(이웃이 하나뿐인 역)을 더한다. 환승역이 없는 1개 노선 도시도 멀리서 역이 보이게
+  const degree = new Map<string, number>();
+  for (const line of network.lines) for (const [a, b] of line.edges) [a, b].forEach((id) => degree.set(id, (degree.get(id) ?? 0) + 1));
   const OVERVIEW = network === SUBWAY ? SEOUL_OVERVIEW : new Set([
     ...HUBS,
-    ...network.stations.filter((s) => s.lines.length > 1).map((s) => s.id),
+    ...network.stations.filter((s) => s.lines.length > 1 || degree.get(s.id) === 1).map((s) => s.id),
   ]);
   // 지도 범위 밖(자료가 없는 빈 곳)이 보이지 않게 화면을 범위 안에 묶는다
   // 초기 화면은 도심, 외곽 경로를 선택하면 넓게 볼 수 있다.
@@ -894,6 +924,7 @@ function mapLayout(network: SubwayData) {
 
 function SubwayMap({
   network = SUBWAY,
+  mapUrl,
   route,
   selected,
   focusLine,
@@ -902,6 +933,7 @@ function SubwayMap({
   onPick,
 }: {
   network?: SubwayData;
+  mapUrl?: string; // 지역 노선도의 배경 지도 (서울은 /transit/map.json)
   route: SubwayRoute | null;
   selected: SubwayStation | null;
   focusLine: string | null;
@@ -938,8 +970,8 @@ function SubwayMap({
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const moved = useRef(0);
   const pinch = useRef<number | null>(null);
-  const data = useMapData(network === SUBWAY);
-  const [showContext, setShowContext] = useState(false);
+  const data = useMapData(network === SUBWAY ? "/transit/map.json" : mapUrl);
+  const [showContext, setShowContext] = useState(true);
 
   const scaled = (v: View, factor: number, cx: number, cy: number): View => {
     const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w * factor));
@@ -1033,7 +1065,40 @@ function SubwayMap({
   );
   const roadPath = useMemo(() => (data ? data.roads.map(toPath).join("") : ""), [data]);
   const motorwayPath = useMemo(() => (data?.motorways ? data.motorways.map(toPath).join("") : ""), [data]);
+  // 구 이름 좌표를 중심으로 한 영역(보로노이)에 아주 옅은 색을 깐다. 이웃한 구는 다른 색, 중심에서 멀리는 번지지 않게 자른다. 노선보다 훨씬 옅어 노선 읽기를 방해하지 않는다
+  const districtTints = useMemo(() => {
+    if (!data?.districts) return [];
+    const pts = data.districts.map((d) => project(d.lat, d.lon));
+    const HUES = [38, 150, 200, 275, 12];
+    const reach = pts.map((p, i) => (data.coast?.length ? 1.1 : 1.5) * Math.min(...pts.filter((_, j) => j !== i).map((q) => Math.hypot(p.x - q.x, p.y - q.y))));
+    const cells = pts.map((p, i) => {
+      let poly = Array.from({ length: 16 }, (_, n) => ({ x: p.x + reach[i] * Math.cos((n * Math.PI) / 8), y: p.y + reach[i] * Math.sin((n * Math.PI) / 8) }));
+      pts.forEach((q, j) => {
+        if (j === i || !poly.length) return;
+        // p 쪽 반평면: (x - mid) · (q - p) <= 0
+        const nx = q.x - p.x, ny = q.y - p.y, mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+        const side = (v: { x: number; y: number }) => (v.x - mx) * nx + (v.y - my) * ny;
+        const out: typeof poly = [];
+        poly.forEach((a, n) => {
+          const b = poly[(n + 1) % poly.length];
+          const sa = side(a), sb = side(b);
+          if (sa <= 0) out.push(a);
+          if ((sa < 0 && sb > 0) || (sa > 0 && sb < 0)) { const t = sa / (sa - sb); out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }); }
+        });
+        poly = out;
+      });
+      return poly;
+    });
+    const hue: number[] = [];
+    pts.forEach((p, i) => {
+      const near = pts.map((q, j) => ({ j, d: Math.hypot(p.x - q.x, p.y - q.y) })).filter((o) => o.j !== i).sort((x, y) => x.d - y.d).slice(0, 6).map((o) => hue[o.j]);
+      hue[i] = HUES.findIndex((_, h) => !near.includes(h)) >= 0 ? HUES.findIndex((_, h) => !near.includes(h)) : i % HUES.length;
+    });
+    return cells.map((poly, i) => ({ key: data.districts[i].ko, d: poly.length ? `M${poly.map((v) => `${v.x.toFixed(1)} ${v.y.toFixed(1)}`).join("L")}Z` : "", hue: HUES[hue[i]] }));
+  }, [data]);
   const riverPath = useMemo(() => (data ? data.river.map((line) => smoothPath(line.map(([lat, lon]) => project(lat, lon)))).join("") : ""), [data]);
+  const streamPath = useMemo(() => (data?.streams ? data.streams.map((line) => smoothPath(line.map(([lat, lon]) => project(lat, lon)))).join("") : ""), [data]);
+  const coastPath = useMemo(() => (data?.coast ? data.coast.map(toPath).join("") : ""), [data]);
   // 경로 강조: 지나는 역을 부드럽게 잇는다
   const routePaths = useMemo(
     () => (route?.legs ?? []).map((leg) => ({ colour: network.lines.find((l) => l.id === leg.line)!.colour, d: smoothPath(leg.stations.map((id) => points.get(id)!)) })),
@@ -1158,7 +1223,7 @@ function SubwayMap({
 
   return (
     <div className="subway-wrap">
-      {network === SUBWAY && <button type="button" className="chip subway-context" aria-pressed={showContext} onClick={() => setShowContext(!showContext)}>{m.mapContext}</button>}
+      {data && <button type="button" className="chip subway-context" aria-pressed={showContext} onClick={() => setShowContext(!showContext)}>{m.mapContext}</button>}
       <div className="subway-map">
         <svg
           ref={svgRef}
@@ -1172,15 +1237,23 @@ function SubwayMap({
           onPointerCancel={onPointerUp}
           onKeyDown={onKeyDown}
         >
-          <rect x={FULL.x - FULL.width} y={FULL.y - FULL.height} width={FULL.width * 3} height={FULL.height * 3} className="subway-ground" />
+          <rect x={FULL.x - FULL.width} y={FULL.y - FULL.height} width={FULL.width * 3} height={FULL.height * 3} className={network === SUBWAY ? "subway-ground" : "subway-ground is-land"} />
           {/* 배경 지도: 한강·큰 도로·구 이름 (위치를 알아보기 위한 것) */}
-          {riverPath && <path d={riverPath} className="subway-river" strokeWidth={34} />}
+          {/* 해안선(부산)은 바다 쪽 옅은 물색 띠, 강은 넓게(서울 한강 34, 지역 큰 강 20), 도심 하천은 가늘게 */}
+          {districtTints.map((c) => c.d && <path key={c.key} d={c.d} className="subway-tint" style={{ fill: `hsl(${c.hue} 42% 94.5%)` }} />)}
+          {coastPath && <path d={coastPath} className="subway-river is-coast" strokeWidth={26} />}
+          {riverPath && <path d={riverPath} className="subway-river" strokeWidth={network === SUBWAY ? 34 : 20} />}
+          {streamPath && <path d={streamPath} className="subway-river" strokeWidth={9} />}
           {showContext && !far && roadPath && <path d={roadPath} className="subway-road" strokeWidth={zoomedIn ? 2.6 : 1.8} vectorEffect="non-scaling-stroke" />}
           {showContext && motorwayPath && <path d={motorwayPath} className={far ? "subway-road is-far" : "subway-road is-motorway"} strokeWidth={far ? 1.6 : zoomedIn ? 3.4 : 2.6} vectorEffect="non-scaling-stroke" />}
           {/* 구 이름은 경로를 볼 때·많이 축소했을 때는 숨긴다 (노선이 먼저 보이게) */}
           {showContext && !route && !far && data?.districts.map((d) => {
             const p = project(d.lat, d.lon);
-            return inView(p) ? (
+            // 역 이름표·역 원과 겹치는 구 이름은 숨긴다 (역 이름이 먼저 읽히게)
+            const half = (districtName(d, language).length * 11 * k) / 2;
+            const hidden = labels.some((l) => p.x + half > l.x - 2 * k && p.x - half < l.x + l.w && p.y + 3 * k > l.y - l.fs && p.y - 11 * k < l.y - l.fs + l.h) ||
+              network.stations.some((st) => { const q = points.get(st.id)!; return Math.abs(q.x - p.x) < half + 6 * k && Math.abs(q.y - p.y) < 12 * k; });
+            return inView(p) && !hidden ? (
               <text key={d.ko} x={p.x} y={p.y} fontSize={11 * k} className="subway-district" textAnchor="middle">
                 {districtName(d, language)}
               </text>
@@ -1203,7 +1276,7 @@ function SubwayMap({
             const p = points.get(s.id)!;
             const transfer = s.lines.length > 1;
             const onRoute = routeStations.has(s.id);
-            if (!inView(p) || (!transfer && !onRoute && !showDots)) return null;
+            if (!inView(p) || (!transfer && !onRoute && !showDots && !(far ? OVERVIEW : HUBS).has(s.id))) return null;
             // 멀리서는 대표 역·경로·고른 역만 원을 그린다
             if (far && !onRoute && s.id !== selected?.id && !OVERVIEW.has(s.id)) return null;
             const faded = route ? !onRoute : focusLine !== null && !s.lines.includes(focusLine);

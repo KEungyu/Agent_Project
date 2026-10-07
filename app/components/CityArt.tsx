@@ -4,6 +4,9 @@
 export type CityTheme = { from: string; to: string; accent: string; dark?: boolean };
 
 export const CITY_THEMES: Record<string, CityTheme> = {
+  daegu: { from: "#ffe5dd", to: "#f2b9a5", accent: "#af5131" },
+  daejeon: { from: "#e0f4e9", to: "#9fd4c3", accent: "#277e66" },
+  gwangju: { from: "#eee3ff", to: "#c5b5e6", accent: "#7653a0" },
   seoul: { from: "#ffe3d6", to: "#c3b2f0", accent: "#7a63c9" },
   incheon: { from: "#d8f4ef", to: "#8ccfe2", accent: "#1d97b0" },
   suwon: { from: "#f8e6d8", to: "#dcac8e", accent: "#b8653a" },

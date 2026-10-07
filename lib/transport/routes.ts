@@ -16,6 +16,9 @@ const flights = (from: string, to: string): BookingSite => ({
 
 const P = {
   seoulStation: { ko: "서울역", en: "Seoul Station" },
+  dongdaegu: { ko: "동대구역", en: "Dongdaegu Station" },
+  daejeonStation: { ko: "대전역", en: "Daejeon Station" },
+  gwangjuSongjeong: { ko: "광주송정역", en: "Gwangju Songjeong Station" },
   yongsan: { ko: "용산역", en: "Yongsan Station" },
   cheongnyangni: { ko: "청량리역", en: "Cheongnyangni Station" },
   seoulBus: { ko: "서울경부 고속버스터미널", en: "Seoul Express Bus Terminal" },
@@ -41,12 +44,61 @@ const P = {
   jejuAirport: { ko: "제주공항", en: "Jeju Airport" },
   suwonStation: { ko: "수원역", en: "Suwon Station" },
   incheonStation: { ko: "인천역", en: "Incheon Station" },
+  dongdaeguBus: { ko: "동대구고속버스터미널", en: "Dongdaegu Express Bus Terminal" },
+  daeguAirport: { ko: "대구공항", en: "Daegu Airport" },
+  daejeonBus: { ko: "대전복합터미널", en: "Daejeon Complex Terminal" },
+  gwangjuBus: { ko: "광주종합버스터미널(유스퀘어)", en: "Gwangju U-Square Bus Terminal" },
+  gwangjuAirport: { ko: "광주공항", en: "Gwangju Airport" },
 } satisfies Record<string, Place>;
 
 type Leg = { a: string; b: string; options: TransportOption[] };
 
 // 한 방향으로만 적고, 반대 방향은 출발·도착을 뒤집어 쓴다. 첫 번째가 추천 수단이다.
 const LEGS: Leg[] = [
+  // 대구·대전·광주 (2026-10-07 추가). 소요 시간은 다른 구간처럼 대략값이며 화면에는 "약"으로만 보인다. 정확한 시각·요금은 공식 예매 화면에서 확인한다
+  {
+    a: "seoul",
+    b: "daegu",
+    options: [
+      { mode: "ktx", minutes: 110, from: P.seoulStation, to: P.dongdaegu, booking: KORAIL },
+      { mode: "bus", minutes: 210, from: P.seoulBus, to: P.dongdaeguBus, booking: KOBUS },
+    ],
+  },
+  {
+    a: "seoul",
+    b: "daejeon",
+    options: [
+      { mode: "ktx", minutes: 60, from: P.seoulStation, to: P.daejeonStation, booking: KORAIL },
+      { mode: "bus", minutes: 120, from: P.seoulBus, to: P.daejeonBus, booking: KOBUS },
+    ],
+  },
+  {
+    a: "seoul",
+    b: "gwangju",
+    options: [
+      { mode: "ktx", minutes: 110, from: P.yongsan, to: P.gwangjuSongjeong, booking: KORAIL },
+      { mode: "flight", minutes: 55, from: P.gimpo, to: P.gwangjuAirport, booking: flights("GMP", "KWJ") },
+      { mode: "bus", minutes: 210, from: P.centralCity, to: P.gwangjuBus, booking: KOBUS },
+    ],
+  },
+  { a: "daejeon", b: "daegu", options: [{ mode: "ktx", minutes: 50, from: P.daejeonStation, to: P.dongdaegu, booking: KORAIL }] },
+  { a: "daegu", b: "busan", options: [{ mode: "ktx", minutes: 50, from: P.dongdaegu, to: P.busanStation, booking: KORAIL }] },
+  { a: "daejeon", b: "busan", options: [{ mode: "ktx", minutes: 100, from: P.daejeonStation, to: P.busanStation, booking: KORAIL }] },
+  {
+    a: "daegu",
+    b: "gyeongju",
+    options: [
+      { mode: "ktx", minutes: 20, from: P.dongdaegu, to: P.singyeongju, booking: KORAIL },
+      { mode: "bus", minutes: 60, from: P.dongdaeguBus, to: P.gyeongjuBus, booking: TMONEY_BUS },
+    ],
+  },
+  { a: "daegu", b: "andong", options: [{ mode: "bus", minutes: 80, from: P.dongdaeguBus, to: P.andongBus, booking: TMONEY_BUS }] },
+  { a: "daegu", b: "jeju", options: [{ mode: "flight", minutes: 60, from: P.daeguAirport, to: P.jejuAirport, booking: flights("TAE", "CJU") }] },
+  { a: "daejeon", b: "jeonju", options: [{ mode: "bus", minutes: 80, from: P.daejeonBus, to: P.jeonjuBus, booking: TMONEY_BUS }] },
+  { a: "gwangju", b: "jeonju", options: [{ mode: "bus", minutes: 90, from: P.gwangjuBus, to: P.jeonjuBus, booking: KOBUS }] },
+  { a: "gwangju", b: "yeosu", options: [{ mode: "bus", minutes: 100, from: P.gwangjuBus, to: P.yeosuBus, booking: TMONEY_BUS }] },
+  { a: "gwangju", b: "busan", options: [{ mode: "bus", minutes: 210, from: P.gwangjuBus, to: P.busanSeobu, booking: KOBUS }] },
+  { a: "gwangju", b: "jeju", options: [{ mode: "flight", minutes: 50, from: P.gwangjuAirport, to: P.jejuAirport, booking: flights("KWJ", "CJU") }] },
   {
     a: "seoul",
     b: "gyeongju",

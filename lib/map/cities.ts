@@ -1,3 +1,4 @@
+import { ADDITIONAL_CITIES } from "./additional-cities";
 import type { LanguageCode } from "../i18n/languages";
 
 // 지도 거점 도시와 대표 관광지 (마중 팀이 고른 안내용 데이터).
@@ -2146,6 +2147,7 @@ export const CITIES: City[] = [
       },
     ],
   },
+  ...ADDITIONAL_CITIES,
 ];
 
 export const CATEGORY_ORDER: SpotCategory[] = ["sight", "food", "experience", "shopping", "night"];

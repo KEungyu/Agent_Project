@@ -6,7 +6,7 @@ type Props = { className?: string };
 
 function Svg({ className, children }: Props & { children: React.ReactNode }) {
   return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg className={className} width="1em" height="1em" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {children}
     </svg>
   );

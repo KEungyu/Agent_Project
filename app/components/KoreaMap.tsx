@@ -17,7 +17,19 @@ const [, , VB_W, VB_H] = KOREA_VIEWBOX.split(" ").map(Number);
 // 한 페이지에 관광지 5곳 + "마중이에게 물어보기" 카드 = 2열 3줄
 const PAGE_SIZE = 5;
 // 수도권·동해안은 거점이 붙어 있어 이름표 방향을 따로 정한다 (기본은 오른쪽)
-const LABEL_SIDE: Record<string, "left" | "top" | "bottom"> = { incheon: "left", seoul: "top", suwon: "bottom", sokcho: "top" };
+// 이름표 자리: 브라우저에서 390px·1280px 화면의 실제 이름표 크기를 재어, 이름표·점끼리 겹치지 않게 고른 값 (기본은 오른쪽)
+type LabelSide = "left" | "top" | "bottom" | "bottom-left" | "bottom-right" | "top-left" | "top-right";
+const LABEL_SIDE: Record<string, LabelSide> = {
+  seoul: "top",
+  incheon: "left",
+  sokcho: "top",
+  jeonju: "left",
+  daejeon: "left",
+  andong: "top-right",
+  yeosu: "bottom",
+  daegu: "bottom-left",
+  gwangju: "bottom-left",
+};
 // 구글 지도 검색 링크 (Maps URLs, API 키 없이 쓰는 공식 링크 형식). 같은 이름의 다른 장소를 피하려고 도시 이름을 붙인다.
 function mapsUrl(cityKo: string, spotKo: string): string {
   const query = spotKo.startsWith(cityKo) ? spotKo : `${cityKo} ${spotKo}`;

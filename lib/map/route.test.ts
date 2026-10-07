@@ -11,7 +11,7 @@ describe("map route", () => {
     expect(cityIdOf("Gyeongju")).toBe("gyeongju");
     expect(cityIdOf(" seoul ")).toBe("seoul");
     expect(cityIdOf("부산")).toBe("busan");
-    expect(cityIdOf("Daejeon")).toBeUndefined();
+    expect(cityIdOf("Mokpo")).toBeUndefined();
   });
 
   it("인천공항 → 일정 순서로 구간을 만들고, 교통편 없는 구간을 표시한다", () => {
@@ -24,7 +24,7 @@ describe("map route", () => {
   });
 
   it("공항이 없으면 첫 도시부터 잇고, 지도에 없는 도시는 건너뛴다", () => {
-    expect(routeLegs([item("Seoul"), item("Daejeon"), item("Busan")], "GMP")).toEqual([{ from: "seoul", to: "busan", arranged: false }]);
+    expect(routeLegs([item("Seoul"), item("Mokpo"), item("Busan")], "GMP")).toEqual([{ from: "seoul", to: "busan", arranged: false }]);
   });
 
   it("모든 도시와 관광지가 9개 언어로 준비되어 있다", () => {
@@ -39,7 +39,7 @@ describe("map route", () => {
 
   it("shows map cities in the user's language and leaves other cities as typed", () => {
     expect(localCityName("Gyeongju", "ja")).toBe(CITIES.find((city) => city.id === "gyeongju")?.name.ja);
-    expect(localCityName("Daejeon", "ja")).toBe("Daejeon");
+    expect(localCityName("Mokpo", "ja")).toBe("Mokpo");
   });
 
   it("treats subway-only legs as needing no booking, but not trains or unknown routes", () => {
