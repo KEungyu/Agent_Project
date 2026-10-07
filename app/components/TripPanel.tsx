@@ -20,6 +20,7 @@ import { TransportPlanner } from "./TransportPlanner";
 import { buildChecklist } from "@/lib/checklist";
 import { TripRoute } from "./TripRoute";
 import { AirportGuide } from "./AirportGuide";
+import { TimeCompare } from "./TimeCompare";
 import { TransitGuide } from "./TransitGuide";
 import { overlappingStays } from "@/lib/board/overlap";
 import type { LanguageCode } from "@/lib/i18n/languages";
@@ -32,6 +33,7 @@ export function TripPanel({ board, m, language }: Props) {
     <section className="panel" aria-labelledby="trip-heading">
       <SignTitle id="trip-heading" ko="여행 보드" text={b.title} icon={<SuitcaseIcon />} />
       <TripPass board={board} m={m} language={language} />
+      <TimeCompare language={language} m={m.timeCompare} arrival={board?.arrival?.datetime} />
       <Checklist items={buildChecklist(board)} m={m.checklist} />
 
       <div className="sign">

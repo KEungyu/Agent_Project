@@ -35,6 +35,8 @@ it("WEB 경계에서 일반·막차·역 검색·시각 지정 모두 전달된 
   const paths = await transitPaths(from.id, to.id, "en", false, options);
   expect(paths.status).toBe("ok");
   expect(paths.data?.[0].lastTrain?.status).toBe("ok");
+  await transitPaths(from.id, to.id, "fr", false, options);
+  expect(fetcher).toHaveBeenCalledTimes(2); // Basic의 화면 언어 변경은 일반·시간표 성공 캐시 재사용.
   const scheduled = await scheduledTransit(from.id, to.id, "2026-10-07T21:00", false, options);
   expect(scheduled.data).toMatchObject({ notice: "normal", paths: [{ fare: 4750, departure: "21:03:00" }] });
   expect(fetcher).toHaveBeenCalledTimes(5); // 일반 1, 막차 1, 역 2, 지정 1. 실제 외부 호출은 없다.

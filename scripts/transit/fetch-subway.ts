@@ -6,12 +6,12 @@ import path from "node:path";
 
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 const USER_AGENT = "MajungiClassProject/1.0 (student demo app)";
-// 서울과 인천·김포공항까지 (남, 서, 북, 동)
+// 수도권 외곽 연결까지 포함한다 (남, 서, 북, 동). 화면 초기 범위와 데이터 수집 범위는 별개다.
 const region = process.argv[2] ?? "seoul";
 if (!["seoul", "busan", "daegu"].includes(region)) throw new Error("region: seoul | busan | daegu");
 // optional cached Overpass JSON avoids repeating public API calls while reviewing data.
 const cached: OsmElement[] | undefined = process.argv[3] ? JSON.parse(readFileSync(process.argv[3], "utf8")).elements : undefined;
-const BBOX = region === "busan" ? [35.0, 128.75, 35.6, 129.4] : region === "daegu" ? [35.65, 128.40, 36.1, 128.95] : [37.4, 126.4, 37.72, 127.18];
+const BBOX = region === "busan" ? [35.0, 128.75, 35.6, 129.4] : region === "daegu" ? [35.65, 128.40, 36.1, 128.95] : [36.7, 126.3, 38.15, 128.0];
 
 // 앱에서 보여 줄 노선: OSM ref → 화면 표기. 급행·특급 운행 계통은 정차역이 일부라서 뺀다.
 const SEOUL_LINES: { ref: string; id: string; ko: string; en: string; short: string }[] = [
@@ -42,8 +42,8 @@ const LINES = region === "seoul" ? SEOUL_LINES : [
   ] : []),
 ];
 const EXPRESS = /급행|특급|Rapid|Express/i;
-// OSM 영어 이름이 잘못 들어간 역 (2026-10-06 확인): 표지판의 영어 이름으로 바로잡는다
-const EN_FIX: Record<string, string> = { 정부과천청사: "Government Complex Gwacheon" };
+// OSM 영어 이름 누락·오류 보완. 부천시청: https://www.bucheonphil.or.kr/eng/M0000088/content/view.do (2026-10-07)
+const EN_FIX: Record<string, string> = { 정부과천청사: "Government Complex Gwacheon", 부천시청: "Bucheon City Hall" };
 
 type OsmMember = { type: string; ref: number; role: string };
 type OsmElement = { type: "node" | "relation"; id: number; lat?: number; lon?: number; tags?: Record<string, string>; members?: OsmMember[] };
@@ -140,28 +140,34 @@ async function main() {
     const set = new Set<string>();
     const rels = relations.filter((r) => r.tags?.ref === line.ref && !EXPRESS.test(`${r.tags?.name ?? ""} ${r.tags?.["name:en"] ?? ""}`));
     for (const rel of rels) {
-      const stops = (rel.members ?? [])
+      const rawStops = (rel.members ?? [])
         .filter((m) => m.type === "node" && m.role.startsWith("stop"))
         .map((m) => nodes.get(m.ref))
-        .filter((n): n is OsmElement => !!n)
-        .map((n) => stationFor(n, line.id))
-        .filter((s): s is Station => !!s);
-      // OSM 동해선 관계의 누락 보완: 공식 노선도 안락↔부산원동↔재송, 좌표·이름은 OSM 역 노드.
-      // https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do (2026-10-07)
-      if (region === "busan" && line.id === "DH" && !stops.some((s) => s.ko === "부산원동")) {
-        const node = stationNodes.find((n) => n.tags?.name === "부산원동");
-        const station = node && stationFor(node, line.id);
-        const gap = stops.findIndex((s, i) => [s.ko, stops[i + 1]?.ko].sort().join() === ["안락", "재송"].sort().join());
-        if (!station || gap < 0) throw new Error("Check Busanwondong against the official map");
-        stops.splice(gap + 1, 0, station);
+        .map((n) => n ? stationFor(n, line.id) : null);
+      // 누락·범위 밖 역을 건너뛰어 가짜 인접 간선을 만들지 않는다. 연속 구간별로 보존한다.
+      const segments: Station[][] = [[]];
+      for (const stop of rawStops) {
+        if (stop) segments[segments.length - 1].push(stop);
+        else if (segments[segments.length - 1].length) segments.push([]);
       }
-      const ids = stops.map((st) => st.id).filter((id, i, all) => id !== all[i - 1]);
-      const to = baseKo(rel.tags?.to ?? (rel.tags?.name ?? "").split(/→|->/).pop() ?? "");
-      if (to && ids.length > 1) services.push({ line: line.id, to, stops: ids });
-      for (let i = 1; i < stops.length; i++) {
-        const [a, b] = [stops[i - 1].id, stops[i].id];
-        // 역 사이가 너무 멀면(영역 밖으로 나갔다 들어온 경우) 잇지 않는다
-        if (a !== b && km(stops[i - 1], stops[i]) < 12) set.add([a, b].sort().join("-"));
+      for (const stops of segments.filter((segment) => segment.length > 1)) {
+        // OSM 동해선 관계의 누락 보완: 공식 노선도 안락↔부산원동↔재송, 좌표·이름은 OSM 역 노드.
+        // https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do (2026-10-07)
+        if (region === "busan" && line.id === "DH" && !stops.some((s) => s.ko === "부산원동")) {
+          const node = stationNodes.find((n) => n.tags?.name === "부산원동");
+          const station = node && stationFor(node, line.id);
+          const gap = stops.findIndex((s, i) => [s.ko, stops[i + 1]?.ko].sort().join() === ["안락", "재송"].sort().join());
+          if (!station || gap < 0) throw new Error("Check Busanwondong against the official map");
+          stops.splice(gap + 1, 0, station);
+        }
+        const ids = stops.map((st) => st.id).filter((id, i, all) => id !== all[i - 1]);
+        const to = baseKo(rel.tags?.to ?? (rel.tags?.name ?? "").split(/→|->/).pop() ?? "");
+        if (to && ids.length > 1) services.push({ line: line.id, to, stops: ids });
+        for (let i = 1; i < stops.length; i++) {
+          const [a, b] = [stops[i - 1].id, stops[i].id];
+          // 역 사이가 너무 멀면(영역 밖으로 나갔다 들어온 경우) 잇지 않는다
+          if (a !== b && km(stops[i - 1], stops[i]) < 12) set.add([a, b].sort().join("-"));
+        }
       }
     }
     edges.set(line.id, set);

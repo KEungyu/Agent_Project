@@ -74,3 +74,24 @@ export function formatFullKst(value: string, locale = "en"): string {
   }).format(new Date(value));
   return `${text} KST`;
 }
+
+// 한국 날짜·시각 하나를 같은 순간의 거주 도시 시각으로 비교한다. DST는 그 날짜의 IANA 규칙을 사용한다.
+export function compareKoreaTime(input: string, zone: string, locale = "en"): { korea: string; home: string; offset: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d$/.test(input) || !zone.trim()) return null;
+  const date = new Date(`${input}:00+09:00`);
+  if (!Number.isFinite(date.getTime()) || kstDate(date.toISOString()) !== input.slice(0, 10)) return null;
+  try {
+    const format = (timeZone: string) => new Intl.DateTimeFormat(gregorian(locale), {
+      timeZone, year: "numeric", month: "short", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).format(date);
+    const offsetAt = (timeZone: string) => {
+      const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB-u-ca-gregory-nu-latn", {
+        timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+      }).formatToParts(date).map((part) => [part.type, part.value]));
+      return (Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute) - date.getTime()) / 60_000;
+    };
+    const delta = offsetAt(zone.trim()) - offsetAt("Asia/Seoul");
+    const absolute = Math.abs(delta);
+    return { korea: format("Asia/Seoul"), home: format(zone.trim()), offset: `${delta < 0 ? "−" : "+"}${String(Math.floor(absolute / 60)).padStart(2, "0")}:${String(absolute % 60).padStart(2, "0")}` };
+  } catch { return null; }
+}

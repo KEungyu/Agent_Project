@@ -8,7 +8,7 @@ export type TransportOption = { mode: TransportMode; minutes?: number; from: Pla
 
 const KORAIL: BookingSite = { name: "Korail", url: "https://www.letskorail.com" };
 const KOBUS: BookingSite = { name: "Kobus", url: "https://www.kobus.co.kr" };
-const TMONEY_BUS: BookingSite = { name: "T-money Bus", url: "https://txbus.t-money.co.kr" };
+const TMONEY_BUS: BookingSite = { name: "T-money Bus", url: "https://intercitybuse.tmoney.co.kr/" };
 const flights = (from: string, to: string): BookingSite => ({
   name: "Google Flights",
   url: `https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${from} to ${to}`)}`,
@@ -22,7 +22,7 @@ const P = {
   centralCity: { ko: "센트럴시티터미널", en: "Central City Terminal" },
   dongSeoul: { ko: "동서울터미널", en: "Dong Seoul Terminal" },
   gimpo: { ko: "김포공항", en: "Gimpo Airport" },
-  singyeongju: { ko: "신경주역", en: "Singyeongju Station" },
+  singyeongju: { ko: "경주역", en: "Gyeongju Station" },
   gyeongjuBus: { ko: "경주터미널", en: "Gyeongju Terminal" },
   busanStation: { ko: "부산역", en: "Busan Station" },
   busanBus: { ko: "부산종합터미널", en: "Busan Central Bus Terminal" },
@@ -117,7 +117,7 @@ const LEGS: Leg[] = [
 ];
 
 function flip(option: TransportOption): TransportOption {
-  return { ...option, from: option.to, to: option.from };
+  return { ...option, from: option.to, to: option.from, ...(option.mode === "flight" ? { booking: flights(option.to.en, option.from.en) } : {}) };
 }
 
 // 이 구간에 예매가 필요한지. 지하철처럼 예매할 수단만 있는 구간이 아니면(모르는 구간 포함) 필요하다고 본다.
@@ -137,20 +137,22 @@ export function transportOptions(fromId: string, toId: string): TransportOption[
 }
 
 // 바로 가는 구간이 없으면 다른 도시 한 곳을 거쳐 가는 길을 찾는다. 각 구간의 추천 수단끼리 잇고,
-// 갈아타는 시간 30분을 더한 전체 시간이 짧은 순으로 두 개까지 돌려준다.
-export type ViaRoute = { hub: string; legs: [TransportOption, TransportOption]; minutes: number };
+// 같은 역에서 바꾸는 경우만 계획용 여유 30분을 더한다. 다른 터미널이면 총시간 미확인으로 둔다.
+export type ViaRoute = { hub: string; legs: [TransportOption, TransportOption]; minutes?: number };
 const TRANSFER_MINUTES = 30;
 
 export function viaRoutes(fromId: string, toId: string, cityIds: string[]): ViaRoute[] {
-  if (transportOptions(fromId, toId).length > 0) return [];
+  if (fromId === toId || transportOptions(fromId, toId).length > 0) return [];
   return cityIds
     .filter((hub) => hub !== fromId && hub !== toId)
     .flatMap((hub): ViaRoute[] => {
       const [first] = transportOptions(fromId, hub);
       const [second] = transportOptions(hub, toId);
       if (!first || !second) return [];
-      return [{ hub, legs: [first, second], minutes: (first.minutes ?? 0) + (second.minutes ?? 0) + TRANSFER_MINUTES }];
+      // ponytail: 서로 다른 공항·역 사이의 이동은 자료가 없어 총시간을 만들지 않는다.
+      const samePlace = first.to.ko === second.from.ko;
+      return [{ hub, legs: [first, second], minutes: samePlace && first.minutes && second.minutes ? first.minutes + second.minutes + TRANSFER_MINUTES : undefined }];
     })
-    .sort((a, b) => a.minutes - b.minutes)
+    .sort((a, b) => (a.minutes ?? Infinity) - (b.minutes ?? Infinity))
     .slice(0, 2);
 }
