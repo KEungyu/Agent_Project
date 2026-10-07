@@ -244,3 +244,29 @@ describe("N07·N09 위치 권한과 지원 범위", () => {
     expect(inSupportedArea(37.5547, 126.9707)).toBe(true);
   });
 });
+
+
+it("정적 연결도는 환승 가중치와 최소 역 수 기준을 구분한다 (최단시간 주장은 하지 않는다)", () => {
+  const a = station("서울").id;
+  const b = station("도봉산").id;
+  expect(subwayRoute(a, b)).toMatchObject({ stops: 20, transfers: 0 });
+  expect(subwayRoute(a, b, "stops")).toMatchObject({ stops: 17 });
+  const route = subwayRoute(station("정자").id, station("오이도").id)!;
+  expect(route).toMatchObject({ stops: 28, transfers: 0 });
+  expect(route.legs.map((leg) => leg.line)).toEqual(["SB"]);
+  expect(subwayRoute(station("정자").id, station("오이도").id, "stops")).toMatchObject({ stops: 28, transfers: 0 });
+  const names = route.legs.flatMap((leg) => leg.stations).map((id) => getStation(id)!.ko);
+  expect(names).toEqual(["정자", "미금", "오리", "죽전", "보정", "구성", "신갈", "기흥", "상갈", "청명", "영통", "망포", "매탄권선", "수원시청", "매교", "수원", "고색", "오목천", "어천", "야목", "사리", "한대앞", "중앙", "고잔", "초지", "안산", "신길온천", "정왕", "오이도"]);
+  expect(subwayRoute(station("야탑").id, station("오이도").id)!.legs.map((leg) => leg.line)).toEqual(["SB"]);
+});
+
+
+it("목적지 전에 종착하는 열차를 정적 경로의 방면 후보에 넣지 않는다", () => {
+  const d = legDirection("L1", station("서울").id, station("시청").id, station("도봉산").id);
+  expect(d.kind).toBe("toward");
+  if (d.kind === "toward") {
+    expect(d.names).not.toContain("동묘앞");
+    expect(d.names).not.toContain("광운대");
+    expect(d.names).toContain("양주");
+  }
+});

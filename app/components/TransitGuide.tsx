@@ -99,6 +99,7 @@ export function TransitGuide({ language, m, places = [], arrival }: { language: 
       </details>
       {region === "seoul" ? <>
         <p className="transit-area">{m.area}</p>
+        <p className="ag-note">{m.graphScope}</p>
         <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
       </> : <RegionalSubwayPanel key={region} region={region === "busan" ? "busan" : "daegu"} language={language} m={m} />}
     </section>
@@ -142,7 +143,8 @@ function SubwayPanel({ language, m, places, arrival }: { language: string; m: M;
   const [selected, setSelected] = useState<SubwayStation | null>(null);
   const [from, setFrom] = useState<SubwayStation | null>(null);
   const [to, setTo] = useState<SubwayStation | null>(null);
-  const [route, setRoute] = useState<SubwayRoute | null>(null);
+  const [preference, setPreference] = useState<"transfers" | "stops">("transfers");
+  const route = useMemo(() => from && to ? subwayRoute(from.id, to.id, preference) : null, [from, to, preference]);
   const [online, setOnline] = useState<OnlinePaths | null>(null);
   const [scheduled, setScheduled] = useState<OdsayResult<ScheduledRoutes> | null>(null);
   const [holiday, setHoliday] = useState(false); // 이용자가 "오늘은 공휴일"이라고 고르면 휴일 시간표로 막차를 다시 본다
@@ -159,34 +161,37 @@ function SubwayPanel({ language, m, places, arrival }: { language: string; m: M;
 
   useEffect(() => { setDepartureConfirmed(false); }, [arrival?.datetime, airportFrom]);
 
-  // 출발·도착이 모두 정해지면 바로 경로를 찾는다
-  useEffect(() => {
-    if (!from || !to || from.id === to.id) {
-      setRoute(null);
-      setOnline(null);
-      setScheduled(null);
-      return;
-    }
-    setRoute(subwayRoute(from.id, to.id));
-    setOnline(null);
-    setScheduled(null);
-    if (selectedDeparture && !departureConfirmed) return;
-    let active = true;
+  // 지도 탐색은 무료 정적 데이터만 쓴다. 실제 조회는 버튼을 눌렀을 때만 한다.
+  const context = JSON.stringify([from?.id, to?.id, language, holiday, selectedDeparture, departureConfirmed]);
+  const contextRef = useRef(context);
+  contextRef.current = context;
+  const lookupId = useRef(0);
+  useEffect(() => { setOnline(null); setScheduled(null); }, [context]);
+  const lookup = () => {
+    if (!from || !to || from.id === to.id || (selectedDeparture && !departureConfirmed)) return;
+    const id = ++lookupId.current;
+    const current = () => contextRef.current === context && lookupId.current === id;
     startTransition(async () => {
-      if (selectedDeparture) {
-        const result = webEnabled
-          ? await scheduledTransit(from.id, to.id, selectedDeparture, holiday, webOptions)
-          : await scheduledTransitAction(from.id, to.id, selectedDeparture, holiday);
-        if (active) setScheduled(result);
-      } else {
-        const result = webEnabled
-          ? await transitPaths(from.id, to.id, language, holiday, webOptions)
-          : await transitPathsAction(from.id, to.id, language, holiday);
-        if (active) setOnline(result);
+      try {
+        if (selectedDeparture) {
+          const result = webEnabled
+            ? await scheduledTransit(from.id, to.id, selectedDeparture, holiday, webOptions)
+            : await scheduledTransitAction(from.id, to.id, selectedDeparture, holiday);
+          if (current()) setScheduled(result);
+        } else {
+          const result = webEnabled
+            ? await transitPaths(from.id, to.id, language, holiday, webOptions)
+            : await transitPathsAction(from.id, to.id, language, holiday);
+          if (current()) setOnline(result);
+        }
+      } catch {
+        if (current()) {
+          if (selectedDeparture) setScheduled({ status: "error" });
+          else setOnline({ status: "error" });
+        }
       }
     });
-    return () => { active = false; };
-  }, [from, to, language, holiday, selectedDeparture, departureConfirmed]);
+  };
 
   const choose = (field: Field, station: SubwayStation | null, note?: PlaceNote) => {
     setDepartureConfirmed(false);
@@ -309,10 +314,16 @@ function SubwayPanel({ language, m, places, arrival }: { language: string; m: M;
         {placeResult && <PlaceCandidates result={placeResult} language={language} m={m} onPick={choose} />}
       </section>
 
+      {route && <div className="transit-preference" role="group" aria-label={m.connectionChoice}>
+        <button type="button" className="chip" aria-pressed={preference === "transfers"} onClick={() => setPreference("transfers")}>{m.preferTransfers}</button>
+        <button type="button" className="chip" aria-pressed={preference === "stops"} onClick={() => setPreference("stops")}>{m.preferStops}</button>
+      </div>}
       {route && from && to && <RouteDiagram route={route} language={language} m={m} notes={notes} />}
       {route && (
         <section className="transit-online" aria-live="polite">
           <p className="tips-col-title">{m.timesTitle}</p>
+          <p className="ag-note">{m.lookupHint}</p>
+          <button type="button" className="button-quiet" disabled={pending || (!!selectedDeparture && !departureConfirmed)} onClick={lookup}>{m.checkTimes}</button>
           {selectedDeparture && !departureConfirmed && <p className="ag-note" role="status">{m.departureConfirm}</p>}
           {selectedDeparture && scheduled && <ScheduledResult result={scheduled} departure={selectedDeparture} language={language} m={m} holiday={holiday} />}
           {pending && <p className="ag-note">…</p>}
@@ -544,8 +555,8 @@ function PlaceCandidates({
 }
 
 // 방면: 실제 종착역 이름(한국어가 아닌 화면은 화면 언어 이름 (한국어))
-function directionText(line: string, from: string, next: string, language: string, m: M) {
-  const d = legDirection(line, from, next);
+function directionText(line: string, from: string, next: string, language: string, m: M, to?: string) {
+  const d = legDirection(line, from, next, to);
   if (d.kind === "loop") return d.clockwise ? m.innerCircle : m.outerCircle;
   if (!d.names.length) return "";
   const names = d.names.map((ko) => {
@@ -591,7 +602,7 @@ function RouteDiagram({ route, language, m, notes }: { route: SubwayRoute; langu
                 <LineBadge id={leg.line} />
                 <div>
                   <p>
-                    <strong>{lineLabel}</strong> {directionText(leg.line, leg.stations[0], leg.stations[1], language, m)}
+                    <strong>{lineLabel}</strong> {directionText(leg.line, leg.stations[0], leg.stations[1], language, m, leg.to)}
                   </p>
                   <p className="ag-note">
                     {fmt(m.next, { station: name(leg.next) })} · {fmt(m.rideStops, { n: leg.stops })}
@@ -778,6 +789,7 @@ type View = { x: number; y: number; w: number; h: number };
 type LatLon = [number, number];
 // public/transit/map.json (scripts/transit/fetch-map.ts): 실제 선로·한강·큰 도로·구 이름
 type MapData = {
+  bbox: number[];
   tracks: { line: string; paths: LatLon[][] }[];
   river: LatLon[][];
   motorways?: LatLon[][];
@@ -865,8 +877,8 @@ function mapLayout(network: SubwayData) {
     ...network.stations.filter((s) => s.lines.length > 1).map((s) => s.id),
   ]);
   // 지도 범위 밖(자료가 없는 빈 곳)이 보이지 않게 화면을 범위 안에 묶는다
-  // 가장 멀리 축소해도 인천공항부터 서울 동쪽까지만 (그보다 넓으면 노선이 작아져 알아보기 어렵다)
-  const MAX_W = network !== SUBWAY ? FULL.width : Math.min(FULL.width, FULL.height / ASPECT, project(37.55, 127.3).x - project(37.55, 126.36).x);
+  // 초기 화면은 도심, 외곽 경로를 선택하면 넓게 볼 수 있다.
+  const MAX_W = network !== SUBWAY ? FULL.width : Math.min(FULL.width, FULL.height / ASPECT);
   function clampView(v: View): View {
     const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w));
     const h = w * ASPECT;
@@ -927,6 +939,7 @@ function SubwayMap({
   const moved = useRef(0);
   const pinch = useRef<number | null>(null);
   const data = useMapData(network === SUBWAY);
+  const [showContext, setShowContext] = useState(false);
 
   const scaled = (v: View, factor: number, cx: number, cy: number): View => {
     const w = Math.min(MAX_W, Math.max(FULL.width / 60, v.w * factor));
@@ -1006,9 +1019,14 @@ function SubwayMap({
     () =>
       network.lines.map((line) => {
         const tracks = data?.tracks.find((t) => t.line === line.id)?.paths;
-        const paths = tracks?.length
-          ? tracks.map(toPath)
-          : line.edges.map(([a, b]) => `M${points.get(a)!.x},${points.get(a)!.y}L${points.get(b)!.x},${points.get(b)!.y}`);
+        // 배경 선로 자료 밖의 신규 외곽 구간은 역 연결선으로 표시한다. 노선 자체를 잘라 숨기지 않는다.
+        const outsideTracks = (id: string) => {
+          const station = network.stations.find((s) => s.id === id)!;
+          const box = data?.bbox;
+          return !box || station.lat < box[0] || station.lat > box[2] || station.lon < box[1] || station.lon > box[3];
+        };
+        const edges = tracks?.length ? line.edges.filter(([a, b]) => outsideTracks(a) || outsideTracks(b)) : line.edges;
+        const paths = [...(tracks?.map(toPath) ?? []), ...edges.map(([a, b]) => `M${points.get(a)!.x},${points.get(a)!.y}L${points.get(b)!.x},${points.get(b)!.y}`)];
         return { line, d: paths.join("") };
       }),
     [data, points],
@@ -1070,8 +1088,8 @@ function SubwayMap({
   const inView = (p: { x: number; y: number }) => p.x >= view.x && p.x <= view.x + view.w && p.y >= view.y && p.y <= view.y + view.h;
   // 역 이름표: 경로 역 → 노선이 많은 환승역 → 화면 가운데에 가까운 역 순으로, 겹치지 않는 것만 붙인다
   const labels = useMemo(() => {
-    const fs = (far ? 12.5 : 11) * k;
-    const sub = (far ? 10 : 9) * k;
+    const fs = (far ? 13 : 12.5) * k;
+    const sub = 10 * k;
     const center = { x: view.x + view.w / 2, y: view.y + view.h / 2 };
     const candidates = network.stations
       .filter((s) => inView(points.get(s.id)!))
@@ -1107,13 +1125,13 @@ function SubwayMap({
       placed.some(
         (b) => b.id !== self && !(key && b.soft) && !(picked && b.id) && box.x < b.x + b.w && box.x + box.w > b.x && box.y < b.y + b.h && box.y + box.h > b.y,
       );
-    const out: { s: SubwayStation; x: number; y: number; fs: number; sub: number }[] = [];
+    const out: { s: SubwayStation; x: number; y: number; fs: number; sub: number; w: number; h: number }[] = [];
     for (const { s, p } of candidates) {
       // 한국어가 아닌 화면: 화면 언어 이름을 크게, 표지판의 한국어 이름을 작게 아래에
       const local = stationName(s, language);
       const second = local !== s.ko ? s.ko : "";
-      const w = Math.max(textWidth(local, fs), textWidth(second, sub)) + 4 * k;
-      const h = (second ? fs + sub + 2 * k : fs) + 3 * k;
+      const w = Math.max(textWidth(local, fs) + 8 * k, textWidth(second, sub) + 8 * k, 44 * k);
+      const h = Math.max((second ? fs + sub + 2 * k : fs) + 6 * k, 28 * k);
       const gap = 7 * k;
       // 오른쪽 → 왼쪽 → 위 → 아래 순으로, 화면 안에 들어가고 비어 있는 자리를 찾는다
       const spots: Box[] = [
@@ -1132,7 +1150,7 @@ function SubwayMap({
       const spot = spots.find((box) => inside(box) && !hits(box, s.id, routeKeyStations.has(s.id), s.id === selected?.id));
       if (!spot) continue;
       placed.push(spot);
-      out.push({ s, x: spot.x + 2 * k, y: spot.y + fs, fs, sub });
+      out.push({ s, x: spot.x + 2 * k, y: spot.y + fs, fs, sub, w, h });
       if (out.length > 160) break;
     }
     return out;
@@ -1140,11 +1158,12 @@ function SubwayMap({
 
   return (
     <div className="subway-wrap">
+      {network === SUBWAY && <button type="button" className="chip subway-context" aria-pressed={showContext} onClick={() => setShowContext(!showContext)}>{m.mapContext}</button>}
       <div className="subway-map">
         <svg
           ref={svgRef}
           viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
-          role="img"
+          role="group"
           aria-label={`${m.tabMap}. ${m.mapHint}`}
           tabIndex={0}
           onPointerDown={onPointerDown}
@@ -1156,10 +1175,10 @@ function SubwayMap({
           <rect x={FULL.x - FULL.width} y={FULL.y - FULL.height} width={FULL.width * 3} height={FULL.height * 3} className="subway-ground" />
           {/* 배경 지도: 한강·큰 도로·구 이름 (위치를 알아보기 위한 것) */}
           {riverPath && <path d={riverPath} className="subway-river" strokeWidth={34} />}
-          {!far && roadPath && <path d={roadPath} className="subway-road" strokeWidth={zoomedIn ? 2.6 : 1.8} vectorEffect="non-scaling-stroke" />}
-          {motorwayPath && <path d={motorwayPath} className={far ? "subway-road is-far" : "subway-road is-motorway"} strokeWidth={far ? 1.6 : zoomedIn ? 3.4 : 2.6} vectorEffect="non-scaling-stroke" />}
+          {showContext && !far && roadPath && <path d={roadPath} className="subway-road" strokeWidth={zoomedIn ? 2.6 : 1.8} vectorEffect="non-scaling-stroke" />}
+          {showContext && motorwayPath && <path d={motorwayPath} className={far ? "subway-road is-far" : "subway-road is-motorway"} strokeWidth={far ? 1.6 : zoomedIn ? 3.4 : 2.6} vectorEffect="non-scaling-stroke" />}
           {/* 구 이름은 경로를 볼 때·많이 축소했을 때는 숨긴다 (노선이 먼저 보이게) */}
-          {!route && !far && data?.districts.map((d) => {
+          {showContext && !route && !far && data?.districts.map((d) => {
             const p = project(d.lat, d.lon);
             return inView(p) ? (
               <text key={d.ko} x={p.x} y={p.y} fontSize={11 * k} className="subway-district" textAnchor="middle">
@@ -1172,7 +1191,7 @@ function SubwayMap({
             <path key={`c-${line.id}`} d={d} className="subway-casing" strokeWidth={far ? 5 : 6.5} vectorEffect="non-scaling-stroke" opacity={dimmed(line.id) ? 0.4 : 1} />
           ))}
           {linePaths.map(({ line, d }) => (
-            <path key={line.id} d={d} className="subway-line" stroke={line.colour} strokeWidth={far ? 3.6 : zoomedIn ? 5 : 4} vectorEffect="non-scaling-stroke" opacity={dimmed(line.id) ? 0.18 : 1} />
+            <path key={line.id} d={d} className="subway-line" stroke={line.colour} strokeWidth={far ? 2.8 : zoomedIn ? 4 : 3.2} vectorEffect="non-scaling-stroke" opacity={dimmed(line.id) ? 0.18 : 1} />
           ))}
           {routePaths.map((leg, i) => (
             <g key={`r-${i}`}>
@@ -1190,7 +1209,7 @@ function SubwayMap({
             const faded = route ? !onRoute : focusLine !== null && !s.lines.includes(focusLine);
             return (
               <g key={s.id} className="subway-station" opacity={faded ? 0.25 : 1} onClick={() => moved.current <= 4 && onPick(s.id)}>
-                <circle cx={p.x} cy={p.y} r={11 * k} fill="transparent" />
+                <circle cx={p.x} cy={p.y} r={14 * k} fill="transparent" />
                 <circle
                   cx={p.x}
                   cy={p.y}
@@ -1206,27 +1225,26 @@ function SubwayMap({
             );
           })}
           {selected && (
-            <circle cx={points.get(selected.id)!.x} cy={points.get(selected.id)!.y} r={9 * k} className="subway-selected" vectorEffect="non-scaling-stroke" />
+            <circle cx={points.get(selected.id)!.x} cy={points.get(selected.id)!.y} r={9 * k} className="subway-selected" pointerEvents="none" vectorEffect="non-scaling-stroke" />
           )}
-          {labels.map(({ s, x, y, fs, sub }) => (
-            <text
-              key={`l-${s.id}`}
-              x={x}
-              y={y}
-              fontSize={fs}
-              className={`subway-label${s.id === selected?.id || routeStations.has(s.id) ? " is-route" : ""}${far ? " is-far" : ""}`}
-            >
-              {stationName(s, language) === s.ko ? (
-                <tspan lang="ko">{s.ko}</tspan>
-              ) : (
-                <>
+          {labels.map(({ s, x, y, fs, sub, w, h }) => (
+            <g key={`l-${s.id}`} className="subway-label-button" role="button" tabIndex={0}
+              aria-label={stationLabel(s, language)} aria-pressed={s.id === selected?.id}
+              onClick={() => moved.current <= 4 && onPick(s.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault(); event.stopPropagation(); onPick(s.id);
+                }
+              }}>
+              <rect x={x - 2 * k} y={y - fs} width={w} height={h} rx={4 * k} className="subway-label-hit" />
+              <text x={x} y={y} fontSize={fs}
+                className={`subway-label${s.id === selected?.id || routeStations.has(s.id) ? " is-route" : ""}${far ? " is-far" : ""}`}>
+                {stationName(s, language) === s.ko ? <tspan lang="ko">{s.ko}</tspan> : <>
                   <tspan>{stationName(s, language)}</tspan>
-                  <tspan x={x} dy={sub + 2 * k} fontSize={sub} className="subway-label-sub" lang="ko">
-                    {s.ko}
-                  </tspan>
-                </>
-              )}
-            </text>
+                  <tspan x={x} dy={sub + 2 * k} fontSize={sub} className="subway-label-sub" lang="ko">{s.ko}</tspan>
+                </>}
+              </text>
+            </g>
           ))}
         </svg>
         <div className="subway-controls">

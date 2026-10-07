@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { markTransportBookedAction, prepareTransportAction } from "@/app/actions";
 import type { ItineraryItem } from "@/lib/board/types";
 import { cityKo } from "@/lib/i18n/places";
@@ -18,7 +18,6 @@ import { VehicleArt } from "./VehicleArt";
 // 마중이 예매 준비(경로 확인 → 수단 고르기 → 공식 예매 페이지 준비)를 해 준다.
 // 결제와 확정은 이용자가 공식 사이트에서 직접 한다 (제품 불변 조건 6).
 
-const STEP_MS = 750;
 const MODE_ICON: Record<TransportMode, (props: { className?: string }) => React.ReactNode> = {
   ktx: TrainIcon,
   bus: BusIcon,
@@ -37,13 +36,14 @@ export function TransportPlanner({ itinerary, language, m }: Props) {
     const previous = itinerary[i - 1];
     return previous && previous.city !== item.city ? [{ from: previous, to: item }] : [];
   });
-  if (legs.length === 0) return null;
+
   return (
     <div className="legs">
-      <h4 className="legs-title">
+      <TransportExplore language={language} m={m} />
+      {legs.length > 0 && <h4 className="legs-title">
         <span lang="ko">가는 방법</span>
         {language !== "ko" && <span>{m.transport.title}</span>}
-      </h4>
+      </h4>}
       {legs.map((leg) => (
         <LegCard key={`${leg.to.date}-${leg.to.city}`} from={leg.from} to={leg.to} language={language} m={m} />
       ))}
@@ -52,7 +52,39 @@ export function TransportPlanner({ itinerary, language, m }: Props) {
   );
 }
 
-function LegCard({ from, to, language, m }: { from: ItineraryItem; to: ItineraryItem; language: string; m: Messages }) {
+function TransportExplore({ language, m }: Pick<Props, "language" | "m">) {
+  const [from, setFrom] = useState("seoul");
+  const [to, setTo] = useState("busan");
+  const [date, setDate] = useState("");
+  const item = (id: string): ItineraryItem => ({ city: CITIES.find((city) => city.id === id)!.name.en, date, transport: { status: "none" } });
+  return <details className="transport-explore">
+    <summary>{m.transport.explore}</summary>
+    <div className="transport-explore-body">
+      <p className="ag-note">{m.transport.catalogNote}</p>
+      <div className="grid-2">{(["from", "to"] as const).map((field) => <label key={field} className="label">
+        {field === "from" ? m.transit.fromLabel : m.transit.toLabel}
+        <select className="field" value={field === "from" ? from : to} onChange={(event) => (field === "from" ? setFrom : setTo)(event.target.value)}>
+          {CITIES.map((city) => <option key={city.id} value={city.id}>{language === "ko" ? city.name.ko : `${localCityName(city.name.en, language)} · ${city.name.ko}`}</option>)}
+        </select>
+      </label>)}</div>
+      <label className="label">{m.board.date}<input className="field" type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+      {from !== to && date && <LegCard key={`${from}-${to}-${date}`} from={item(from)} to={item(to)} language={language} m={m} preview />}
+      <p className="label">{m.transport.official}</p>
+      <div className="travel-links">
+        {[
+          ["KTX · KORAIL", "https://www.letskorail.com/"],
+          ["SRT · SR", "https://etk.srail.kr/main.do?language=EN"],
+          ["Express bus · KOBUS", "https://www.kobus.co.kr/"],
+          ["Intercity bus · T-money (English)", "https://intercitybuse.tmoney.co.kr/"],
+          [m.airports.GMP, "https://www.airport.co.kr/gimpoeng/index.do"],
+          [m.airports.ICN, "https://www.airport.kr/ap_en/index.do"],
+        ].map(([name, url]) => <a key={url} href={url} target="_blank" rel="noopener noreferrer">{name}<ExternalIcon /></a>)}
+      </div>
+    </div>
+  </details>;
+}
+
+function LegCard({ from, to, language, m, preview = false }: { from: ItineraryItem; to: ItineraryItem; language: string; m: Messages; preview?: boolean }) {
   const t = m.transport;
   const fromId = cityIdOf(from.city);
   const toId = cityIdOf(to.city);
@@ -68,33 +100,20 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
   const status = to.transport.status;
   const [choice, setChoice] = useState(0);
   const [phase, setPhase] = useState<"idle" | "running" | "ready">(status === "planned" ? "ready" : "idle");
-  const [step, setStep] = useState(status === "planned" ? 3 : 0);
-  // 방금 이 화면에서 준비를 진행했는지 (다시 열었을 때는 단계 대신 "준비해 뒀어요"만 보여준다)
-  const [justRan, setJustRan] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [, startTransition] = useTransition();
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
 
   const plan: Plan | undefined = plans[choice];
   const bookable = plan?.segments.filter((segment) => segment.booking) ?? [];
   const fromName = localCityName(from.city, language);
   const toName = localCityName(to.city, language);
-  const steps = [fmt(t.step1, { from: fromName, to: toName }), fmt(t.step2, { date: formatDate(to.date, language) }), t.step3];
-
-  // 단계를 하나씩 체크하며 진행하고, 끝나면 이 구간을 "준비됨"으로 저장한다
+  // 정적 후보를 정리한 상태만 기록한다. 실시간 검색이나 자동 사이트 열기를 흉내 내지 않는다.
   const run = () => {
-    setPhase("running");
-    setJustRan(true);
-    setStep(0);
-    const tick = (n: number) => {
-      timer.current = setTimeout(() => {
-        setStep(n);
-        if (n < steps.length) return tick(n + 1);
-        setPhase("ready");
-        startTransition(() => prepareTransportAction(to.date, to.city));
-      }, STEP_MS);
-    };
-    tick(1);
+    setPhase("running"); setSaveError(false);
+    startTransition(async () => {
+      try { await prepareTransportAction(to.date, to.city); setPhase("ready"); }
+      catch { setPhase("idle"); setSaveError(true); }
+    });
   };
 
   // 고른 방법의 수단을 "flight+subway"처럼 남긴다
@@ -137,10 +156,11 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
           </span>
         </p>
         <span className="leg-date tabular">{formatDate(to.date, language)}</span>
-        {status !== "booked_by_user" && !free && <ExecutionBadge key={phase} level="준비" m={m} />}
-        {chip}
+        {!preview && status !== "booked_by_user" && !free && <ExecutionBadge key={phase} level="준비" m={m} />}
+        {!preview && chip}
       </header>
 
+      {status === "booked_by_user" && <p className="ag-note">{t.bookingRecord}</p>}
       {status === "booked_by_user" && (
         <Ticket
           modes={bookedModes.length > 0 ? bookedModes : [plans[0]?.segments[0]?.mode ?? "ktx"]}
@@ -152,6 +172,7 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
         />
       )}
 
+      {saveError && <p role="status" className="ag-warn">{t.saveError}</p>}
       {status !== "booked_by_user" &&
         (plans.length === 0 ? (
           <p className="leg-unknown">{t.unknown}</p>
@@ -178,7 +199,6 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
                     <span className="leg-option-main">
                       <span className="leg-mode">
                         {item.hub ? fmt(t.via, { city: hubName(item.hub) }) : t[first.mode]}
-                        {i === 0 && plans.length > 1 && <span className="leg-rec">{t.recommended}</span>}
                       </span>
                       {item.hub ? (
                         <span className="leg-via-steps">
@@ -190,15 +210,21 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
                                 <span>{t[segment.mode]}</span>
                                 <span className="leg-stations" lang="ko">
                                   {segment.from.ko} → {segment.to.ko}
+                                  {language !== "ko" && <span lang="en">{segment.from.en} → {segment.to.en}</span>}
                                 </span>
                               </span>
                             );
                           })}
+                          {item.segments[0].to.ko !== item.segments[1].from.ko && <span className="ag-warn">{fmt(t.connectionGap, {
+                            from: language === "ko" ? item.segments[0].to.ko : `${item.segments[0].to.en} (${item.segments[0].to.ko})`,
+                            to: language === "ko" ? item.segments[1].from.ko : `${item.segments[1].from.en} (${item.segments[1].from.ko})`,
+                          })}</span>}
                           <span className="leg-via-change">{fmt(t.change, { city: hubName(item.hub) })}</span>
                         </span>
                       ) : (
                         <span className="leg-stations" lang="ko">
                           {first.from.ko} → {first.to.ko}
+                          {language !== "ko" && <span lang="en">{first.from.en} → {first.to.en}</span>}
                         </span>
                       )}
                     </span>
@@ -210,6 +236,8 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
 
             {bookable.length === 0 ? (
               <p className="leg-free">{t.noBooking}</p>
+            ) : preview ? (
+              <div className="travel-links">{bookable.map((segment) => <a key={segment.mode + segment.from.en} href={segment.booking!.url} target="_blank" rel="noopener noreferrer">{fmt(t.open, { site: segment.booking!.name })}<ExternalIcon /></a>)}</div>
             ) : phase === "idle" ? (
               <button type="button" className="button leg-ask" onClick={run}>
                 <img className="leg-avatar" src="/mascot/majung-panda.png" alt="" width={28} height={28} />
@@ -219,21 +247,10 @@ function LegCard({ from, to, language, m }: { from: ItineraryItem; to: Itinerary
               <div className="leg-agent" aria-live="polite">
                 <img className={phase === "running" ? "leg-agent-panda is-working" : "leg-agent-panda"} src="/mascot/majung-panda.png" alt="" width={44} height={44} />
                 <div className="leg-agent-body">
-                  {justRan ? (
-                    <ol className="leg-steps">
-                      {steps.map((text, i) => (
-                        <li key={text} className={i < step ? "is-done" : i === step ? "is-active" : ""}>
-                          <span className="leg-step-mark">{i < step && <CheckIcon />}</span>
-                          {text}
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <p className="leg-planned">{t.planned}</p>
-                  )}
+                  <p className="leg-planned">{t.catalogNote}</p>
                   {phase === "ready" && (
                     <div className="leg-ready">
-                      {justRan && <p>{t.ready}</p>}
+
                       <div className="leg-actions">
                         {bookable.map((segment) => (
                           <a key={segment.mode + segment.from.en} className="button" href={segment.booking!.url} target="_blank" rel="noopener noreferrer">

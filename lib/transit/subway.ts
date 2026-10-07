@@ -129,7 +129,7 @@ export type SubwayRoute = { legs: SubwayLeg[]; stops: number; transfers: number 
 const TRANSFER_COST = 5; // 환승 1번 = 역 5개 만큼으로 쳐서 갈아타기가 적은 길을 고른다 (시간 추정이 아니다)
 
 // 역 수와 환승 횟수만으로 고른 연결 경로. 소요 시간·요금·운행 여부는 계산하지 않는다
-export function subwayRoute(fromId: string, toId: string): SubwayRoute | null {
+export function subwayRoute(fromId: string, toId: string, preference: "transfers" | "stops" = "transfers"): SubwayRoute | null {
   if (!stationById.has(fromId) || !stationById.has(toId) || fromId === toId) return null;
   type State = { station: string; line: string | null };
   const key = (s: State) => `${s.station}|${s.line ?? ""}`;
@@ -146,7 +146,9 @@ export function subwayRoute(fromId: string, toId: string): SubwayRoute | null {
       break;
     }
     for (const next of neighbours.get(state.station) ?? []) {
-      const step = 1 + (state.line && state.line !== next.line ? TRANSFER_COST : 0);
+      const transfer = state.line !== null && state.line !== next.line ? 1 : 0;
+      // 역 수가 같다면 불필요한 환승을 피한다. 역 1개 차이가 모든 환승 차이보다 우선한다.
+      const step = preference === "stops" ? stationById.size + 1 + transfer : 1 + transfer * TRANSFER_COST;
       const nextState = { station: next.station, line: next.line };
       const nextCost = cost + step;
       if (nextCost < (dist.get(key(nextState)) ?? Infinity)) {
@@ -202,7 +204,7 @@ const LOOP = (() => {
   }
   return new Set(adj.keys());
 })();
-export function legDirection(line: string, from: string, next: string): LegDirection {
+export function legDirection(line: string, from: string, next: string, to?: string): LegDirection {
   if (line === "L2" && LOOP.has(from) && LOOP.has(next)) {
     // 고리 가운데를 기준으로 도는 방향 (북쪽이 위인 지도에서 각이 줄면 시계 방향)
     const ring = [...LOOP].map((id) => stationById.get(id)!);
@@ -218,9 +220,11 @@ export function legDirection(line: string, from: string, next: string): LegDirec
   for (const service of SUBWAY.services ?? []) {
     if (service.line !== line || /순환/.test(service.to)) continue;
     const i = service.stops.indexOf(from);
-    if (i >= 0 && service.stops[i + 1] === next) counts.set(service.to, (counts.get(service.to) ?? 0) + 1);
+    if (i >= 0 && service.stops[i + 1] === next && (!to || service.stops.lastIndexOf(to) > i)) counts.set(service.to, (counts.get(service.to) ?? 0) + 1);
   }
   if (counts.size) return { kind: "toward", names: [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name).slice(0, 3) };
+  // 전체 구간을 확인할 때 계통이 없으면 방면을 추측하지 않는다.
+  if (to) return { kind: "toward", names: [] };
   const adj = lineAdjacent.get(line);
   if (!adj) return { kind: "toward", names: [] };
   const ends: string[] = [];
@@ -237,9 +241,9 @@ export function legDirection(line: string, from: string, next: string): LegDirec
   return { kind: "toward", names: ends.map((id) => stationById.get(id)!.ko) };
 }
 
-// 지하철 지도 화면의 범위 (남, 서, 북, 동). 역 자료(SUBWAY.bbox)보다 넓게 잡아, 축소해도 배경 지도가 끊겨 보이지 않게 한다.
+// 지하철 지도 이동 범위 (남, 서, 북, 동). 외곽 역도 선택·경로 표시할 수 있게 자료 범위를 쓴다.
 // scripts/transit/fetch-map.ts가 이 범위로 배경 자료를 받는다
-export const MAP_BBOX = [37.25, 126.3, 37.9, 127.4] as const;
+export const MAP_BBOX = SUBWAY.bbox;
 
 // 화면 좌표: 경도·위도를 평면으로 옮긴다 (위도 37.5°에서 경도 1°가 위도 1°보다 짧은 만큼 줄인다)
 const LON_SCALE = Math.cos((37.5 * Math.PI) / 180);

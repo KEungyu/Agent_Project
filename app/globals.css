@@ -7107,7 +7107,8 @@ html[data-intro-seen] .intro {
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid var(--rule);
-  background: #f4f3ef;
+  background: #fbfcff;
+  box-shadow: 0 3px 18px rgb(24 45 76 / 0.06);
 }
 .subway-map svg {
   display: block;
@@ -7126,7 +7127,7 @@ html[data-intro-seen] .intro {
   outline-offset: -3px;
 }
 .subway-ground {
-  fill: #f4f3ef;
+  fill: #fbfcff;
 }
 .subway-river {
   fill: none;
@@ -7705,3 +7706,22 @@ html[data-intro-seen] .intro {
     flex: none;
   }
 }
+
+/* 이름표 전체를 눌러 선택. 투명 영역은 화면 픽셀 기준이며 드래그는 기존 지도에서 처리한다. */
+.subway-label-button { cursor: pointer; outline: none; }
+.subway-label-hit { fill: transparent; pointer-events: all; }
+.subway-label-button:hover .subway-label-hit,
+.subway-label-button:focus-visible .subway-label-hit { fill: #e2edf9; stroke: #3573a5; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.subway-context { justify-self: start; }
+.transit-preference { display: flex; flex-wrap: wrap; gap: 8px; }
+.transit-preference [aria-pressed="true"] { background: var(--signbar); color: var(--on-dark); }
+.time-compare, .transport-explore { padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--sign); margin: 12px 0; }
+.time-compare summary, .transport-explore summary { cursor: pointer; font-weight: 700; }
+.time-compare-body, .transport-explore-body { display: grid; gap: 12px; margin-top: 14px; min-width: 0; }
+.time-compare output { display: grid; gap: 10px; padding: 12px; border-radius: 10px; background: var(--ground); font-size: 14px; }
+.time-compare output strong { display: block; font-size: 18px; overflow-wrap: anywhere; }
+.travel-links { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+.travel-links a { display: inline-flex; gap: 4px; align-items: center; text-decoration: underline; }
+.transport-explore .leg { margin-top: 6px; }
+
+.transport-explore .leg-stations > span, .leg-options .leg-stations > span { display: block; font-size: .85em; }

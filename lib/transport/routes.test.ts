@@ -8,7 +8,7 @@ describe("transport options", () => {
     expect(there[0].mode).toBe("ktx");
     expect(there[0].from.ko).toBe("서울역");
     const back = transportOptions("gyeongju", "seoul");
-    expect(back[0].from.ko).toBe("신경주역");
+    expect(back[0].from.ko).toBe("경주역");
     expect(back[0].to.ko).toBe("서울역");
   });
 
@@ -61,4 +61,15 @@ describe("viaRoutes", () => {
     );
     expect(missing).toEqual([]);
   });
+});
+
+
+it("다른 공항·역을 잇는 연결의 총시간을 만들지 않고, 역방향 항공 검색도 뒤집는다", () => {
+  const [via] = viaRoutes("jeju", "incheon", CITIES.map((city) => city.id));
+  expect(via.legs[0].to.ko).toBe("김포공항");
+  expect(via.legs[1].from.ko).toBe("서울역");
+  expect(via.minutes).toBeUndefined();
+  expect(viaRoutes("seoul", "seoul", CITIES.map((city) => city.id))).toEqual([]);
+  const back = transportOptions("jeju", "seoul")[0];
+  expect(new URL(back.booking!.url).searchParams.get("q")).toBe("Flights from Jeju Airport to Gimpo Airport");
 });
