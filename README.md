@@ -27,8 +27,24 @@ npm run dev            # http://localhost:3000
 | `MAIL_MODE` | `mock`(기본, 모의 발송) 또는 `real` |
 | `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_ALLOWLIST` | 실제 메일 (`MAIL_MODE=real`일 때만, 허용 목록의 팀 주소로만 발송) |
 | `ODSAY_API_KEY` | 지하철 경로의 시간·요금·막차 (ODsay **서버** 플랫폼 키, 실행하는 컴퓨터·서버의 공인 IP 등록 필요). 유료 다국어 요금제면 `ODSAY_MULTILANG=1` |
+| `NEXT_PUBLIC_ODSAY_WEB_KEY` | 도메인 제한을 사용하는 ODsay **WEB/URI** 플랫폼 키. 설정하면 지하철 조회는 브라우저에서 직접 수행하며 서버 조회를 중복 실행하지 않음. 서버 키를 넣으면 안 됨. 설정 변경 후 다시 빌드 필요 |
+| `NEXT_PUBLIC_ODSAY_MULTILANG` | WEB 플랫폼의 유료 다국어 계약이 확인된 경우만 `1`. Basic에서는 비워 두며 기존 앱 번역·역 이름 표시를 사용 |
 | `DATA_GO_KR_SERVICE_KEY` | 인천공항 실시간 운항 (공공데이터포털 "인천국제공항공사_여객편 운항현황(다국어)") |
 | `BOOKING_DEMAND_TOKEN`, `BOOKING_AFFILIATE_ID` | Booking.com Demand API 어댑터용. 제휴·계약 필요. 현재 에이전트는 공식 홈 연결만 제공하며, 키 입력만으로 실제 검색이 연결되지는 않음 |
+
+### Render 공유 IP에서 ODsay 연결
+
+서버 키는 호출 서버의 공인 IP가 등록돼야 한다. Render 공유 발신 **범위**의 시작 주소 하나를 ODsay에 등록해도 범위 전체가 허용되지는 않는다. ODsay의 [동일 Render 사례 안내](https://lab.odsay.com/community/boardView?seq=735)는 IP 대역 등록 대신 도메인 등록과 WEB 프론트엔드 호출을 제시한다. 유료 전용 IP 없이 이 방식을 쓸 수 있도록 조회 경계를 추가했다.
+
+1. 기존 ODsay 앱의 URI에 **`majungi.onrender.com`**을 등록한다. 등록 입력에는 `https://`, 경로, 끝 슬래시를 넣지 않는다. 기존 서버 IP나 키는 삭제하지 않는다.
+2. 등록 저장 후 개요에서 **WEB/URI 플랫폼 키**가 발급됐는지 확인한다. 로그인·URI 입력만으로 인증 성공을 판정하지 않는다.
+3. 소유자가 Render의 해당 서비스 Environment에 `NEXT_PUBLIC_ODSAY_WEB_KEY`를 설정한다. 서버용 `ODSAY_API_KEY`를 복사하지 않는다. WEB 키는 브라우저에 포함되는 공개 클라이언트 키이므로 ODsay에서 허용 도메인을 제한해야 한다. 키 값을 코드·문서·로그로 옮기지 않는다.
+4. 변수를 적용한 **새 빌드와 배포**가 필요하다. 재시작만 하면 이전 빌드의 `NEXT_PUBLIC_` 값이 남는다. Basic에서는 다국어 플래그를 켜지 않는다.
+5. 배포된 공식 도메인에서 일반 경로(`searchPubTransPathT`), 막차 시간표(`searchSubwaySchedule`), 역 검색(`searchStation`), 지정 시각 경로(`subwayPathSchedule`)가 성공하는지 한도 내에서 확인한다. 임의 Origin/Referer나 프록시로 인증을 우회하지 않는다.
+
+WEB 키가 없는 환경은 기존 서버 방식을 사용한다. WEB 방식에서 인증 실패가 나도 서버 방식으로 자동 재시도하지 않는다. 같은 진행 중 조회는 공유하고 성공만 잠시 캐시한다. Basic 30회/일은 기능을 누르는 횟수와 다르다. 지정 시각 조회는 처음에 역 검색 2회와 경로 1회, 일반 조회는 경로와 추천 경로의 각 구간 시간표를 사용한다. 한도·인증 실패 시 멈추고 기존 공식 링크 안내를 쓴다.
+
+로컬 테스트는 실제 WEB 인증·CORS·Render 화면 성공과 구분한다. 로컬 브라우저 실호출에는 제공사가 허용하는 로컬 도메인 등록도 필요하다. 현재 코드 수정·검사와 운영 미확인 사항은 [WEB 연결 후속 검증 보고](docs/QA-web-2026-10-07.md)에 기록한다.
 
 ## 명령
 

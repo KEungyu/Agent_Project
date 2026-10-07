@@ -139,7 +139,7 @@ describe("N03·N05 경로 검색 요청", () => {
   it("지하철 구간의 승차역 코드·방면과 역 시간표(평일·토요일·휴일, 막차 표시)를 옮긴다", async () => {
     const paths = await searchTransitPaths(station("서울"), station("강남"), "en", {
       env: ENV,
-      fetch: json({ result: { path: [{ info: { totalTime: 30 }, subPath: [{ trafficType: 1, lane: [{ name: "2호선" }], startName: "시청", endName: "강남", startID: 201, wayCode: 2, stationCount: 9, sectionTime: 25 }] }] } }),
+      fetch: json({ result: { path: [{ info: { totalTime: 30, payment: 1550 }, subPath: [{ trafficType: 1, lane: [{ name: "2호선" }], startName: "시청", endName: "강남", startID: 201, wayCode: 2, stationCount: 9, sectionTime: 25 }] }] } }),
     });
     expect(paths.data![0].legs[0]).toMatchObject({ stationID: 201, wayCode: 2 });
     const timetable = await subwaySchedule(201, 2, {

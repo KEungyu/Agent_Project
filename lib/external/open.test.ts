@@ -60,4 +60,13 @@ describe("외부 예약 화면 새 탭 열기 (C05·C06)", () => {
     expect(openExternalOnce(action("a6", "https://www.catchtable.net/", false))).toBeUndefined();
     expect(open).not.toHaveBeenCalled();
   });
+
+  it("예외로 차단해도 공식 링크 대안이 보이도록 실패를 반환하고 재자동열기를 막는다", () => {
+    const open = vi.fn(() => { throw new Error("blocked by browser"); });
+    vi.stubGlobal("window", { open });
+    expect(openExternalOnce(action("blocked"))).toBe(false);
+    expect(openedResults()).toEqual({ blocked: false });
+    expect(openExternalOnce(action("blocked"))).toBeUndefined();
+    expect(open).toHaveBeenCalledTimes(1);
+  });
 });

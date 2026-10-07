@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { estimateTaxiAction, type TaxiPlaceInput, type TaxiResult } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
-import type { FarePeriod } from "@/lib/taxi/fare";
+import { AIRPORT_TAXI_POINTS as AIRPORTS, type FarePeriod } from "@/lib/taxi/fare";
 import { formatMoney } from "@/lib/currency/rates";
 import { formatDate } from "@/lib/time";
 import { LocateIcon, PlaneIcon, BedIcon, ShowIcon, SwapIcon, TaxiIcon } from "./icons";
@@ -18,11 +18,6 @@ type Pick = { lat: number; lng: number; label: string };
 type End = { text: string; pick?: Pick; target?: TaxiTarget; here?: boolean };
 type Period = FarePeriod | "now";
 
-// 공항 택시 승강장 근처 좌표. 요금표가 서울 기준이라 서울을 오가는 공항(인천·김포)만 둔다
-const AIRPORTS: Record<string, { lat: number; lng: number }> = {
-  ICN: { lat: 37.4492, lng: 126.4509 },
-  GMP: { lat: 37.5583, lng: 126.7906 },
-};
 const FARE_SOURCE = "https://sftc.seoul.go.kr/seoul/mulga/main/contents.do?menuNo=200023";
 const PERIODS: Period[] = ["now", "day", "late", "midnight"];
 const won = new Intl.NumberFormat("en-US");

@@ -44,13 +44,19 @@ export function openExternalOnce(action: ExternalAction): boolean | undefined {
   } catch {
     // 저장소를 못 쓰면 이번 한 번만 시도한다
   }
-  const tab = window.open("about:blank", "_blank");
-  if (!tab) {
+  try {
+    const tab = window.open("about:blank", "_blank");
+    if (!tab) {
+      saveResult(action.id, false);
+      return false; // 팝업 차단: 성공이라고 말하지 않고 버튼을 보여준다
+    }
+    tab.opener = null;
+    tab.location.href = url;
+    saveResult(action.id, true);
+    return true;
+  } catch {
+    // 브라우저가 예외로 차단해도 채팅을 중단하지 않고 기존 공식 링크를 남긴다.
     saveResult(action.id, false);
-    return false; // 팝업 차단: 성공이라고 말하지 않고 버튼을 보여준다
+    return false;
   }
-  tab.opener = null;
-  tab.location.href = url;
-  saveResult(action.id, true);
-  return true;
 }

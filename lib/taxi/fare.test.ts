@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { estimateFare, farePeriod } from "./fare";
+import { AIRPORT_TAXI_POINTS, estimateFare, farePeriod } from "./fare";
+import { outsideSeoulSurcharge } from "./lookup";
 
 describe("taxi fare", () => {
   it("charges only the base fare for a very short ride", () => {
@@ -36,6 +37,16 @@ describe("taxi fare", () => {
     expect(farePeriod(60)).toBe("midnight");
     expect(farePeriod(3 * 60)).toBe("late");
     expect(farePeriod(4 * 60)).toBe("day");
+  });
+
+  it("공항 버튼의 인천공항↔서울에는 시계외 할증이 없고 심야 중복은 가산한다", () => {
+    const seoul = { lat: 37.5547, lng: 126.9707 };
+    expect(outsideSeoulSurcharge(AIRPORT_TAXI_POINTS.ICN, seoul)).toBe(false);
+    expect(outsideSeoulSurcharge(seoul, AIRPORT_TAXI_POINTS.ICN)).toBe(false);
+    expect(outsideSeoulSurcharge(seoul, AIRPORT_TAXI_POINTS.GMP)).toBe(false);
+    expect(outsideSeoulSurcharge(seoul, { lat: 37.4, lng: 127.2 })).toBe(true);
+    // 6,700 × (1.6 / 1.4) 반올림 = 7,700. 잘못된 1.2배(8,100)가 아니다.
+    expect(estimateFare(1200, 0, "midnight", { outsideSeoul: true })).toMatchObject({ low: 6700, high: 7700 });
   });
 });
 
