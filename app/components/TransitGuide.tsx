@@ -62,12 +62,57 @@ type OnlinePaths = OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>
 type Arrival = { airport?: string; datetime?: string };
 
 export function TransitGuide({ language, m, places = [], arrival }: { language: string; m: M; places?: TransitPlace[]; arrival?: Arrival }) {
+  const [region, setRegion] = useState("seoul");
+  const regionId = useId();
+  // 언어 변경은 본문을 다시 만든다. 여행 데이터가 아닌 이 탭의 표시 지역만 유지한다.
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("majungi-transit-region");
+      if (saved === "busan" || saved === "daegu") setRegion(saved);
+    } catch { /* 저장소를 차단한 브라우저에서는 기본 지역을 쓴다. */ }
+  }, []);
+  const changeRegion = (value: string) => {
+    setRegion(value);
+    try { sessionStorage.setItem("majungi-transit-region", value); } catch { /* 화면 선택은 계속 가능하다. */ }
+  };
   return (
     <section className="transit" aria-label={m.title}>
-      <p className="transit-area">{m.area}</p>
-      <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
+      <label className="transit-region" htmlFor={regionId}>
+        <span className="label">{m.region}</span>
+        <select id={regionId} className="field" value={region} onChange={(event) => changeRegion(event.target.value)}>
+          <option value="seoul">{m.regionSeoul}</option>
+          <option value="busan">{m.regionBusan}</option>
+          <option value="daegu">{m.regionDaegu}</option>
+        </select>
+      </label>
+      <details className="transit-tmoney">
+        <summary>{m.tmoneyTitle}</summary>
+        <p>{m.tmoneyBuy}</p>
+        <p>{m.tmoneyRide}</p>
+        <p>{m.tmoneyLimits}</p>
+        <p className="transit-official"><span>{m.officialTitle}</span>
+          <a href="https://pay.tmoney.co.kr/" target="_blank" rel="noopener noreferrer">T-money <ExternalIcon /></a>
+        </p>
+      </details>
+      {region === "seoul" ? <>
+        <p className="transit-area">{m.area}</p>
+        <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
+      </> : <RegionalTransitNotice region={region === "busan" ? "busan" : "daegu"} m={m} />}
     </section>
   );
+}
+
+// 김은규 님의 지역별 지도 데이터가 합쳐지기 전에는 수도권 경로·요금을 대신 표시하지 않는다.
+export function RegionalTransitNotice({ region, m }: { region: "busan" | "daegu"; m: M }) {
+  const busan = region === "busan";
+  return <div className="transit-regional" role="status">
+    <p className="ag-note">{fmt(m.regionalExternal, { region: busan ? m.regionBusan : m.regionDaegu })}</p>
+    <p className="transit-official"><span>{m.officialTitle}</span>
+      <a href={busan ? "https://www2.humetro.busan.kr/homepage/cyberstation/mapeng.do" : "https://www.dtro.or.kr/"} target="_blank" rel="noopener noreferrer">
+        {busan ? "Busan Transportation Corporation" : "Daegu Transportation Corporation"} <ExternalIcon />
+      </a>
+    </p>
+  </div>;
 }
 
 function SubwayPanel({ language, m, places, arrival }: { language: string; m: M; places: TransitPlace[]; arrival?: Arrival }) {
