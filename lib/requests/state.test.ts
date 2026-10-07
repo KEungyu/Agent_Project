@@ -65,7 +65,7 @@ describe("request state machine", () => {
     toAwaitingReply(accept.db, accept.request.id);
     addReply(accept.db, accept.request.id, "conditional", 0.9);
     transition(accept.db, accept.request.id, "conditional", "agent");
-    expect(transition(accept.db, accept.request.id, "done", "user").status).toBe("done");
+    expect(() => transition(accept.db, accept.request.id, "done", "user")).toThrow(/최신 회신/);
 
     const reply = setup();
     toAwaitingReply(reply.db, reply.request.id);

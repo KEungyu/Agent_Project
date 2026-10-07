@@ -35,6 +35,12 @@ describe("i18n", () => {
     expect(getMessages("xx").language).toBe("Language");
   });
 
+  it("F2-16 지원을 끝낸 언어(번체 중국어 zh-TW)를 고른 보드는 오류 없이 영어 화면으로 열리고, 언어 선택에서 지원 언어를 고를 수 있다", () => {
+    expect(getLanguage("zh-TW").code).toBe("en");
+    expect(getMessages("zh-TW")).toBe(getMessages("en"));
+    expect(LANGUAGES.map((language) => language.code)).toContain("fr");
+  });
+
   it("자리표시자를 채운다", () => {
     expect(fmt(getMessages("ko").sent.sentTo, { to: "a@b.test", time: "10월 20일" })).toBe("a@b.test에 보냄 · 10월 20일");
   });

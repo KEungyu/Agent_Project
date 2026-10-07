@@ -123,7 +123,7 @@ export const boardUpdate = defineTool({
       return {
         saved: false,
         confirm_first: proposed,
-        next_step: `Nothing was saved. The traveler tied this time to "today", but it has already passed today. Reply now with one short question asking them to confirm ${proposed} (early tomorrow morning). Do not call other tools until they answer.`,
+        next_step: `Nothing was saved. Reply now with exactly one question asking whether their hotel arrival is ${proposed}. Use only that absolute date and time; do not repeat today or ask about drafting/check-in. Do not call other tools until they answer.`,
       };
     }
     // 날짜가 다른 숙소와 겹치면 저장 전에 이용자에게 확인한다 (B07). 중복 예약인지, 일정이 바뀐 것인지 앱이 단정하지 않는다

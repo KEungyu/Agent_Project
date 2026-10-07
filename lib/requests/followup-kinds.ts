@@ -4,7 +4,8 @@ import type { RequestStatus } from "../board/types";
 export type FollowUpKind = "accept" | "reply" | "provide_info" | "phone";
 
 export function followUpsFor(status: RequestStatus): FollowUpKind[] {
-  if (status === "conditional") return ["accept", "reply"];
+  // 조건부: 먼저 호텔에 답장(조건 동의를 알림)을 권하고, 완료는 이용자가 조건을 실제로 마쳤다고 확인할 때만 (accept)
+  if (status === "conditional") return ["reply", "accept"];
   if (status === "info_requested") return ["provide_info"];
   if (status === "declined") return ["phone"];
   return [];

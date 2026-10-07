@@ -14,12 +14,14 @@ import { openDb, type Db } from "../../lib/db/client";
 import { requests } from "../../lib/db/schema";
 import { checkConditions } from "../../lib/requests/conditions";
 import { hashDraft } from "../../lib/requests/drafting";
+import { addReply, applyInterpretation } from "../../lib/requests/replies";
 import { createRequest, getRequest, transition } from "../../lib/requests/state";
 import { loadRequestTypes } from "../../lib/request-types/loader";
-import { runInfo, saveRunLog } from "./run-info";
+import { reproLine, runInfo, saveRunLog } from "./run-info";
 
 const PORT = 3002;
-const LIVE = process.argv.includes("--live");
+const SCHEDULED = process.argv.includes("--scheduled"); // 시각 지정 경로만 실제 조회(일반 경로/지도 검색 생략)
+const LIVE = process.argv.includes("--live") || SCHEDULED;
 const BASE = `http://localhost:${PORT}/`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const work = mkdtempSync(path.join(tmpdir(), "majungi-browser-"));
@@ -130,15 +132,28 @@ async function startServer() {
 const clickApprove = (times = 1) =>
   js(`(async()=>{const b=document.querySelector('.button-approve'); if(!b) return 'no-button'; for(let i=0;i<${times};i++) b.click(); await new Promise(r=>setTimeout(r,2500)); return document.querySelector('.station-sign .alert')?.textContent ?? ''})()`);
 
+const info = runInfo();
 async function main() {
-  const info = runInfo();
   say("# 브라우저 검사 기록 (헤드리스 Chrome · 프로덕션 빌드)");
   say("");
   say(`- 코드: ${info.commit} · Node ${info.node} · 발송 모드 mock (임시 발송함) · 가상 예약(데모 보드)`);
   say(`- 시작: ${info.startedAt}`);
+  say(reproLine(info));
+  say(`- 실제 호출: LLM ${process.argv.includes("--chat") && !SCHEDULED ? "사용(--chat, 무료 한도 소모)" : "안 함"} · ODsay ${LIVE ? "사용(--live/--scheduled, 하루 한도 소모)" : "안 함(키 비움)"} · 지도 검색(OpenStreetMap Nominatim) ${SCHEDULED ? "안 함" : "사용(N03)"} · 임시 DB·임시 발송함·모의 발송`);
   say("");
   await startServer();
   await startChrome();
+  if (SCHEDULED) {
+    await goto(1280);
+    const prepare = `const w=(ms)=>new Promise(r=>setTimeout(r,ms)); const t=document.querySelector('.transit'); const type=async(el,v)=>{Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,v); el.dispatchEvent(new Event('input',{bubbles:true})); await w(300)}; const pick=async(el,v)=>{await type(el,v);el.closest('.station-search').querySelector('.station-results button')?.click();await w(300)};`;
+    const normal = await js<{ paths: number; text: string; overflow: boolean }>(`(async()=>{${prepare} const [a,b]=t.querySelectorAll('.transit-fields input'); await pick(a,'인천공항1터미널'); await type(t.querySelector('.airport-departure input[type=datetime-local]'),'2026-10-20T21:00'); await pick(b,'명동'); t.querySelector('.airport-departure input[type=checkbox]').click(); for(let k=0;k<60&&!t.querySelector('.transit-paths > li,.transit-online .ag-warn');k++)await w(500); return {paths:t.querySelectorAll('.transit-paths > li').length,text:t.querySelector('.transit-online').innerText,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth}})()`);
+    record("F3-B1 실제 시각 지정 정상 경로·환승·데스크톱", normal.paths > 0 && /21:03:00/.test(normal.text) && /21:46:30/.test(normal.text) && !/undefined/.test(normal.text) && !normal.overflow, JSON.stringify(normal));
+    if (!normal.paths) return; // 인증·한도 오류가 났으면 추가 조회하지 않는다
+    await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const fallback = await js<{ paths: number; text: string; overflow: boolean }>(`(async()=>{${prepare} await type(t.querySelector('.airport-departure input[type=datetime-local]'),'2026-10-20T23:59'); t.querySelector('.airport-departure input[type=checkbox]').click(); for(let k=0;k<60&&!t.querySelector('.transit-online .ag-warn');k++)await w(500); return {paths:t.querySelectorAll('.transit-paths > li').length,text:t.querySelector('.transit-online').innerText,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth}})()`);
+    record("F3-B2 실제 첫차 대체 안내·정상 카드 없음·390px", fallback.paths === 0 && /first-train alternative/.test(fallback.text) && !fallback.overflow, JSON.stringify(fallback));
+    return;
+  }
 
   // E: 변경 없는 정상 승인
   let id = freshPending();
@@ -155,6 +170,18 @@ async function main() {
   before = outboxCount();
   await clickApprove(3);
   record("승인 F (빠른 중복 클릭)", outboxCount() - before === 1, `발송함 +${outboxCount() - before}`);
+
+  const conditionalReply = addReply(db, id, "22시까지 온라인 체크인을 완료하시면 입실 가능합니다.");
+  applyInterpretation(db, conditionalReply, { class: "conditional", conditions: ["Complete online check-in by 22:00 KST"], requested_info: [], summary: "Online check-in required by 22:00 KST", confidence: 0.95, needs_user_check: false });
+  await goto(390, true);
+  const conditionChecks = await js<{ initially: boolean; one: boolean; both: boolean }>(`(async()=>{const root=document.querySelector('.followups'); const b=[...root.querySelectorAll('button')].find(x=>/I've done/.test(x.textContent)); const checks=root.querySelectorAll('input[type=checkbox]'); const initially=b.disabled; checks[0].click(); await new Promise(r=>setTimeout(r,100)); const one=b.disabled; checks[1].click(); await new Promise(r=>setTimeout(r,100)); const both=!b.disabled; b.click(); await new Promise(r=>setTimeout(r,1200)); return {initially,one,both};})()`);
+  record("F2-B5 (조건 이행과 기한 확인 후에만 완료)", conditionChecks.initially && conditionChecks.one && conditionChecks.both && getRequest(db, id)?.status === "done", JSON.stringify(conditionChecks));
+
+  await js(`(async()=>{const input=document.querySelector('.desk-input input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'Keyboard check'); input.dispatchEvent(new Event('input',{bubbles:true})); await new Promise(r=>setTimeout(r,100)); input.focus();})()`);
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
+  const keyboard = await js<boolean>(`document.activeElement === document.querySelector('.desk-input button[type=submit]')`);
+  record("F2-B6 (채팅 입력에서 Tab 키로 전송 버튼 이동)", keyboard, String(keyboard));
 
   // A: 카드가 V1을 보는 동안 서버 본문이 V2로 바뀜
   id = freshPending();
@@ -243,6 +270,19 @@ async function main() {
   record("B07 (숙소 날짜 겹침 경고)", overlap.includes(first.name) && overlap.includes("Overlap Test Stay"), overlap);
   db.$client.prepare("DELETE FROM stays WHERE id = 'stay_overlap_test'").run();
 
+  // F2-B1: 채팅에 "Help!"만 → AI를 부르지 않고 긴급 번호와 함께 위험한지 묻는다 (LLM 호출 없음)
+  await goto(390, true);
+  const sendChat = (text: string, waitFor: string, seconds: number) =>
+    js<string>(`(async()=>{const i=document.querySelector('.desk-input input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,${JSON.stringify(text)}); i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.desk-input button[type=submit]').click(); for(let k=0;k<${seconds} && !document.querySelector('${waitFor}');k++) await new Promise(r=>setTimeout(r,1000)); await new Promise(r=>setTimeout(r,500)); const card=document.querySelector('.say-safety:last-of-type .safety-card'); return JSON.stringify({safety: card?.querySelector('.safety-title')?.textContent ?? '', numbers: [...(card?.querySelectorAll('.safety-digits') ?? [])].map(n=>n.textContent).join(','), action: !!document.querySelector('.action-card'), last: [...document.querySelectorAll('.say-assistant p, .say-error p')].at(-1)?.textContent?.slice(0,120) ?? ''})})()`);
+  const help = JSON.parse(await sendChat("Help!", ".say-safety", 15));
+  record("F2-B1 ('Help!' → 위험 확인 + 112·119·1330, AI 호출 없음)", /danger/i.test(help.safety) && help.numbers.includes("112") && help.numbers.includes("119"), JSON.stringify(help));
+
+  // F2-B3: 호텔 도착을 비행기 착륙(00:40)보다 이르게 고르면 경고와 추가 확인이 나온다
+  await goto(1280);
+  const early = await js<string>(`(async()=>{const f=document.querySelector('.ag-hotel'); if(!f) return 'no-form'; const sel=f.querySelectorAll('select'); const set=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; set.call(sel[0],'00'); sel[0].dispatchEvent(new Event('change',{bubbles:true})); set.call(sel[1],'00'); sel[1].dispatchEvent(new Event('change',{bubbles:true})); await new Promise(r=>setTimeout(r,400)); return JSON.stringify({landing: f.innerText.includes('Scheduled landing'), warn: f.querySelector('.ag-warn')?.textContent ?? '', extra: !!f.querySelector('[name=confirm_before_landing]')})})()`);
+  const e = JSON.parse(early === "no-form" ? "{}" : early);
+  record("F2-B3 (착륙보다 이른 호텔 도착 → 경고·추가 확인)", !!e.landing && /before your flight lands/.test(e.warn ?? "") && e.extra === true, early);
+
   // --live: 실제 ODsay로 지하철 경로의 시간·요금·막차가 화면에 나오는지
   if (LIVE) {
     await goto(390, true);
@@ -253,10 +293,18 @@ async function main() {
     say("- 미실행 실제 ODsay 경로 (--live 없이 실행: 키를 비운 상태로 안내만 확인)");
   }
 
+  await goto(390, true);
+  const airportTime = await js<{ warning: boolean; notice: boolean; paths: number; overflow: boolean }>(`(async()=>{${HELP} const t=document.querySelector('.transit'); const [a,b]=t.querySelectorAll('.transit-fields input'); await pick(a,'인천공항1터미널'); await pick(b,'명동'); await w(300); const i=t.querySelector('.airport-departure input[type="datetime-local"]'); await type(i,'2026-10-20T00:10'); await w(300); const warning=!!t.querySelector('.airport-departure .ag-warn'); t.querySelector('.airport-departure input[type=checkbox]').click(); await w(200); return {warning, notice: /unverified/.test(t.querySelector('.transit-online')?.textContent ?? ''), paths:t.querySelectorAll('.transit-paths > li').length, overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth};})()`);
+  record("F2-B7 (공항 출발 시각·착륙 전 경고·운행 미검증, 390px)", airportTime.warning && airportTime.notice && airportTime.paths === 0 && !airportTime.overflow, JSON.stringify(airportTime));
+  if (!LIVE) {
+    const scheduled = await js<{ gated: boolean; unconfigured: boolean; reset: boolean; holidayReset: boolean; overflow: boolean }>(`(async()=>{${HELP} const t=document.querySelector('.transit'); const i=t.querySelector('.airport-departure input[type="datetime-local"]'); await type(i,'2026-10-20T21:00'); await w(300); const boxes=t.querySelectorAll('.airport-departure input[type=checkbox]'); const gated=!boxes[0].checked && t.querySelectorAll('.transit-paths > li').length===0; boxes[0].click(); for(let k=0;k<30 && !/isn't connected/.test(t.querySelector('.transit-online')?.textContent ?? '');k++) await w(100); const unconfigured=/isn't connected/.test(t.querySelector('.transit-online')?.textContent ?? ''); await type(i,'2026-10-20T22:00'); await w(300); const reset=!boxes[0].checked && !/isn't connected/.test(t.querySelector('.transit-online')?.textContent ?? ''); boxes[0].click(); await w(300); boxes[1].click(); await w(300); return {gated,unconfigured,reset,holidayReset:!boxes[0].checked,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth};})()`);
+    record("F2-B8 (시각 지정 조회·키 미설정·시각/공휴일 변경 재확인)", scheduled.gated && scheduled.unconfigured && scheduled.reset && scheduled.holidayReset && !scheduled.overflow, JSON.stringify(scheduled));
+  }
+
   // C05·C06·C08: 실제 LLM 채팅 1턴 (선택)
   if (process.argv.includes("--chat")) {
     await goto(390, true);
-    const chat = await js<string>(`(async()=>{window.__opens=[]; window.open=(u)=>{const tab={opener:{},location:{href:''}}; window.__opens.push(tab); return tab}; const i=document.querySelector('.desk-input input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'Take me to Catchtable in English.'); i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.desk-input button[type=submit]').click(); for(let k=0;k<120 && !document.querySelector('.action-card');k++) await new Promise(r=>setTimeout(r,1000)); await new Promise(r=>setTimeout(r,500)); return JSON.stringify({card: !!document.querySelector('.action-card'), opens: window.__opens.map(t=>t.location.href), opener: window.__opens.map(t=>t.opener), opened: document.querySelector('.action-opened')?.textContent ?? ''})})()`);
+    const chat = await js<string>(`(async()=>{window.__opens=[]; window.open=(u)=>{const tab={opener:{},location:{href:''}}; window.__opens.push(tab); return tab}; const i=document.querySelector('.desk-input input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'Take me to Catchtable in English for Test Restaurant, Test Branch, on 2026-10-25 at 19:00 for 2 people.'); i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.desk-input button[type=submit]').click(); for(let k=0;k<120 && !document.querySelector('.action-card');k++) await new Promise(r=>setTimeout(r,1000)); await new Promise(r=>setTimeout(r,500)); return JSON.stringify({card: !!document.querySelector('.action-card'), opens: window.__opens.map(t=>t.location.href), opener: window.__opens.map(t=>t.opener), opened: document.querySelector('.action-opened')?.textContent ?? ''})})()`);
     const c = JSON.parse(chat);
     record("C05 (새 탭 1회, opener 끊음)", c.card && c.opens.length === 1 && c.opens[0] === "https://www.catchtable.net/" && c.opener[0] === null && !!c.opened, chat);
     await cdp("Page.reload");
@@ -264,6 +312,21 @@ async function main() {
     const again = await js<string>(`(async()=>{window.__opens=[]; window.open=()=>{window.__opens.push(1); return null}; await new Promise(r=>setTimeout(r,1500)); return JSON.stringify({card: !!document.querySelector('.action-card'), opens: window.__opens.length, overflow: document.documentElement.scrollWidth>document.documentElement.clientWidth})})()`);
     const a = JSON.parse(again);
     record("C06·C08 (새로고침 뒤 다시 열지 않음, 카드 유지, 390px 가로 넘침 없음)", a.card && a.opens === 0 && !a.overflow, again);
+    // F2-B4: 연결 카드에서 이용자가 결과("예약했어요")를 고르면 이용자 기록으로 남고 새로고침해도 유지된다
+    const rec = await js<string>(`(async()=>{const card=document.querySelector('.action-card.is-catchtable'); const b=[...(card?.querySelectorAll('.action-result button') ?? [])].find(x=>/Booked/.test(x.textContent)); if(!b) return JSON.stringify({button:false}); card.querySelector('.action-result input[type=checkbox]')?.click(); await new Promise(r=>setTimeout(r,100)); b.click(); await new Promise(r=>setTimeout(r,1500)); return JSON.stringify({button:true, pressed: b.getAttribute('aria-pressed'), note: [...card.querySelectorAll('.action-result .action-note')].map(x=>x.textContent).join(' ')})})()`);
+    await cdp("Page.reload");
+    await sleep(3500);
+    const kept = await js<string>(`[...(document.querySelector('.action-card.is-catchtable')?.querySelectorAll('.action-result button') ?? [])].find(x=>/Booked/.test(x.textContent))?.getAttribute('aria-pressed') ?? 'none'`);
+    const r4 = JSON.parse(rec);
+    const events = db.$client.prepare("SELECT COUNT(*) AS n FROM events WHERE detail LIKE '%external_result%'").get() as { n: number };
+    record("F2-B4 (외부 사이트 결과를 이용자 기록으로 남김, 새로고침 뒤 유지)", r4.button && r4.pressed === "true" && /own note/.test(r4.note) && kept === "true" && events.n >= 1, JSON.stringify({ ...r4, kept, events: events.n }));
+
+    // F2-B2: 검토에서 긴급으로 오탐된 문장 → 긴급 카드 없이 Booking.com 연결 카드 (실제 LLM 1턴)
+    await goto(390, true);
+    // 앞 검사의 Catchtable 카드가 같은 화면에 남아 있으므로, 보낸 뒤 Booking.com 카드나 안전 카드가 "새로" 생기는지로 판정한다
+    const book = await js<string>(`(async()=>{const count=(sel,re)=>[...document.querySelectorAll(sel)].filter(c=>!re||re.test(c.textContent)).length; const b0=count('.action-card',/Booking\\.com/), s0=count('.say-safety'), m0=count('.say-assistant, .say-error'); const i=document.querySelector('.desk-input input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'Please help me book a NEW hotel in Seoul from 2026-10-25 to 2026-10-27, 2 adults, 1 room.'); i.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('.desk-input button[type=submit]').click(); for(let k=0;k<120 && count('.action-card',/Booking\\.com/)===b0 && count('.say-safety')===s0 && count('.say-assistant, .say-error')===m0;k++) await new Promise(r=>setTimeout(r,1000)); await new Promise(r=>setTimeout(r,800)); return JSON.stringify({newBooking: count('.action-card',/Booking\\.com/)-b0, newSafety: count('.say-safety')-s0, last: [...document.querySelectorAll('.say-assistant p, .say-error p')].at(-1)?.textContent?.slice(0,120) ?? ''})})()`);
+    const bk = JSON.parse(book);
+    record("F2-B2 ('Please help me book a NEW hotel…' → 긴급 오탐 없음, Booking.com 연결)", bk.newSafety === 0 && bk.newBooking > 0, book);
   } else {
     say("- 미실행 C05·C06·C08 브라우저 채팅 경로 (--chat 없이 실행)");
   }
@@ -274,7 +337,7 @@ main()
   .finally(() => {
     say("");
     say(`요약: 통과 ${results.filter((r) => r.ok).length} / ${results.length}`);
-    const file = saveRunLog("browser", log);
+    const file = saveRunLog("browser", log, info.runId);
     console.log(`기록: ${file}`);
     try {
       ws?.close();

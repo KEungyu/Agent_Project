@@ -5,7 +5,9 @@ import { getBoard, listEvents } from "../board/store";
 import { openDb } from "../db/client";
 import { checkConditions } from "../requests/conditions";
 import { loadRequestTypes } from "../request-types/loader";
+import { GeminiApiError } from "./gemini";
 import { runAgent } from "./loop";
+import { runTurn } from "./turn";
 import { createTools } from "./registry";
 import { fakeLlm, message, schemaHas, toolUse } from "./testing";
 import { needsDateConfirmation } from "./tools";
@@ -129,6 +131,34 @@ describe("check_conditions / ask_user", () => {
     expect(request.draft?.back_translation).toContain("Late check-in inquiry");
     expect(request.draft?.hash).toMatch(/^[0-9a-f]{64}$/);
     expect(request.sent).toBeUndefined();
+  });
+
+  it("F2-15 초안을 쓰다 AI 한도(429)로 실패하면 요청이 남지 않고, 다시 하면 요청은 1건만 생긴다", async () => {
+    const { db, boardId } = setup();
+    const draftOutput = (slots: Record<string, string>) => ({
+      subject_ko: "늦은 체크인 문의",
+      body_ko: `예약자명 ${slots.guest_name}, 예약번호 ${slots.booking_ref}. 체크인 날짜 ${slots.check_in_date_ko}, 도착 예정 시각 ${slots.expected_arrival_ko}. 늦은 체크인 가능 여부 문의. 프런트 마감 후 출입 방법 문의.`,
+      coverage: lateCheckin.message_guidelines.must_include.map((item) => ({ item, quote: item })),
+    });
+    const callDraft = () => message([toolUse("t1", "draft_request", { type_id: "late_checkin" })], "tool_use");
+    const busy = fakeLlm([callDraft, () => message([{ type: "text", text: "Busy, try again." }], "end_turn")], () => {
+      throw new GeminiApiError(429, "quota");
+    });
+    const first = await runTurn({ db, boardId, language: "en", text: "Ask my hotel about late check-in.", createLlm: () => busy });
+    expect(first.ok).toBe(true);
+    expect(getBoard(db, boardId)!.requests).toHaveLength(0);
+
+    const ok = fakeLlm([callDraft], (request) =>
+      schemaHas(request, "coverage") ? draftOutput(JSON.parse(request.prompt.replace("Facts (JSON): ", ""))) : { subject: "Late check-in", body: "..." },
+    );
+    await runTurn({ db, boardId, language: "en", text: "Please try again.", createLlm: () => ok });
+    // 같은 요청을 또 시도해도 새 요청을 만들지 않는다 (승인 대기 초안이 이미 있음)
+    const again = fakeLlm([callDraft, () => message([{ type: "text", text: "It's already waiting for you." }], "end_turn")]);
+    await runTurn({ db, boardId, language: "en", text: "Try once more.", createLlm: () => again });
+    const requests = getBoard(db, boardId)!.requests;
+    expect(requests).toHaveLength(1);
+    expect(requests[0].status).toBe("pending_approval");
+    expect(requests[0].sent).toBeUndefined();
   });
 
   it("board_update는 형식이 틀린 시각을 거부한다", async () => {

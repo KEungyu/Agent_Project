@@ -31,7 +31,7 @@ describe("외부 예약 화면 새 탭 열기 (C05·C06)", () => {
     expect(tab.location.href).toBe("https://www.catchtable.net/");
   });
 
-  it("C05 차단: 열지 못하면 false를 돌려준다(성공으로 표시하지 않는다)", () => {
+  it("F2-29 · C05 차단: 열지 못하면 false를 돌려준다(성공으로 표시하지 않는다)", () => {
     vi.stubGlobal("window", { open: vi.fn(() => null) });
     expect(openExternalOnce(action("a2"))).toBe(false);
   });
@@ -44,7 +44,7 @@ describe("외부 예약 화면 새 탭 열기 (C05·C06)", () => {
     expect(openedResults()).toEqual({ b1: true, b2: false });
   });
 
-  it("C06 같은 응답을 다시 그리거나 새로고침해도 다시 열지 않는다", () => {
+  it("F2-30 · C06 같은 응답을 다시 그리거나 새로고침해도 다시 열지 않는다", () => {
     const open = vi.fn(() => ({ opener: {}, location: { href: "" } }));
     vi.stubGlobal("window", { open });
     openExternalOnce(action("a3"));

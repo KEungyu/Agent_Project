@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { sendChat } from "@/app/actions";
+import { externalResultsAction, sendChat } from "@/app/actions";
 import type { Messages } from "@/lib/i18n/messages";
 import type { ExternalAction } from "@/lib/external/links";
+import type { ExternalResult } from "@/lib/external/results";
 import { ActionCard } from "./ActionCard";
 import { openExternalOnce, openedResults } from "@/lib/external/open";
 import { EnvelopeIcon } from "./icons";
@@ -14,7 +15,7 @@ export type ChatLine = {
   text: string;
   tools?: { name: string; ok: boolean }[];
   actions?: ExternalAction[];
-  safety?: "emergency" | "out_of_scope";
+  safety?: "emergency" | "check" | "out_of_scope";
 };
 
 // 마중이가 쓴 메일 초안(승인 대기 요청)으로 화면을 옮기고 잠깐 반짝이게 한다
@@ -45,6 +46,8 @@ export function Chat({
   const [lines, setLines] = useState<ChatLine[]>(initialLines);
   // 이번 화면에서 새 탭을 열었는지 (행동 id별). 기록에서 다시 그린 카드는 자동으로 열지 않는다
   const [openedById, setOpenedById] = useState<Record<string, boolean>>({});
+  // 외부 사이트 결과(이용자 기록)는 서버 이벤트 기록에서 다시 읽는다
+  const [recordedById, setRecordedById] = useState<Record<string, ExternalResult>>({});
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const logRef = useRef<HTMLOListElement>(null);
@@ -59,6 +62,7 @@ export function Chat({
   useEffect(() => {
     const saved = openedResults();
     if (Object.keys(saved).length) setOpenedById((current) => ({ ...saved, ...current }));
+    externalResultsAction().then(setRecordedById, () => {});
   }, []);
 
   // form action은 React가 전환(transition)으로 감싸 보낸 메시지가 응답이 올 때까지 안 보인다. onSubmit으로 바로 보이게 한다
@@ -133,7 +137,7 @@ export function Chat({
             <div className="say-body">
               {/* 도구 이름(board_get 등)은 내부 동작이라 화면에 보이지 않는다. 서버 로그([agent])에서 확인한다 */}
               <p>{line.text}</p>
-              {line.actions?.map((action) => <ActionCard key={action.id} action={action} opened={openedById[action.id]} m={actionsM} />)}
+              {line.actions?.map((action) => <ActionCard key={action.id} action={action} opened={openedById[action.id]} recorded={recordedById[action.id]} m={actionsM} />)}
               {draftedIn(line) && (
                 <button type="button" className="say-draft" onClick={focusDraft}>
                   <EnvelopeIcon />
@@ -181,9 +185,10 @@ export function Chat({
 }
 
 // 긴급이면 112·119·1330, 행정 질문이면 1345. 번호는 휴대폰에서 바로 걸 수 있게 tel: 링크로 둔다.
-function SafetyCard({ kind, m }: { kind: "emergency" | "out_of_scope"; m: Messages["safety"] }) {
+// check: "Help!"만 온 경우. 긴급 번호를 같이 보여 주고, 아니면 무엇을 도울지 말해 달라고 한다
+function SafetyCard({ kind, m }: { kind: "emergency" | "check" | "out_of_scope"; m: Messages["safety"] }) {
   const numbers =
-    kind === "emergency"
+    kind !== "out_of_scope"
       ? [
           { tel: "119", label: m.n119 },
           { tel: "112", label: m.n112 },
@@ -191,9 +196,9 @@ function SafetyCard({ kind, m }: { kind: "emergency" | "out_of_scope"; m: Messag
         ]
       : [{ tel: "1345", label: m.n1345 }];
   return (
-    <div className={`safety-card safety-${kind}`} role={kind === "emergency" ? "alert" : undefined}>
-      <p className="safety-title">{kind === "emergency" ? m.emergencyTitle : m.outTitle}</p>
-      <p className="safety-note">{kind === "emergency" ? m.emergencyNote : m.outNote}</p>
+    <div className={`safety-card safety-${kind === "check" ? "emergency" : kind}`} role={kind === "emergency" ? "alert" : undefined}>
+      <p className="safety-title">{kind === "emergency" ? m.emergencyTitle : kind === "check" ? m.checkTitle : m.outTitle}</p>
+      <p className="safety-note">{kind === "emergency" ? m.emergencyNote : kind === "check" ? m.checkNote : m.outNote}</p>
       <ul className="safety-numbers">
         {numbers.map((number) => (
           <li key={number.tel}>

@@ -64,6 +64,22 @@ describe("open_restaurant_booking (C01·C02·C04)", () => {
   });
 });
 
+describe("F2-20 같은 식당 문의가 진행 중이면 Catchtable을 자동으로 열지 않는다", () => {
+  it.each(["pending_approval", "conditional", "info_requested"])("F2-31 %s 문의가 있는 장소는 중복 예약 경고와 함께 버튼만 둔다", async (status) => {
+    const { db, boardId } = setup();
+    const request = createRequest(db, { boardId, typeId: "restaurant_booking", slots: { place_name: "Mock Grill (fictional)" } }, "agent");
+    transition(db, request.id, "pending_approval", "agent", { patch: { draft: { subject_ko: "s", body_ko: "b", back_translation: "t", hash: hashDraft("s", "b") } } });
+    db.$client.prepare("UPDATE requests SET status = ? WHERE id = ?").run(status, request.id);
+    const result = await run(db, boardId, { restaurant: "mock grill (fictional)" }, "open_restaurant_booking");
+    const output = result.toolCalls[0].output as { reply: string; action: { autoOpen: boolean } };
+    expect(output.action.autoOpen).toBe(false);
+    expect(output.reply).toContain("double booking");
+    // 다른 식당은 평소대로 연다
+    const other = await run(db, boardId, { restaurant: "Another Place" }, "open_restaurant_booking");
+    expect((other.toolCalls[0].output as { action: { autoOpen: boolean } }).action.autoOpen).toBe(true);
+  });
+});
+
 describe("식당 예약 문의 — 메일·전화 (D02·D05·D10)", () => {
   const restaurant = { place_name: "Mock Grill (fictional)", reservation_at: "2026-10-05T19:00+09:00", party_size: "2", guest_name: "Emma Smith" };
   const structured = (request: Parameters<typeof schemaHas>[0]) => {

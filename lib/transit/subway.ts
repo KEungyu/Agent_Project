@@ -35,18 +35,14 @@ export const getLine = (id: string) => lineById.get(id);
 
 // 화면 언어로 쓴 역 이름. 일본어·중국어는 OSM 이름, 불어·스페인어·베트남어·인니어는 설명 단어만 옮긴 이름(station-names.ts),
 // 그 밖에는 영어 표기(역 표지판의 로마자)를 쓴다.
-// 중국어 이름이 없으면 가나가 없는 일본어 한자 이름으로, 그것도 없으면 영어로 대신한다
-const KANA = /[\u3040-\u30ff]/;
+// 중국어 이름이 없으면 영어(표지판 로마자)를 쓴다. 일본어 한자는 중국어 통용 역명과 다를 수 있어 대신 쓰지 않는다
 export function stationName(station: Pick<SubwayStation, "ko" | "en" | "names">, language: string): string {
   if (language === "ko") return station.ko;
   const local = localStationName(station.ko, language);
   if (local) return local;
   const ja = station.names?.ja;
   if (language === "ja" && ja) return ja;
-  if (language === "zh-CN") {
-    const zh = station.names?.zh ?? (ja && !KANA.test(ja) ? ja : undefined);
-    if (zh) return zh;
-  }
+  if (language === "zh-CN" && station.names?.zh) return station.names.zh;
   return station.en || station.ko;
 }
 
@@ -271,4 +267,37 @@ export function smoothPath(points: { x: number; y: number }[]): string {
     d += ` C${c1.x.toFixed(1)},${c1.y.toFixed(1)} ${c2.x.toFixed(1)},${c2.y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
   }
   return d;
+}
+
+// ── 막차 확인용: 교통 데이터(ODsay)의 한국어 노선·역 이름을 노선도 자료와 맞춘다 ──
+const nameKey = (name: string) => name.replace(/^수도권\s*/, "").replace(/\s*\(.*?\)\s*/g, "").replace(/역$/, "").replace(/[\s·]/g, "");
+export function lineByName(name: string): SubwayLine | undefined {
+  const key = nameKey(name);
+  return SUBWAY.lines.find((line) => [nameKey(line.ko), nameKey(line.ko).replace(/선$/, "")].includes(key) || nameKey(line.ko) === `${key}선`);
+}
+const stationIdByName = (name: string, line?: SubwayLine) =>
+  SUBWAY.stations.find((s) => nameKey(s.ko) === nameKey(name) && (!line || s.lines.includes(line.id)))?.id;
+
+// 종착역이 terminus인 열차가 fromName에서 타서 toName까지 가는가 (true / false / 자료로 알 수 없으면 undefined)
+// passStops: 이 구간에서 지나는 역 이름(탄 역 → 내릴 역 순서, ODsay passStopList)
+export function serviceReaches(lineName: string, terminus: string, fromName: string, toName: string, passStops: string[]): boolean | undefined {
+  // 1) 종착역이 내릴 역보다 앞이면 (중간에서 끝나는 열차) 못 간다
+  const stops = passStops.map(nameKey);
+  const alight = stops.lastIndexOf(nameKey(toName));
+  const end = stops.indexOf(nameKey(terminus));
+  if (end >= 0 && alight >= 0 && end < alight) return false;
+  if (end >= 0 && end === alight) return true;
+  const line = lineByName(lineName);
+  if (!line) return undefined;
+  const from = stationIdByName(fromName, line);
+  const to = stationIdByName(toName, line);
+  if (!from || !to) return undefined;
+  // 2) 같은 종착역의 운행 계통이 탄 역 → 내릴 역 순서로 서면 간다. 계통은 있는데 어느 것도 안 서면 (다른 지선) 못 간다
+  const services = (SUBWAY.services ?? []).filter((sv) => sv.line === line.id && nameKey(sv.to) === nameKey(terminus));
+  if (services.some((sv) => sv.stops.indexOf(from) >= 0 && sv.stops.indexOf(from) < sv.stops.lastIndexOf(to))) return true;
+  // 3) 2호선 순환선: 고리 위의 역끼리이고 종착역도 고리 위면, 내릴 역을 지나야 종착역에 닿는다
+  const terminusId = stationIdByName(terminus, line);
+  if (line.id === "L2" && LOOP.has(from) && LOOP.has(to) && terminusId && LOOP.has(terminusId)) return true;
+  if (services.length) return false;
+  return undefined;
 }

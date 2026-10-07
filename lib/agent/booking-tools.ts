@@ -97,16 +97,26 @@ export const openRestaurantBooking = defineTool({
       input.time && { label: a.time, value: `${input.time} KST` },
       input.party_size && { label: a.party, value: String(input.party_size) },
     ].filter(Boolean) as ExternalAction["summary"];
+    // 같은 식당에 메일 문의가 이미 진행 중이면(승인 대기·발송·답 대기) 다른 채널로 또 신청하면 중복 예약이 될 수 있다:
+    // 새 탭을 자동으로 열지 않고 먼저 그 문의를 확인하라고 알린다 (버튼은 남긴다)
+    const name = input.restaurant?.trim().toLowerCase();
+    const inProgress = name
+      ? getBoard(ctx.db, ctx.boardId)?.requests.find(
+          (request) =>
+            ["pending_approval", "sent", "awaiting_reply", "conditional", "info_requested"].includes(request.status) &&
+            String(request.slots.place_name ?? "").trim().toLowerCase() === name,
+        )
+      : undefined;
     const action: ExternalAction = {
       kind: "external_link",
       id: randomUUID(),
       provider: "catchtable",
       // 식당별 페이지는 실제로 확인한 경우에만 쓴다. 지금은 확인한 페이지가 없어 Global 첫 화면으로 연결한다
       url: EXTERNAL_PROVIDERS.catchtable.home,
-      autoOpen: true,
+      autoOpen: !inProgress,
       status: "site_link",
       summary,
     };
-    return { reply: m.agent.restaurantReady, action };
+    return { reply: inProgress ? fmt(m.agent.restaurantDuplicate, { where: input.restaurant! }) : m.agent.restaurantReady, action };
   },
 });

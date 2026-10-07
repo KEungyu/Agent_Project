@@ -55,8 +55,23 @@ export function isExternalAction(value: unknown): value is ExternalAction {
   return (
     !!action &&
     action.kind === "external_link" &&
+    typeof action.id === "string" && action.id.length > 0 &&
+    action.status === "site_link" && typeof action.autoOpen === "boolean" &&
+    Array.isArray(action.summary) && action.summary.length <= 8 &&
+    action.summary.every((row) => row && typeof row.label === "string" && typeof row.value === "string") &&
     (action.provider === "booking" || action.provider === "catchtable") &&
     typeof action.url === "string" &&
     safeExternalUrl(action.url, action.provider) !== null
   );
 }
+
+// 화면 언어가 바뀌어도 카드를 만들 때의 언어로 조건을 확인한다.
+export function hasExternalBookingDetails(action: Pick<ExternalAction, "provider" | "summary">): boolean {
+  return LANGUAGES.some(({ code }) => {
+    const m = getMessages(code).actions;
+    const labels = action.provider === "catchtable" ? [m.restaurant, m.branch, m.date, m.time, m.party] : [m.destination, m.checkIn, m.checkOut, m.guests, m.rooms];
+    return labels.every((label) => action.summary.some((row) => row.label === label && row.value.trim()));
+  });
+}
+import { LANGUAGES } from "../i18n/languages";
+import { getMessages } from "../i18n/messages";

@@ -12,10 +12,10 @@ import { createTools } from "./registry";
 
 export type TurnResult =
   | { ok: true; reply: string; tools: { name: string; ok: boolean }[]; actions?: ExternalAction[] }
-  | { ok: true; safety: "emergency" | "out_of_scope" }
+  | { ok: true; safety: "emergency" | "check" | "out_of_scope" }
   | { ok: false; error: string };
 
-// 채팅 한 턴: 안전 가드 → (통과하면) 에이전트 루프. 긴급·행정 질문이면 루프를 실행하지 않는다.
+// 채팅 한 턴: 안전 가드 → (통과하면) 에이전트 루프. 긴급·긴급 확인("Help!")·행정 질문이면 루프를 실행하지 않는다.
 export async function runTurn({
   db,
   boardId,

@@ -21,7 +21,7 @@ export type RequestMetrics = {
   type_id: string;
   status: RequestStatus;
   steps: number; // 이용자 조작 수
-  activeMinutes: number; // 전체 시간 - 회신 대기 시간
+  activeMinutes: number; // 전체 경과 시간 - 회신 대기 시간. 이용자가 직접 조작한 시간(능동 시간)이 아니다 — 그건 관찰자가 따로 잰다
   waitingMinutes: number;
   toolSwitches: number; // 외부 링크로 나간 횟수
   reAsks: number; // 보드에 있던 값을 다시 물으려 한 횟수
@@ -67,8 +67,16 @@ export function boardReport(db: Db, boardId: string, requests: Request[]) {
   const average = (pick: (row: RequestMetrics) => number) =>
     rows.length ? round1(rows.reduce((sum, row) => sum + pick(row), 0) / rows.length) : null;
   const replied = rows.filter((row) => row.replyNeededUser !== null);
+  // 결과별 건수: 평균은 "처리에 든 비용"이라 해결·조건부·거절을 모두 넣지만, 해결 건수와는 따로 보여 준다
+  // (해결 = 이 문의가 해결됨. 새 예약·실제 투숙·여행 목표 달성이 아니다. 시연 자료는 모의 발송·예시 회신이다)
+  const outcomes = {
+    done: rows.filter((row) => row.status === "done").length,
+    conditional: rows.filter((row) => row.status === "conditional").length,
+    declined: rows.filter((row) => row.status === "declined").length,
+  };
   return {
     rows,
+    outcomes,
     after: {
       steps: average((row) => row.steps),
       activeMinutes: average((row) => row.activeMinutes),

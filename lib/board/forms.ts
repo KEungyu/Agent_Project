@@ -51,6 +51,11 @@ export function saveStayForm(db: Db, form: FormData): TripBoard {
   }
   const arrival = fromLocalInput(text(form, "expected_arrival") ?? "");
   if (arrival) fields.expected_arrival = arrival;
+  // 호텔 도착이 비행기 착륙보다 이르면 잘못 넣었을 가능성이 크다: 화면에서 따로 확인(confirm_before_landing)한 경우만 저장한다
+  const landing = board.arrival?.datetime;
+  if (arrival && landing && Date.parse(arrival) < Date.parse(landing) && text(form, "confirm_before_landing") !== "on") {
+    throw new Error("Hotel arrival is before the flight lands. Confirm it on the form first.");
+  }
 
   const stayId = text(form, "stay_id");
   if (stayId) {

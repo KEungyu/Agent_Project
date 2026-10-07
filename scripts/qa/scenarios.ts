@@ -6,6 +6,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { createTools } from "../../lib/agent/registry";
 import { runAgent } from "../../lib/agent/loop";
+import { checkSafety } from "../../lib/safety/guard";
 import { createLlmClient } from "../../lib/agent/provider";
 import { addStay, createBoard, getBoard, updateBoard } from "../../lib/board/store";
 import { openDb, type Db } from "../../lib/db/client";
@@ -20,7 +21,7 @@ import {
   REVIEW_FLIGHT_ARRIVAL,
   REVIEW_STAY,
 } from "../../tests/fixtures/review-booking";
-import { runInfo, saveRunLog } from "./run-info";
+import { reproLine, runInfo, saveRunLog } from "./run-info";
 
 try {
   process.loadEnvFile();
@@ -48,6 +49,12 @@ function session(language: string, stay: object, extra: object = {}): Session {
 }
 
 async function turn(s: Session, text: string, now: string) {
+  // 실제 채팅(runTurn)과 같이 안전 가드를 먼저 거친다. 가드에서 멈추면 에이전트를 실행하지 않는다
+  const verdict = checkSafety(text);
+  if (verdict !== "ok") {
+    say(`  · 안전 가드: ${verdict} (에이전트 실행 안 함)`);
+    return { reply: "", toolCalls: [] as { name: string; ok: boolean; output: unknown }[], messages: s.messages, safety: verdict };
+  }
   s.messages.push({ role: "user", content: text });
   const r = await runAgent({
     llm,
@@ -88,7 +95,7 @@ async function firstDraft(language: string) {
   return { s, r };
 }
 
-const SCENARIOS: Record<string, () => Promise<void>> = {
+const SCENARIOS: Record<string, (id?: string) => Promise<void>> = {
   async T02() {
     start("T02", "저장 숙소 재사용 + 자정 날짜 (en, 기준 2026-10-08 12:00 KST)");
     const { s, r } = await firstDraft("en");
@@ -148,9 +155,14 @@ const SCENARIOS: Record<string, () => Promise<void>> = {
   async T06() {
     start("T06", "오늘에 묶은 지난 새벽 시각 (ko, 기준 2026-10-09 21:00 KST)");
     const s = session("ko", REVIEW_STAY);
-    await turn(s, "오늘 새벽 2시에 호텔 도착할 것 같아. 늦은 체크인 가능한지 메일 써줘.", FIXED_NOW.eveningOfCheckIn);
+    const r = await turn(s, "오늘 새벽 2시에 호텔 도착할 것 같아. 늦은 체크인 가능한지 메일 써줘.", FIXED_NOW.eveningOfCheckIn);
     const b = board(s);
     check("날짜를 확정하지 않음 (요청 없음, 도착 미저장)", b.requests.length === 0 && !b.stays[0].expected_arrival);
+    // F2-06: 확인 질문은 한 날짜(10월 10일)만 묻고 "오늘 새벽"과 섞지 않는다
+    // 물음표로 끝나는 질문 문장만 본다 (이용자 말을 되짚는 "오늘 새벽 2시라고 하셨는데"는 질문이 아니다)
+    const question = r.reply.split(/(?<=[?？])/).find((part) => /[?？]/.test(part)) ?? "";
+    check("F2-06 확인 질문이 10월 10일 하나만 물음", /10월\s*10일|2026-10-10/.test(question) && !/오늘/.test(question), question.trim());
+    check("F2-06 도착 시각으로 물음 (체크인과 섞지 않음)", /도착/.test(question) && !/체크인/.test(question));
     await turn(s, "응 맞아, 10월 10일 새벽 2시야.", "2026-10-09T21:01:00+09:00");
     const b2 = board(s);
     check("확인 뒤 10-10 02:00 저장·초안", Date.parse(b2.stays[0].expected_arrival ?? "") === Date.parse("2026-10-10T02:00+09:00") && b2.requests.length === 1);
@@ -184,6 +196,15 @@ const SCENARIOS: Record<string, () => Promise<void>> = {
     check("예약번호를 묻지 않음", !/booking (number|reference)|reservation number/i.test(r.reply));
   },
 
+  // F2-07: 검토에서 긴급으로 오탐된 문장 그대로 ("help me" 포함) → 가드를 지나 Booking.com 연결
+  async "F2-07"() {
+    start("F2-07", "'Please help me book a NEW hotel…' → 긴급 오탐 없이 Booking.com 연결 (en)");
+    const s = session("en", REVIEW_STAY);
+    const r = await turn(s, "Please help me book a NEW hotel in Seoul from 2026-10-12 to 2026-10-14, 2 adults, 1 room.", FIXED_NOW.beforeTrip);
+    check("안전 가드를 통과", !("safety" in r));
+    check("prepare_stay_booking 성공", r.toolCalls.some((c) => c.name === "prepare_stay_booking" && c.ok));
+  },
+
   async B02() {
     start("B02", "기존 예약 늦은 체크인 → 기존 요청 흐름 (en)");
     const { s, r } = await firstDraft("en");
@@ -214,14 +235,18 @@ const SCENARIOS: Record<string, () => Promise<void>> = {
     check("조건 질문(ask_user) 없음", !names.includes("ask_user"));
   },
 
-  async C03() {
-    start("C03", "추천 / 예약하지 마 / 취소 → 예약 화면 열지 않음");
+  async C03(id = "C03") {
+    start(id, "추천 / 예약하지 마 / 취소 → 예약 화면 열지 않음");
     for (const text of ["Recommend restaurants near Myeongdong.", "Do not book a restaurant, just tell me what Korean BBQ is.", "Cancel my restaurant reservation."]) {
       const s = session("en", REVIEW_STAY);
       const r = await turn(s, text, FIXED_NOW.beforeTrip);
       const names = r.toolCalls.map((c) => c.name);
       check(`"${text}" → 예약 연결·요청 없음`, !names.includes("open_restaurant_booking") && !names.includes("prepare_stay_booking") && board(s).requests.length === 0);
     }
+  },
+
+  async "F2-33"() {
+    await SCENARIOS.C03("F2-33");
   },
 
   async D10() {
@@ -250,6 +275,8 @@ async function main() {
   say("# 대화 시나리오 실행 기록 (실제 LLM)");
   say("");
   say(`- 코드: ${info.commit} · Node ${info.node}`);
+  say(reproLine(info));
+  say("- 실제 호출: LLM(공급자 키) 사용 · 정보 API(ODsay·공항·지도) 사용 안 함 · 임시 메모리 DB · 모의 발송");
   say(`- LLM: ${info.provider} · ${info.model}`);
   say(`- 발송 모드: ${info.mailMode} (실제 발송 없음) · 가상 예약: ${REVIEW_STAY.name} / ${REVIEW_STAY.booking_ref}`);
   say(`- 고정 시각: 여행 전 ${FIXED_NOW.beforeTrip}, 체크인 날 밤 ${FIXED_NOW.eveningOfCheckIn}`);
@@ -264,7 +291,7 @@ async function main() {
   }
   say("\n## 요약");
   for (const r of results) say(`- ${r.id}: ${r.fail === 0 ? "통과" : "실패"} (PASS ${r.pass}, FAIL ${r.fail})`);
-  const file = saveRunLog("scenarios", log);
+  const file = saveRunLog("scenarios", log, info.runId);
   console.log(`\n기록: ${file}`);
   process.exit(results.some((r) => r.fail > 0) ? 1 : 0);
 }

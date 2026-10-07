@@ -13,6 +13,18 @@ const form = (values: Record<string, string>) => {
 };
 
 describe("board forms", () => {
+  it("F2-14 호텔 도착이 비행기 착륙보다 이르면 따로 확인했을 때만 저장한다", () => {
+    const db = openDb(":memory:");
+    saveTripForm(db, form({ arrival_datetime: "2026-10-09T23:10", arrival_airport: "ICN" }));
+    saveStayForm(db, form({ name: "Hotel A", expected_arrival: "2026-10-10T01:00" }));
+    const stayId = getCurrentBoard(db)!.stays[0].id;
+    // 착륙(23:10)보다 이른 22:00 → 확인 없으면 저장하지 않는다
+    expect(() => saveStayForm(db, form({ stay_id: stayId, expected_arrival: "2026-10-09T22:00", confirm_arrival: "on" }))).toThrow(/before the flight lands/);
+    expect(getCurrentBoard(db)!.stays[0].expected_arrival).toBe("2026-10-10T01:00+09:00");
+    saveStayForm(db, form({ stay_id: stayId, expected_arrival: "2026-10-09T22:00", confirm_arrival: "on", confirm_before_landing: "on" }));
+    expect(getCurrentBoard(db)!.stays[0].expected_arrival).toBe("2026-10-09T22:00+09:00");
+  });
+
   it("입국일과 숙소를 저장하면 다시 열어도(새로고침) 남아 있다", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "majung-"));
     const file = path.join(dir, "test.db");

@@ -38,7 +38,14 @@ export function DateField({ name, defaultValue = "", required, language, labels,
   );
 }
 
-export function DateTimeField({ name, defaultValue = "", language, labels, ariaLabel }: Common & { defaultValue?: string }) {
+export function DateTimeField({
+  name,
+  defaultValue = "",
+  language,
+  labels,
+  ariaLabel,
+  onValueChange,
+}: Common & { defaultValue?: string; onValueChange?: (value: string) => void }) {
   const [date, setDate] = useState(defaultValue.slice(0, 10));
   const [hour, setHour] = useState(defaultValue.slice(11, 13));
   const [minute, setMinute] = useState(defaultValue.slice(14, 16));
@@ -46,6 +53,8 @@ export function DateTimeField({ name, defaultValue = "", language, labels, ariaL
   const minutes = Array.from({ length: 12 }, (_, i) => pad(i * 5));
   if (minute && !minutes.includes(minute)) minutes.splice(Math.floor(Number(minute) / 5) + 1, 0, minute);
   const value = date ? `${date}T${hour || "00"}:${minute || "00"}` : "";
+  // 값이 바뀌면 바깥(예: 착륙 시각과 비교하는 폼)에 알린다
+  useEffect(() => onValueChange?.(value), [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <span className="datefield datefield-time" role="group" aria-label={ariaLabel}>

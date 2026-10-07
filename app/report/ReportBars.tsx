@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from "react";
 
-export type Bar = { label: string; note: string; unit: string; before: number; after: number | null; showReduction?: boolean };
+export type Bar = { label: string; note: string; unit: string; before: number; after: number | null };
 
 // 숫자가 0에서 목표값까지 올라간다 (모션 줄이기면 바로 최종값)
 function useCountUp(target: number | null, delayMs: number) {
@@ -37,9 +37,6 @@ function Row({ bar, index }: { bar: Bar; index: number }) {
       <p className="bar-label">
         {bar.label}
         <span>{bar.note}</span>
-        {bar.showReduction && bar.after !== null && bar.before > 0 && (
-          <strong className="bar-reduction tabular">−{Math.round((1 - bar.after / bar.before) * 100)}%</strong>
-        )}
       </p>
       <div className="bar-line bar-before">
         <span className="bar-track">

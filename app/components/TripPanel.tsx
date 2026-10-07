@@ -1,6 +1,7 @@
 import { addItinerary, saveStay, saveTrip } from "@/app/actions";
 import type { Stay, TripBoard } from "@/lib/board/types";
 import { fmt, type Messages } from "@/lib/i18n/messages";
+import { HotelArrivalForm } from "./HotelArrivalForm";
 import { formatDate, formatKst, formatTimeKst, kstDate, kstMinutesOfDay, toLocalInput } from "@/lib/time";
 import { cityKo } from "@/lib/i18n/places";
 import { localCityName } from "@/lib/map/route";
@@ -49,7 +50,7 @@ export function TripPanel({ board, m, language }: Props) {
 
       <div className="sign">
         <SignTitle as="h3" ko="지하철" text={m.transit.title} />
-        <TransitGuide language={language} m={m.transit} places={transitPlaces(board)} />
+        <TransitGuide language={language} m={m.transit} places={transitPlaces(board)} arrival={board?.arrival} />
       </div>
 
       <div className="sign">
@@ -439,24 +440,17 @@ function HotelArrivalUpdate({ board, m, language }: { board: TripBoard | null; m
   const arrivalDate = board?.arrival?.datetime ? kstDate(board.arrival.datetime) : undefined;
   const stay = board?.stays.find((candidate) => candidate.check_in_date === arrivalDate) ?? board?.stays[0];
   if (!stay) return null;
-  const g = m.airportGuide;
+  const landing = board?.arrival?.datetime;
   return (
-    <form action={saveStay} className="ag-hotel">
-      <p className="ag-hotel-title">{g.hotelTitle}</p>
-      <p className="ag-note">
-        {stay.name} · {g.hotelBody}
-      </p>
-      <input type="hidden" name="stay_id" value={stay.id} />
-      <DateTimeField name="expected_arrival" defaultValue={toLocalInput(stay.expected_arrival)} language={language} labels={m.date} ariaLabel={g.hotelTitle} />
-      <label className="ag-confirm">
-        <input type="checkbox" name="confirm_arrival" required />
-        {g.hotelConfirm}
-      </label>
-      <button type="submit" className="button-quiet">
-        {g.hotelSave}
-      </button>
-      <p className="ag-note">{g.hotelNote}</p>
-    </form>
+    <HotelArrivalForm
+      stayId={stay.id}
+      stayName={stay.name}
+      defaultValue={toLocalInput(stay.expected_arrival)}
+      landing={landing}
+      landingText={landing ? formatKst(landing, language) : undefined}
+      language={language}
+      m={m}
+    />
   );
 }
 

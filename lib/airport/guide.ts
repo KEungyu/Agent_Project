@@ -2,7 +2,7 @@ import type { LanguageCode } from "../i18n/languages";
 
 // 인천·김포 공항 이용 안내 (도착·출발·환승의 수속 단계, 시설, 교통 연결).
 // 사실은 공식 페이지에서 확인한 범위만 담고, 항목마다 출처 URL·확인 날짜·적용 터미널을 남긴다.
-// 실시간 정보(탑승구·수하물 벨트·지연)는 연동이 없어 다루지 않는다: 화면은 공식 조회 경로만 안내한다.
+// ICN 당일 운항 조회는 flights.ts에서 별도로 처리한다. GMP 실시간은 공식 조회 경로로 안내한다.
 // 확인하지 못한 운영시간·위치는 넣지 않는다(빈 값 = 미확인).
 
 type L = Record<LanguageCode, string>;
@@ -16,11 +16,12 @@ const CHECKED = "2026-10-04";
 export const SOURCES = {
   icnArrival: { url: "https://www.airport.kr/ap_en/1439/subview.do", checkedAt: CHECKED, covers: "ICN arrival procedure" },
   icnDeparture: { url: "https://www.airport.kr/ap_en/1413/subview.do", checkedAt: CHECKED, covers: "ICN departure procedure" },
-  icnFacilities: { url: "https://www.airport.kr/ap_en/1536/subview.do", checkedAt: CHECKED, covers: "ICN Terminal 1 facilities" },
+  // 시설 위치·운영시간은 2026-10-06 공식 목록 재확인. 접근 구역이 불명확한 곳은 unconfirmed.
+  icnFacilities: { url: "https://www.airport.kr/ap_en/1536/subview.do", checkedAt: "2026-10-06", covers: "ICN Terminal 1 facilities" },
   icnRail: { url: "https://www.airport.kr/ap_en/1512/subview.do", checkedAt: CHECKED, covers: "ICN airport railroad" },
   gmpTransport: { url: "https://www.airport.co.kr/gimpo/cms/frCon/index.do?CONTENTS_NO=2&MENU_ID=1290", checkedAt: CHECKED, covers: "GMP shuttle bus" },
   gmpSubway: { url: "https://www.airport.co.kr/gimpo/cms/frCon/index.do?MENU_ID=1290&CONTENTS_NO=4", checkedAt: CHECKED, covers: "GMP rail lines" },
-  gmpFacilities: { url: "https://www.airport.co.kr/gimpo/cms/frCon/index.do?CONTENTS_NO=2&MENU_ID=2390", checkedAt: CHECKED, covers: "GMP facilities" },
+  gmpFacilities: { url: "https://www.airport.co.kr/gimpo/cms/frCon/index.do?CONTENTS_NO=2&MENU_ID=2390", checkedAt: "2026-10-06", covers: "GMP facilities" },
 } satisfies Record<string, Source>;
 
 export const AIRPORT_TERMINALS: Record<AirportCode, Terminal[]> = { ICN: ["T1", "T2"], GMP: ["international", "domestic"] };
@@ -119,7 +120,7 @@ export const FACILITIES: Facility[] = [
     terminal: "T1",
     name: "KB Bank Currency Exchange",
     where: t("1F, near Arrival Hall B", "1階 到着ロビーB付近", "1楼 到达大厅B附近", "1er étage, près du hall d'arrivée B", "Tầng 1, gần sảnh đến B", "ชั้น 1 ใกล้โถงขาเข้า B", "Lantai 1, dekat Aula Kedatangan B", "1.ª planta, junto al vestíbulo de llegadas B", "1층 입국장 B 근처"),
-    area: "public",
+    area: "unconfirmed", // 공식 목록의 이미지 설명은 면세구역, 위치 본문은 입국장 B로 접근 구역 불명확
     hours: "24h",
     stages: ["arrival"],
     source: SOURCES.icnFacilities,
@@ -186,7 +187,7 @@ export const AIRPORT_TRANSPORT: Record<AirportCode, TransportFact[]> = {
   ],
 };
 
-// 공식 운항 정보(실시간 탑승구·벨트·지연)는 마중이가 조회하지 않는다: 각 공항 공식 홈의 운항 정보 메뉴로 보낸다
+// API 미설정·실패·미지원 상황의 공식 운항 확인 경로.
 export const FLIGHT_INFO: Record<AirportCode, Source> = {
   ICN: { url: "https://www.airport.kr/ap_en/index.do", checkedAt: CHECKED, covers: "ICN home with Flight Information menu" },
   GMP: { url: "https://www.airport.co.kr/gimpoeng/index.do", checkedAt: CHECKED, covers: "GMP home with Flight schedule menu" },

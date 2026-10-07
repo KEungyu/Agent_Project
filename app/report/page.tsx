@@ -12,20 +12,21 @@ export default async function ReportPage() {
   await connection();
   const db = getDb();
   const board = getCurrentBoard(db);
-  const { rows, after } = board ? boardReport(db, board.id, board.requests) : { rows: [], after: null };
+  const { rows, after, outcomes } = board ? boardReport(db, board.id, board.requests) : { rows: [], after: null, outcomes: { done: 0, conditional: 0, declined: 0 } };
   const types = loadRequestTypes().types;
   const show = (value: number | null | undefined, unit = "") => (value === null || value === undefined ? "—" : `${value}${unit}`);
 
   const bars: Bar[] = [
     { label: "처리 단계 수", note: "이용자가 직접 한 조작", unit: "", before: BEFORE.steps, after: after?.steps ?? null },
-    { label: "능동 소요 시간", note: "회신 대기 시간 제외", unit: "분", before: BEFORE.activeMinutes, after: after?.activeMinutes ?? null, showReduction: true },
+    // 적용 전(예상치)과 적용 후(기록)는 근거가 달라 줄어든 비율(%)은 보여 주지 않는다
+    { label: "회신 대기 제외 경과 시간", note: "시작~끝 − 회신 대기 · 직접 조작한 시간 아님", unit: "분", before: BEFORE.activeMinutes, after: after?.activeMinutes ?? null },
     { label: "도구·앱 전환", note: "다른 앱·사이트로 이동", unit: "회", before: BEFORE.toolSwitches, after: after?.toolSwitches ?? null },
     { label: "같은 정보 재질문", note: "보드에 있던 값을 다시 물음", unit: "회", before: BEFORE.reAsks, after: after?.reAsks ?? null },
   ];
 
   const compare = [
     { label: "처리 단계 수", note: "이용자가 직접 한 조작", before: `${BEFORE.steps}`, after: show(after?.steps) },
-    { label: "능동 소요 시간", note: "회신 대기 시간 제외", before: `약 ${BEFORE.activeMinutes}분`, after: show(after?.activeMinutes, "분") },
+    { label: "회신 대기 제외 경과 시간", note: "시작~끝 − 회신 대기 · 직접 조작한 시간 아님", before: `약 ${BEFORE.activeMinutes}분`, after: show(after?.activeMinutes, "분") },
     { label: "도구·앱 전환", note: "다른 앱·사이트로 이동", before: `약 ${BEFORE.toolSwitches}회`, after: show(after?.toolSwitches, "회") },
     { label: "같은 정보 재질문", note: "보드에 있던 값을 다시 물음", before: `${BEFORE.reAsks}회 이상`, after: show(after?.reAsks, "회") },
   ];
@@ -52,7 +53,9 @@ export default async function ReportPage() {
       <div className="platform-main">
         <h1 className="sign-title sign-title-h2">
           <span className="sign-title-ko">AI 적용 전/후 비교</span>
-          <span className="sign-title-text">늦은 체크인 문의 기준 · 회신까지 처리된 요청 {rows.length}건 (시연·테스트 기록, 실제 사용자 실측 아님)</span>
+          <span className="sign-title-text">
+            늦은 체크인 문의 기준 · 회신까지 처리된 요청 {rows.length}건 (해결 {outcomes.done} · 조건 충족 전 {outcomes.conditional} · 거절 {outcomes.declined}) · 시연·테스트 기록, 실제 사용자 실측 아님
+          </span>
         </h1>
 
         <section className="sign">
@@ -98,7 +101,8 @@ export default async function ReportPage() {
             </tbody>
           </table>
           <p className="report-note">
-            적용 전 값은 PRD 예상치이고, 적용 후 값은 이 보드에 남은 시연·테스트 요청(모의 발송, 예시 회신 포함)에서 계산했어요. 실제 사용자 성과가 아니에요. 회신 해석 정확도는 가상 회신으로 따로 재요: <code>npm run eval:replies</code> (목표 85%, 이 화면에는 결과가 나오지 않아요).
+            적용 전 값은 PRD 예상치이고, 적용 후 값은 이 보드에 남은 시연·테스트 요청(모의 발송, 예시 회신 포함)에서 계산했어요. 실제 사용자 성과가 아니에요.
+            적용 후 평균은 결과와 관계없이 회신까지 처리한 요청 전체의 평균(처리에 든 수고)이에요. "해결"은 그 문의가 해결됐다는 뜻이고, 새 예약·실제 투숙·여행 목표 달성을 뜻하지 않아요. 조건 충족 전·거절 건은 해결 건수에 들어가지 않아요. 회신 해석 정확도는 가상 회신으로 따로 재요: <code>npm run eval:replies</code> (목표 85%, 이 화면에는 결과가 나오지 않아요).
           </p>
         </section>
 
@@ -116,7 +120,7 @@ export default async function ReportPage() {
                   <th scope="col">요청</th>
                   <th scope="col">결과</th>
                   <th scope="col">조작</th>
-                  <th scope="col">능동 시간</th>
+                  <th scope="col">대기 제외 경과</th>
                   <th scope="col">회신 대기</th>
                   <th scope="col">재질문</th>
                 </tr>
@@ -127,7 +131,7 @@ export default async function ReportPage() {
                     <th scope="row">{types.find((type) => type.id === row.type_id)?.label.ko ?? row.type_id}</th>
                     <td data-label="결과">{STATUS_LABELS[row.status]}{row.status === "conditional" ? " (조건 충족 전)" : ""}</td>
                     <td data-label="조작">{row.steps}</td>
-                    <td data-label="능동 시간">{row.activeMinutes}분</td>
+                    <td data-label="대기 제외 경과">{row.activeMinutes}분</td>
                     <td data-label="회신 대기">{row.waitingMinutes}분</td>
                     <td data-label="재질문">{row.reAsks}</td>
                   </tr>

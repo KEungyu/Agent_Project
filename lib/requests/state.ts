@@ -19,7 +19,9 @@ export const STATUS_LABELS: Record<RequestStatus, string> = {
 
 export const INTERPRETATION_MIN_CONFIDENCE = 0.7;
 
-type Guard = (request: Request, db: Db, actor: Actor) => string | null;
+// 일회성 이용자 확인. 저장 모델을 늘리지 않고 기존 이력 note에 근거를 남긴다.
+export type ConditionConfirmation = { replyId: string; fulfilled: boolean; deadlineMet: boolean };
+type Guard = (request: Request, db: Db, actor: Actor, confirmation?: ConditionConfirmation) => string | null;
 
 type Rule = { actors: Actor[]; guard?: Guard; newRound?: boolean };
 
@@ -73,7 +75,15 @@ const TRANSITIONS: Partial<Record<RequestStatus, Partial<Record<RequestStatus, R
     info_requested: replyOutcome,
   },
   conditional: {
-    done: { actors: ["user"] },
+    done: {
+      actors: ["user"],
+      guard: (request, db, _actor, confirmation) => {
+        const latest = db.select().from(replies).where(eq(replies.request_id, request.id)).orderBy(desc(replies.received_at)).get();
+        if (!latest || confirmation?.replyId !== latest.id) return "최신 회신의 조건을 다시 확인해 주세요";
+        if (confirmation.fulfilled !== true || confirmation.deadlineMet !== true) return "조건 이행과 기한 확인이 필요합니다";
+        return null;
+      },
+    },
     draft: { actors: ["user"], newRound: true },
   },
   info_requested: {
@@ -155,7 +165,7 @@ export function transition(
   requestId: string,
   to: RequestStatus,
   actor: Actor,
-  options: { patch?: RequestPatch; note?: string } = {},
+  options: { patch?: RequestPatch; note?: string; conditionConfirmation?: ConditionConfirmation } = {},
 ): Request {
   const current = getRequest(db, requestId);
   if (!current) throw new TransitionError(`요청 없음: ${requestId}`);
@@ -166,7 +176,7 @@ export function transition(
     ? `허용되지 않은 전이: ${current.status} → ${to}`
     : !rule.actors.includes(actor)
       ? `행위자 ${actor}는 ${current.status} → ${to} 전이를 할 수 없다`
-      : (rule.guard?.(candidate, db, actor) ?? null);
+      : (rule.guard?.(candidate, db, actor, options.conditionConfirmation) ?? null);
 
   if (reason) {
     recordEvent(db, current.board_id, "transition_rejected", { from: current.status, to, actor, reason }, requestId);
@@ -180,7 +190,10 @@ export function transition(
     .set({ ...options.patch, ...roundReset, status: to, updated_at: at })
     .where(eq(requests.id, requestId))
     .run();
-  log(db, current.board_id, requestId, current.status, to, actor, at, options.note);
+  const note = current.status === "conditional" && to === "done"
+    ? `conditions fulfilled; deadline met or none (user confirmed); reply ${options.conditionConfirmation!.replyId}`
+    : options.note;
+  log(db, current.board_id, requestId, current.status, to, actor, at, note);
   return getRequest(db, requestId)!;
 }
 

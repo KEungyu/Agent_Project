@@ -124,7 +124,9 @@ export function ReplyPanel({ requestId, status, reply, m }: Props) {
       ) : (
         <>
           {interpretation?.confirmed_by_user && <p className="reply-confirmed">{r.confirmed}</p>}
-          <FollowUps requestId={requestId} kinds={followUpsFor(status)} m={m} />
+          {/* 조건부: 조건(기한 포함)은 이용자가 직접 해야 하고, 마중이는 대신하지 않는다. 완료는 마친 뒤에만 */}
+          {status === "conditional" && <p className="ag-note">{m.followup.conditionNote}</p>}
+          <FollowUps key={reply.id} requestId={requestId} replyId={reply.id} kinds={followUpsFor(status)} m={m} />
         </>
       )}
     </div>
@@ -139,22 +141,30 @@ const FOLLOW_UP_LABEL: Record<FollowUpKind, keyof Messages["followup"]> = {
 };
 
 // 회신 이후 다음 행동. 결과는 채팅과 요청 노선에 나타난다.
-function FollowUps({ requestId, kinds, m }: { requestId: string; kinds: FollowUpKind[]; m: Messages }) {
+function FollowUps({ requestId, replyId, kinds, m }: { requestId: string; replyId: string; kinds: FollowUpKind[]; m: Messages }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
+  const [fulfilled, setFulfilled] = useState(false);
+  const [deadlineMet, setDeadlineMet] = useState(false);
   if (kinds.length === 0) return null;
   return (
     <div className="followups">
+      {kinds.includes("accept") && (
+        <div>
+          <label className="ag-confirm"><input type="checkbox" checked={fulfilled} onChange={(event) => setFulfilled(event.target.checked)} />{m.followup.accept}</label>
+          <label className="ag-confirm"><input type="checkbox" checked={deadlineMet} onChange={(event) => setDeadlineMet(event.target.checked)} />{m.followup.deadlineConfirm}</label>
+        </div>
+      )}
       {kinds.map((kind, i) => (
         <button
           key={kind}
           type="button"
           className={i === 0 ? "button" : "button-quiet"}
-          disabled={pending}
+          disabled={pending || (kind === "accept" && (!fulfilled || !deadlineMet))}
           onClick={() =>
             startTransition(async () => {
               if (kind !== "accept") document.getElementById("chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              const result = await followUpAction(requestId, kind);
+              const result = await followUpAction(requestId, kind, kind === "accept" ? { replyId, fulfilled, deadlineMet } : undefined);
               setError(result.ok ? undefined : result.error);
             })
           }

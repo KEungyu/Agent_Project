@@ -173,6 +173,11 @@ describe("N03·N05 경로 검색 요청", () => {
 describe("N06 자격 부족·오류·빈 결과·캐시", () => {
   beforeEach(clearOdsayCache);
 
+  it("F2-25 열차 타입이 누락됐으면 일반열차로 추정하지 않는다", async () => {
+    const result = await lookup(99, { env: ENV, fetch: json({ result: { weekdaySchedule: { up: [{ departureTime: "22:10:00", endStationName: "성수" }] } } }) });
+    expect(result.data!.weekday.up[0].express).toBe(true); // 정차역이 검증되지 않은 열차는 제외
+  });
+
   it("키가 없으면 호출하지 않고 unconfigured", async () => {
     const fetcher = vi.fn();
     expect((await lookup(100, { env: {}, fetch: fetcher })).status).toBe("unconfigured");
@@ -202,6 +207,14 @@ describe("N06 자격 부족·오류·빈 결과·캐시", () => {
     expect(first.fetchedAt).toBeTruthy();
     expect(second.cached).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it("F2-08 실패는 캐시하지 않는다: 키·권한을 고친 뒤 바로 다시 조회된다", async () => {
+    const refused = await lookup(8, { env: ENV, fetch: json({ error: [{ code: "500", message: "[ApiKeyAuthFailed]" }] }) });
+    expect(refused.status).toBe("permission");
+    const fixed = await lookup(8, { env: ENV, fetch: json({ result: { weekdaySchedule: { up: [{ departureTime: "23:50", firstLastFlag: 2 }] } } }) });
+    expect(fixed.status).toBe("ok");
+    expect(fixed.cached).toBeFalsy();
   });
 
   it("특수문자가 있는 키는 한 번만 인코딩한다 (원래 키든 이미 인코딩된 키든)", async () => {

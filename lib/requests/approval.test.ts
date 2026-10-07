@@ -68,7 +68,7 @@ describe("approval gate", () => {
     expect(getHistory(db, requestId).filter((entry) => entry.to === "sent")).toHaveLength(1);
   });
 
-  it("승인 후 본문이 한 글자라도 바뀌면 재승인을 요구한다 (저장된 해시까지 바꿔도)", async () => {
+  it("F2-32 승인 후 본문이 한 글자라도 바뀌면 재승인을 요구한다 (저장된 해시까지 바꿔도)", async () => {
     const { db, requestId, mailer } = setup();
     approveRequest(db, requestId, seen(db, requestId));
     const changed = BODY.replace("Emma", "Emme");

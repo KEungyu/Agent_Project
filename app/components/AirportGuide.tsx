@@ -171,7 +171,7 @@ export function AirportGuide({ arrivalAirport, arrivalTerminal, departureAirport
                       <strong>{facility.name}</strong>
                       <span>{facility.where[language]}</span>
                       <span className="ag-fac-meta">
-                        {[facility.hours ?? m.hoursUnknown, facility.area === "public" ? m.areaPublic : ""].filter(Boolean).join(" · ")}
+                        {[facility.hours ?? m.hoursUnknown, facility.area === "public" ? m.areaPublic : m.areaUnknown].filter(Boolean).join(" · ")}
                       </span>
                     </span>
                   </li>
@@ -269,7 +269,7 @@ function LiveStatus({
               <dt>{m.liveScheduled}</dt>
               <dd className="tabular">{flight.scheduled}</dd>
             </div>
-            {flight.estimated && flight.estimated !== flight.scheduled && (
+            {flight.estimated && (
               <div>
                 <dt>{m.liveEstimated}</dt>
                 <dd className="tabular">{flight.estimated}</dd>
@@ -309,7 +309,7 @@ function LiveStatus({
           </dl>
         ))}
       {result?.status === "ok" && result.fetchedAt && (
-        <p className="ag-note">{fmt(m.liveChecked, { time: new Date(result.fetchedAt).toLocaleTimeString(language, { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" }) })}</p>
+        <><p className="ag-note">{m.predictionNote}</p><p className="ag-note">{fmt(m.liveChecked, { time: new Date(result.fetchedAt).toLocaleString(language, { timeZone: "Asia/Seoul" }) })}</p></>
       )}
     </div>
   );

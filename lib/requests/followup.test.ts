@@ -4,9 +4,9 @@ import type { ReplyClass } from "../board/types";
 import { openDb } from "../db/client";
 import { getMessages } from "../i18n/messages";
 import { approvalHash, hashDraft } from "./drafting";
-import { prepareFollowUp } from "./followup";
-import { addReply, applyInterpretation } from "./replies";
-import { createRequest, transition, TransitionError } from "./state";
+import { followUpsFor, prepareFollowUp } from "./followup";
+import { addReply, applyInterpretation, getLatestReply } from "./replies";
+import { createRequest, getHistory, getRequest, transition, TransitionError } from "./state";
 
 const m = getMessages("en");
 const context = { m, where: "Hotel Example Myeongdong", typeLabel: "Late check-in inquiry" };
@@ -37,11 +37,28 @@ function answered(cls: ReplyClass, extra: { conditions?: string[]; requested_inf
 }
 
 describe("follow-ups", () => {
-  it("조건 수락은 바로 완료되고 마중에게 보낼 요청이 없다", () => {
+  it("F2-13 조건부 회신: 먼저 답장을 권하고, '조건을 마쳤어요' 확인으로만 완료한다", () => {
+    expect(followUpsFor("conditional")).toEqual(["reply", "accept"]);
+  });
+
+  it("조건을 마쳤다는 이용자 확인은 완료되고 마중에게 보낼 요청이 없다", () => {
     const { db, requestId } = answered("conditional", { conditions: ["Door code by email"] });
-    const { request, prompt } = prepareFollowUp(db, requestId, "accept", context);
+    const confirmation = { replyId: getLatestReply(db, requestId)!.id, fulfilled: true, deadlineMet: true };
+    const { request, prompt } = prepareFollowUp(db, requestId, "accept", context, confirmation);
     expect(request.status).toBe("done");
     expect(prompt).toBeUndefined();
+    expect(getHistory(db, requestId).at(-1)).toMatchObject({ actor: "user", note: expect.stringContaining(confirmation.replyId) });
+  });
+
+  it("F2-22 조건 이행·기한 확인 없이 또는 지난 회신의 확인으로는 완료할 수 없다", () => {
+    const { db, requestId } = answered("conditional", { conditions: ["Complete online check-in by 22:00 KST"] });
+    const replyId = getLatestReply(db, requestId)!.id;
+    for (const confirmation of [undefined, { replyId, fulfilled: false, deadlineMet: true }, { replyId, fulfilled: true, deadlineMet: false }, { replyId: "old-reply", fulfilled: true, deadlineMet: true }]) {
+      expect(() => prepareFollowUp(db, requestId, "accept", context, confirmation)).toThrow(TransitionError);
+      expect(getRequest(db, requestId)?.status).toBe("conditional");
+    }
+    // 화면·후속 함수 외에서 직접 상태를 바꾸더라도 같은 완료 가드를 거친다.
+    expect(() => transition(db, requestId, "done", "user")).toThrow(TransitionError);
   });
 
   it("조건부 수락에 답장하면 2회차 초안이 되고 조건이 요청 문장에 들어간다", () => {

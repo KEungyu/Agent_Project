@@ -48,7 +48,7 @@ export function createRequestTools(types: RequestType[]): AgentTool[] {
         ? {
             ...check,
             next_step:
-              "Before asking, look at what the traveler already said in this conversation. Save any of these missing details they gave, even loosely (today, tonight, 2 AM), with board_update and check again; if a time tied to today has already passed, confirm the date first. Use ask_user only for what is still unknown.",
+              "Before saving, resolve dates using board_get.now_kst. If the traveler tied an already-past clock time to today, STOP and ask exactly one arrival-date confirmation question using only the proposed YYYY-MM-DD HH:MM KST. Do not repeat the word today or ask about drafting/check-in in that question. Do not save or draft until they confirm. Otherwise save missing details they already gave with board_update and check again. Use ask_user only for what is still unknown.",
           }
         : {
             ...check,

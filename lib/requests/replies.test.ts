@@ -99,7 +99,7 @@ describe("replies", () => {
     expect(contradictory.needs_user_check).toBe(true);
   });
 
-  it("R06: 모델이 '거절'로 읽어도 회신에 요청하지 않은 날짜가 있으면 코드가 이용자 확인으로 넘긴다", async () => {
+  it("F2-34 · R06: 모델이 '거절'로 읽어도 회신에 요청하지 않은 날짜가 있으면 코드가 이용자 확인으로 넘긴다", async () => {
     const llm = fakeLlm([], () => ({ class: "declined", conditions: [], requested_info: [], summary: "…", confidence: 0.95, answers_request: true, matches_requested_time: false, refuses_requested_time: true, contradictory: false, uncertain: false }));
     const facts = { check_in_date: "2026-10-09", expected_arrival: "2026-10-10T01:00+09:00" };
     expect((await interpretReply(llm, type, "10월 11일 새벽 1시 도착은 가능합니다.", "en", facts)).needs_user_check).toBe(true);

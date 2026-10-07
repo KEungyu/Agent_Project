@@ -17,7 +17,7 @@ import { approveAndSend, ApprovalError, retranslateDraft, StaleApprovalError, ty
 import { addReply, applyInterpretation, confirmReplyClass, interpretReply } from "@/lib/requests/replies";
 import { prepareFollowUp } from "@/lib/requests/followup";
 import type { FollowUpKind } from "@/lib/requests/followup-kinds";
-import { getRequest, TransitionError } from "@/lib/requests/state";
+import { getRequest, TransitionError, type ConditionConfirmation } from "@/lib/requests/state";
 import { draftFacts, sanitizeSlots } from "@/lib/requests/drafting";
 import { makePhoneScript, type PhoneScript } from "@/lib/requests/channel";
 import { checkConditions } from "@/lib/requests/conditions";
@@ -30,9 +30,12 @@ import { wonRate, type WonRate } from "@/lib/currency/rates";
 import { kstMinutesOfDay } from "@/lib/time";
 import { searchTransitPaths, subwaySchedule, type OdsayResult, type TransitPath } from "@/lib/transit/odsay";
 import { checkLastTrains, type LastTrainCheck } from "@/lib/transit/lasttrain";
+import { searchScheduledRoutes } from "@/lib/transit/scheduled";
 import { icnFlightStatus, type FlightStatusResult } from "@/lib/airport/flights";
 import { getStation } from "@/lib/transit/subway";
 import { nearestStations } from "@/lib/transit/nearest";
+import { EXTERNAL_RESULTS, externalResults, recordExternalResult, type ExternalResult } from "@/lib/external/results";
+import { isExternalAction } from "@/lib/external/links";
 
 // 로그인 없이 이용자 1명이 쓰는 로컬 앱이다 (ARCHITECTURE A1). 인증 검사는 두지 않는다.
 
@@ -205,8 +208,8 @@ export async function dismissAlertAction(ruleId: RuleId, targetId: string) {
   revalidatePath("/");
 }
 
-// 회신 이후 다음 행동. 조건 수락은 바로 완료, 나머지는 초안으로 돌리고 마중에게 후속 요청을 맡긴다.
-export async function followUpAction(requestId: string, kind: FollowUpKind): Promise<ChatResult | ApprovalResult> {
+// 조건 이행·기한을 최신 회신 기준으로 확인한 뒤 완료한다. 나머지는 후속 요청을 준비한다.
+export async function followUpAction(requestId: string, kind: FollowUpKind, confirmation?: ConditionConfirmation): Promise<ChatResult | ApprovalResult> {
   const db = getDb();
   const board = ensureBoard(db);
   try {
@@ -216,7 +219,7 @@ export async function followUpAction(requestId: string, kind: FollowUpKind): Pro
     const type = loadRequestTypes().types.find((candidate) => candidate.id === request.type_id);
     const where = (request.target_id && getStay(db, request.target_id)?.name) || m.agent.theBusiness;
     const typeLabel = type?.label[board.user_language] ?? type?.label.en ?? request.type_id;
-    const { prompt } = prepareFollowUp(db, requestId, kind, { m, where, typeLabel });
+    const { prompt } = prepareFollowUp(db, requestId, kind, { m, where, typeLabel }, confirmation);
     if (!prompt) return { ok: true };
     return await runChatTurn(prompt);
   } catch (error) {
@@ -324,10 +327,18 @@ export async function callScriptAction(requestId: string): Promise<CallScriptRes
 // 지하철 경로의 시간·요금은 ODsay로만 조회한다 (버스는 다루지 않는다). 출발·도착 좌표는 노선도 데이터의 역 좌표만 쓴다(임의 좌표 없음).
 // ODSAY_API_KEY가 없으면 호출하지 않고 "unconfigured"를 돌려준다 — 화면은 역 연결 경로와 공식 대안을 보여 준다.
 // 경로마다 지하철 구간의 막차를 확인해 함께 돌려준다 (지금 출발 기준 추정, N04)
+export async function scheduledTransitAction(fromId: string, toId: string, departure: string, holiday = false) {
+  const from = getStation(fromId);
+  const to = getStation(toId);
+  if (!from || !to || from.id === to.id) return { status: "empty" as const };
+  return searchScheduledRoutes(from, to, departure, holiday);
+}
+
 export async function transitPathsAction(
   fromId: string,
   toId: string,
   language: string,
+  holiday = false,
 ): Promise<OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>> {
   const from = getStation(fromId);
   const to = getStation(toId);
@@ -337,7 +348,7 @@ export async function transitPathsAction(
   // 막차는 첫 번째(추천) 경로만 확인한다: 시간표 조회가 구간마다 한 번씩 들어 하루 호출 한도를 빨리 쓰기 때문
   const now = new Date();
   const [first, ...rest] = result.data;
-  const lastTrain = await checkLastTrains(first, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode));
+  const lastTrain = await checkLastTrains(first, now, (stationID, wayCode) => subwaySchedule(stationID, wayCode), undefined, holiday);
   return { ...result, data: [{ ...first, lastTrain }, ...rest] };
 }
 
@@ -370,4 +381,16 @@ export async function flightStatusAction(direction: "arrival" | "departure", lan
   const flight = direction === "arrival" ? board.arrival : board.departure;
   if (!flight?.flight_no || !flight.datetime || flight.airport !== "ICN") return { status: "empty" };
   return icnFlightStatus(direction, flight.flight_no, flight.datetime, isLanguageCode(language) ? language : "en");
+}
+
+// 외부 예약 사이트에서 이용자가 직접 한 결과를 이용자 기록으로 남긴다 (마중이는 확인하지 못한다)
+export async function recordExternalResultAction(action: unknown, result: string, confirmed = false): Promise<{ ok: boolean }> {
+  if (!isExternalAction(action) || !(EXTERNAL_RESULTS as readonly string[]).includes(result)) return { ok: false };
+  const db = getDb();
+  return { ok: recordExternalResult(db, ensureBoard(db).id, action, result as ExternalResult, confirmed) };
+}
+
+export async function externalResultsAction(): Promise<Record<string, ExternalResult>> {
+  const db = getDb();
+  return externalResults(db, ensureBoard(db).id);
 }

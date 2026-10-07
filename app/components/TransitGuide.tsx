@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent } from "react";
-import { placeStationsAction, transitPathsAction, type PlaceStations } from "@/app/actions";
+import { placeStationsAction, transitPathsAction, scheduledTransitAction, type PlaceStations } from "@/app/actions";
 import { fmt, type Messages } from "@/lib/i18n/messages";
 import type { OdsayResult, TransitPath } from "@/lib/transit/odsay";
 import type { LastTrainCheck } from "@/lib/transit/lasttrain";
+import type { ScheduledRoutes } from "@/lib/transit/scheduled";
+import { scheduledDeparture } from "@/lib/transit/schedule-time";
 import {
   MAP_BBOX,
   SUBWAY,
@@ -49,41 +51,65 @@ export type TransitPlace = { label: string; query: string };
 type Field = "from" | "to";
 type PlaceNote = { label: string; meters: number };
 type OnlinePaths = OdsayResult<(TransitPath & { lastTrain?: LastTrainCheck })[]>;
+type Arrival = { airport?: string; datetime?: string };
 
-export function TransitGuide({ language, m, places = [] }: { language: string; m: M; places?: TransitPlace[] }) {
+export function TransitGuide({ language, m, places = [], arrival }: { language: string; m: M; places?: TransitPlace[]; arrival?: Arrival }) {
   return (
     <section className="transit" aria-label={m.title}>
       <p className="transit-area">{m.area}</p>
-      <SubwayPanel language={language} m={m} places={places} />
+      <SubwayPanel language={language} m={m} places={places} arrival={arrival} />
     </section>
   );
 }
 
-function SubwayPanel({ language, m, places }: { language: string; m: M; places: TransitPlace[] }) {
+function SubwayPanel({ language, m, places, arrival }: { language: string; m: M; places: TransitPlace[]; arrival?: Arrival }) {
   const [selected, setSelected] = useState<SubwayStation | null>(null);
   const [from, setFrom] = useState<SubwayStation | null>(null);
   const [to, setTo] = useState<SubwayStation | null>(null);
   const [route, setRoute] = useState<SubwayRoute | null>(null);
   const [online, setOnline] = useState<OnlinePaths | null>(null);
+  const [scheduled, setScheduled] = useState<OdsayResult<ScheduledRoutes> | null>(null);
+  const [holiday, setHoliday] = useState(false); // 이용자가 "오늘은 공휴일"이라고 고르면 휴일 시간표로 막차를 다시 본다
+  const [departure, setDeparture] = useState("");
+  const [departureConfirmed, setDepartureConfirmed] = useState(false);
+  const airportFrom = from?.ko.startsWith("인천공항") ? "ICN" : from?.ko === "김포공항" ? "GMP" : undefined;
+  const selectedDeparture = airportFrom ? departure : "";
+  const beforeLanding = !!selectedDeparture && airportFrom === arrival?.airport && !!arrival?.datetime && Date.parse(`${selectedDeparture}:00+09:00`) < Date.parse(arrival.datetime);
   const [focusLine, setFocusLine] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [notes, setNotes] = useState<Partial<Record<Field, PlaceNote>>>({});
   const [placeResult, setPlaceResult] = useState<{ field: Field; label: string; result: PlaceStations } | null>(null);
   const [placePending, startPlace] = useTransition();
 
+  useEffect(() => { setDepartureConfirmed(false); }, [arrival?.datetime, airportFrom]);
+
   // 출발·도착이 모두 정해지면 바로 경로를 찾는다
   useEffect(() => {
     if (!from || !to || from.id === to.id) {
       setRoute(null);
       setOnline(null);
+      setScheduled(null);
       return;
     }
     setRoute(subwayRoute(from.id, to.id));
     setOnline(null);
-    startTransition(async () => setOnline(await transitPathsAction(from.id, to.id, language)));
-  }, [from, to, language]);
+    setScheduled(null);
+    if (selectedDeparture && !departureConfirmed) return;
+    let active = true;
+    startTransition(async () => {
+      if (selectedDeparture) {
+        const result = await scheduledTransitAction(from.id, to.id, selectedDeparture, holiday);
+        if (active) setScheduled(result);
+      } else {
+        const result = await transitPathsAction(from.id, to.id, language, holiday);
+        if (active) setOnline(result);
+      }
+    });
+    return () => { active = false; };
+  }, [from, to, language, holiday, selectedDeparture, departureConfirmed]);
 
   const choose = (field: Field, station: SubwayStation | null, note?: PlaceNote) => {
+    setDepartureConfirmed(false);
     setNotes((current) => ({ ...current, [field]: note }));
     setPlaceResult(null);
     if (field === "from") setFrom(station);
@@ -96,6 +122,7 @@ function SubwayPanel({ language, m, places }: { language: string; m: M; places: 
   };
   const nextField = (): Field => (from ? "to" : "from");
   const swap = () => {
+    setDepartureConfirmed(false);
     setFrom(to);
     setTo(from);
     setNotes({ from: notes.to, to: notes.from });
@@ -162,6 +189,17 @@ function SubwayPanel({ language, m, places }: { language: string; m: M; places: 
             onPlace={(text) => searchPlace("to", text, text)}
           />
         </div>
+        {airportFrom && (
+          <div className="airport-departure">
+            <label className="label">{m.airportDeparture}
+              <input className="field" type="datetime-local" value={departure} onChange={(event) => { setDeparture(event.target.value); setDepartureConfirmed(false); }} />
+            </label>
+            {airportFrom === arrival?.airport && arrival.datetime && <p className="ag-note">{fmt(m.plannedLanding, { time: new Date(arrival.datetime).toLocaleString(language, { timeZone: "Asia/Seoul" }) })}</p>}
+            {beforeLanding && <p className="ag-warn" role="status">{m.departureBeforeLanding}</p>}
+            {selectedDeparture && <label className="ag-confirm"><input type="checkbox" checked={departureConfirmed} onChange={(event) => setDepartureConfirmed(event.target.checked)} />{m.departureConfirm}</label>}
+            {selectedDeparture && <label className="ag-confirm"><input type="checkbox" checked={holiday} onChange={(event) => { setHoliday(event.target.checked); setDepartureConfirmed(false); }} />{m.scheduleHoliday}</label>}
+          </div>
+        )}
         <div className="transit-quick" role="group" aria-label={m.airports}>
           <span>{m.airports}</span>
           {AIRPORT_STATIONS.map(({ ko, short }) => {
@@ -195,8 +233,10 @@ function SubwayPanel({ language, m, places }: { language: string; m: M; places: 
       {route && (
         <section className="transit-online" aria-live="polite">
           <p className="tips-col-title">{m.timesTitle}</p>
+          {selectedDeparture && !departureConfirmed && <p className="ag-note" role="status">{m.departureConfirm}</p>}
+          {selectedDeparture && scheduled && <ScheduledResult result={scheduled} departure={selectedDeparture} language={language} m={m} holiday={holiday} />}
           {pending && <p className="ag-note">…</p>}
-          {online && <OnlineResult result={online} language={language} m={m} />}
+          {!selectedDeparture && online && <OnlineResult result={online} language={language} m={m} holiday={holiday} onHoliday={setHoliday} />}
         </section>
       )}
     </div>
@@ -539,7 +579,7 @@ function lineText(name: string, language: string) {
 const clockTime = (iso: string, language: string) =>
   new Date(iso).toLocaleTimeString(language, { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
 
-function LastTrain({ check, language, m }: { check: LastTrainCheck; language: string; m: M }) {
+function LastTrain({ check, language, m, holiday, onHoliday }: { check: LastTrainCheck; language: string; m: M; holiday: boolean; onHoliday: (value: boolean) => void }) {
   const day = check.dayType === "weekday" ? m.dayWeekday : check.dayType === "saturday" ? m.daySaturday : m.dayHoliday;
   return (
     <div className={`last-train is-${check.status}`} role="status">
@@ -558,16 +598,23 @@ function LastTrain({ check, language, m }: { check: LastTrainCheck; language: st
         {check.busNotChecked && <li>{m.busNotChecked}</li>}
       </ul>
       <p className="ag-note">{fmt(m.dayNote, { day })}</p>
+      <p className="ag-note">{m.serviceDayUnverified}</p>
+      <label className="ag-confirm">
+        <input type="checkbox" checked={holiday} onChange={(e) => onHoliday(e.target.checked)} />
+        {m.holidayToggle}
+      </label>
     </div>
   );
 }
 
-function OnlineResult({ result, language, m }: { result: OnlinePaths; language: string; m: M }) {
+function OnlineResult({ result, language, m, holiday, onHoliday }: { result: OnlinePaths; language: string; m: M; holiday: boolean; onHoliday: (value: boolean) => void }) {
   if (result.status !== "ok" || !result.data) {
     return (
       <>
         <p className={result.status === "unconfigured" ? "ag-note" : "ag-warn"} role="status">
           {fmt(m[STATUS_KEY[result.status as keyof typeof STATUS_KEY]], { code: result.code ?? "" })}
+          {/* 원인 구분용 제공사 코드 (예: ApiKeyAuthFailed = 키·등록 IP 문제). 키 값은 담지 않는다 */}
+          {result.code && (result.status === "permission" || result.status === "limit") && <span> ({result.code})</span>}
         </p>
         <OfficialLinks m={m} />
       </>
@@ -605,7 +652,7 @@ function OnlineResult({ result, language, m }: { result: OnlinePaths; language: 
                 ),
               )}
             </ol>
-            {path.lastTrain && <LastTrain check={path.lastTrain} language={language} m={m} />}
+            {path.lastTrain && <LastTrain check={path.lastTrain} language={language} m={m} holiday={holiday} onHoliday={onHoliday} />}
           </li>
         ))}
       </ul>
@@ -613,6 +660,33 @@ function OnlineResult({ result, language, m }: { result: OnlinePaths; language: 
       <OfficialLinks m={m} />
     </>
   );
+}
+
+function ScheduledResult({ result, departure, language, m, holiday }: { result: OdsayResult<ScheduledRoutes>; departure: string; language: string; m: M; holiday: boolean }) {
+  const day = scheduledDeparture(departure, holiday)?.day;
+  const dayLabel = day === 3 ? m.dayHoliday : day === 2 ? m.daySaturday : m.dayWeekday;
+  const notice = result.data?.notice;
+  return <>
+    <p className="ag-note">{departure.replace("T", " ")} KST · {dayLabel}</p>
+    <p className="ag-note">{m.scheduleNote}</p>
+    {result.code === "service_day_unverified" ? <p className="ag-warn" role="status">{m.serviceDayUnverified}</p> :
+      result.status === "empty" ? <p className="ag-warn" role="status">{m.scheduleEmpty}</p> :
+      result.status !== "ok" ? <OnlineResult result={{ status: result.status, code: result.code }} language={language} m={m} holiday={holiday} onHoliday={() => {}} /> :
+      <>
+        {notice !== "normal" && <p className="ag-warn" role="status">{notice === "first" ? m.scheduleFirst : notice === "last" ? m.scheduleLast : m.scheduleUnknown}</p>}
+        {/* 대체·미상 결과는 요청 시각 경로로 사용할 수 없으므로 경로 카드를 내보내지 않는다. */}
+        {notice === "normal" && <ul className="transit-paths">{result.data?.paths.map((path, index) => <li key={index}>
+          <p className="transit-summary"><strong>{path.departure} → {path.arrival} KST</strong><span>{fmt(m.minutes, { n: path.minutes })}</span><span>{fmt(m.fare, { n: path.fare.toLocaleString() })}</span><span>{path.transfers ? fmt(m.transfers, { n: path.transfers }) : m.noTransfers}</span></p>
+          <ol className="transit-path-legs">{path.legs.map((leg, i) => <li key={i}>
+            {leg.transfer ? <strong>{fmt(m.transfers, { n: 1 })}</strong> : <><strong>{lineText(leg.line, language)}</strong> {stationText(leg.from, language)} → {stationText(leg.to, language)}</>} · {leg.departure} → {leg.arrival}
+            {leg.express && <span> · {m.scheduleExpress}</span>}
+            {leg.transfer && <span> · {fmt(m.minutes, { n: leg.minutes })}</span>}
+          </li>)}</ol>
+        </li>)}</ul>}
+        {result.fetchedAt && <p className="ag-note">{fmt(m.checkedAt, { time: new Date(result.fetchedAt).toLocaleString(language, { timeZone: "Asia/Seoul" }) })}</p>}
+      </>}
+    <OfficialLinks m={m} />
+  </>;
 }
 
 // ── 지하철 지도 ───────────────────────────────────────────

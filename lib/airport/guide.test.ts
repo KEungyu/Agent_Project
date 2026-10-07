@@ -43,7 +43,7 @@ describe("공항 단계별 안내", () => {
   });
 
   it("A03 시설은 출처가 있고, 확인하지 못한 터미널은 비워 둔다", () => {
-    for (const facility of FACILITIES) expect(facility.source.checkedAt).toBe("2026-10-04");
+    for (const facility of FACILITIES) expect(facility.source.checkedAt).toBe("2026-10-06"); // 2026-10-06 공식 페이지 재확인
     expect(facilitiesFor("ICN", "T2", "arrival")).toEqual([]);
     const gmpSim = facilitiesFor("GMP", "international", "arrival").find((facility) => facility.kind === "sim");
     expect(gmpSim?.hours).toBeUndefined(); // 운영시간 미확인

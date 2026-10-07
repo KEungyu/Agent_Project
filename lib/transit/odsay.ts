@@ -1,7 +1,9 @@
 // ODsay 대중교통 API 어댑터 (지하철 경로 검색 · 지하철역 시간표). 버스는 다루지 않는다.
 // 엔드포인트·파라미터·출력 필드는 공식 레퍼런스(https://lab.odsay.com/guide/releaseReference?platform=web, 2026-10-04 확인)를 따랐다.
-// 팀에 발급된 키가 없어 실제 호출 결과는 확인하지 못했다(미완료). 키가 없으면 호출하지 않고 "unconfigured"를 돌려준다.
-// 경로 검색에는 출발 날짜·시각 파라미터가 없다: 결과는 현재 기준 일반 경로이며, 특정 시각의 운행·막차·환승 가능을 보장하지 않는다.
+// 서버 플랫폼 키로 로컬에서 실제 호출을 확인했다(2026-10-04·06). 키는 서버에서만 읽고 화면으로 보내지 않는다. 키가 없으면 호출하지 않고 "unconfigured".
+// 상태: 미설정 / 권한 거부(키·등록 IP) / 하루 한도 / 시간 초과 / 오류 / 빈 결과 / 지역 밖 / 700m 이내. 성공한 결과만 잠시 캐시한다(실패는 캐시하지 않음).
+// 여기서 쓰는 경로 검색(searchPubTransPathT)에는 출발 시각 파라미터가 없다: 결과는 "지금 기준" 일반 경로다.
+// 시각 지정 조회는 scheduled.ts의 subwayPathSchedule 경로를 사용한다.
 
 const BASE = "https://api.odsay.com/v1/api";
 const TIMEOUT_MS = 10_000;
@@ -41,7 +43,7 @@ const LANG: Record<string, number> = { ko: 0, en: 1, ja: 2, "zh-CN": 3, vi: 5 };
 const langParam = (language: string, env: Record<string, string | undefined> = process.env): Record<string, number> =>
   env.ODSAY_MULTILANG === "1" ? { lang: LANG[language] ?? 1 } : {};
 
-async function call<T>(
+export async function callOdsay<T>(
   path: string,
   params: Record<string, string | number>,
   parse: (result: Record<string, unknown>) => T | null,
@@ -99,7 +101,7 @@ export function searchTransitPaths(
   language: string,
   options: Options = {},
 ): Promise<OdsayResult<TransitPath[]>> {
-  return call(
+  return callOdsay(
     "searchPubTransPathT",
     // SearchPathType 1 = 지하철만 (버스·버스+지하철 경로는 받지 않는다)
     { SX: from.lon, SY: from.lat, EX: to.lon, EY: to.lat, SearchPathType: 1, ...langParam(language, options.env) },
@@ -145,7 +147,7 @@ export type SubwayDeparture = { time: string; lastFlag: boolean; express: boolea
 export type SubwaySchedule = Record<DayType, { up: SubwayDeparture[]; down: SubwayDeparture[] }>;
 
 export function subwaySchedule(stationID: number, wayCode: number | undefined, options: Options = {}): Promise<OdsayResult<SubwaySchedule>> {
-  return call(
+  return callOdsay(
     "searchSubwaySchedule",
     { stationID, ...(wayCode ? { wayCode } : {}) },
     (result) => {
@@ -153,7 +155,7 @@ export function subwaySchedule(stationID: number, wayCode: number | undefined, o
         list((block as Record<string, unknown> | undefined)?.[key]).map((d) => ({
           time: str(d.departureTime),
           lastFlag: num(d.firstLastFlag) === 2 || num(d.firstLastFlag) === 3,
-          express: num(d.subwayClass) > 0,
+          express: d.subwayClass !== 0 && d.subwayClass !== "0", // 누락·알 수 없는 타입도 정차역 미확인으로 제외
           to: str(d.endStationName),
         }));
       const day = (key: string) => ({ up: side(result[key], "up"), down: side(result[key], "down") });

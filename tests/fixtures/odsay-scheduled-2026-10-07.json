@@ -1,0 +1,186 @@
+{
+  "result": {
+    "notificationCode": 0,
+    "notificationMessage": "정상적으로 조회 되었습니다",
+    "path": [
+      {
+        "pathType": 1,
+        "info": {
+          "day": 1,
+          "totalTime": 59,
+          "subwayTravelTime": 46,
+          "exchangeWalkTime": 8,
+          "subwayTravelDistance": 59500,
+          "firstStartStationName": "인천공항1터미널",
+          "firstStartLaneID": 101,
+          "firstStartLaneName": "공항철도",
+          "lastEndStationName": "명동",
+          "lastEndLaneID": 4,
+          "lastEndLaneName": "4호선",
+          "departureTime": "21:03:00",
+          "arrivalTime": "22:02:00",
+          "stationCount": 3,
+          "transferCount": 1,
+          "cardFare": 4750
+        },
+        "subPath": [
+          {
+            "movingType": 1,
+            "sectionTime": 43,
+            "laneID": 101,
+            "laneName": "공항철도",
+            "isExpressLane": "Y",
+            "startName": "인천공항1터미널",
+            "endName": "서울역",
+            "startID": 4010,
+            "endID": 4001,
+            "departureTime": "21:03:00",
+            "arrivalTime": "21:46:30",
+            "stopStationCount": 1,
+            "wayCode": 1,
+            "wayName": "서울역",
+            "fastTrain": 5,
+            "fastDoor": 1,
+            "passStopList": {
+              "stations": [
+                {
+                  "index": 0,
+                  "stationID": 4010,
+                  "stationName": "인천공항1터미널",
+                  "travelTime": 0,
+                  "departureTime": "21:03:00",
+                  "isStop": "Y"
+                },
+                {
+                  "index": 1,
+                  "stationID": 4009,
+                  "stationName": "공항화물청사",
+                  "isStop": "N"
+                },
+                {
+                  "index": 2,
+                  "stationID": 4008,
+                  "stationName": "운서",
+                  "isStop": "N"
+                },
+                {
+                  "index": 3,
+                  "stationID": 4012,
+                  "stationName": "영종",
+                  "isStop": "N"
+                },
+                {
+                  "index": 4,
+                  "stationID": 4011,
+                  "stationName": "청라국제도시",
+                  "isStop": "N"
+                },
+                {
+                  "index": 5,
+                  "stationID": 4007,
+                  "stationName": "검암",
+                  "isStop": "N"
+                },
+                {
+                  "index": 6,
+                  "stationID": 4006,
+                  "stationName": "계양",
+                  "isStop": "N"
+                },
+                {
+                  "index": 7,
+                  "stationID": 4005,
+                  "stationName": "김포공항",
+                  "isStop": "N"
+                },
+                {
+                  "index": 8,
+                  "stationID": 4020,
+                  "stationName": "마곡나루",
+                  "isStop": "N"
+                },
+                {
+                  "index": 9,
+                  "stationID": 4004,
+                  "stationName": "디지털미디어시티",
+                  "isStop": "N"
+                },
+                {
+                  "index": 10,
+                  "stationID": 4003,
+                  "stationName": "홍대입구",
+                  "isStop": "N"
+                },
+                {
+                  "index": 11,
+                  "stationID": 4002,
+                  "stationName": "공덕",
+                  "isStop": "N"
+                },
+                {
+                  "index": 12,
+                  "stationID": 4001,
+                  "stationName": "서울역",
+                  "travelTime": 43,
+                  "arrivalTime": "21:46:30",
+                  "isStop": "Y"
+                }
+              ]
+            }
+          },
+          {
+            "movingType": 2,
+            "sectionTime": 8,
+            "departureTime": "21:46:30",
+            "arrivalTime": "21:54:30"
+          },
+          {
+            "movingType": 1,
+            "sectionTime": 3,
+            "laneID": 4,
+            "laneName": "4호선",
+            "isExpressLane": "N",
+            "startName": "서울역",
+            "endName": "명동",
+            "startID": 426,
+            "endID": 424,
+            "departureTime": "21:59:00",
+            "arrivalTime": "22:02:00",
+            "stopStationCount": 2,
+            "wayCode": 1,
+            "wayName": "불암산",
+            "passStopList": {
+              "stations": [
+                {
+                  "index": 0,
+                  "stationID": 426,
+                  "stationName": "서울역",
+                  "travelTime": 0,
+                  "departureTime": "21:59:00",
+                  "isStop": "Y"
+                },
+                {
+                  "index": 1,
+                  "stationID": 425,
+                  "stationName": "회현",
+                  "travelTime": 1,
+                  "arrivalTime": "22:00:30",
+                  "departureTime": "22:01:00",
+                  "isStop": "Y"
+                },
+                {
+                  "index": 2,
+                  "stationID": 424,
+                  "stationName": "명동",
+                  "travelTime": 3,
+                  "arrivalTime": "22:02:00",
+                  "isStop": "Y"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

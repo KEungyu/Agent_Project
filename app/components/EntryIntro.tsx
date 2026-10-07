@@ -129,6 +129,8 @@ export function EntryIntro({ m, ko, language, stamp, hasTrip, languagePicker }: 
               {m.resume}
             </button>
           )}
+          {/* 이어지는 범위를 정직하게: 여행 보드는 서버 DB에, 채팅은 서버 메모리에 있다 */}
+          {hasTrip && <p className="intro-note">{m.resumeNote}</p>}
         </section>
 
         <figure className="intro-buddy is-right" aria-hidden="true">
