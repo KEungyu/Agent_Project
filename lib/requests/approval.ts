@@ -71,6 +71,7 @@ function changedFacts(db: Db, request: Request): string[] {
 
 export function approveRequest(db: Db, requestId: string, seen: SeenVersion): Request {
   const request = load(db, requestId);
+  requireIdle(db, request);
   if (request.status !== "pending_approval" || !request.draft) throw new ApprovalError("승인 대기 중인 초안이 아니다");
   const to = requestRecipient(db, request);
   // 화면에서 본 원문·수신처가 지금 서버의 값과 같을 때만 승인한다 (오래된 카드에서 최신 초안을 승인하지 않게)
@@ -100,6 +101,10 @@ export function approveRequest(db: Db, requestId: string, seen: SeenVersion): Re
 // 같은 요청을 동시에 두 번 처리하지 않는다 (빠른 중복 클릭·재시도)
 const inFlight = new Set<string>();
 
+function requireIdle(db: Db, request: Request) {
+  if (inFlight.has(request.id)) reject(db, request, "이미 처리 중이다");
+}
+
 export async function sendApproved(db: Db, requestId: string, mailer: Mailer): Promise<Request> {
   const request = load(db, requestId);
   if (request.status !== "pending_approval" || !request.draft) reject(db, request, "승인 대기 중인 초안이 아니다");
@@ -109,12 +114,22 @@ export async function sendApproved(db: Db, requestId: string, mailer: Mailer): P
   // 저장된 해시가 아니라 지금의 원문·수신처로 다시 계산해 승인 당시와 비교한다
   const hash = approvalHash(request.draft.subject_ko, request.draft.body_ko, to);
   if (request.approval.draft_hash !== hash) reject(db, request, "승인 후 본문이나 수신처가 바뀌었다: 재승인 필요");
-  if (inFlight.has(requestId)) reject(db, request, "이미 처리 중이다");
+  requireIdle(db, request);
 
   inFlight.add(requestId);
   try {
-    // 승인 해시를 멱등키로 넘겨, 실제 발송 서비스에서도 같은 승인 버전이 두 번 나가지 않게 한다
-    const result = await mailer.send({ to, subject: request.draft.subject_ko, body: request.draft.body_ko, idempotencyKey: hash });
+    // 같은 요청의 재시도만 합치고, 새 시연 요청은 내용이 같아도 별도로 처리한다.
+    const result = await mailer.send({ to, subject: request.draft.subject_ko, body: request.draft.body_ko, idempotencyKey: `${requestId}:${hash}` });
+    const latest = load(db, requestId);
+    if (latest.status !== "pending_approval" || !latest.draft || latest.approval?.draft_hash !== hash ||
+      approvalHash(latest.draft.subject_ko, latest.draft.body_ko, requestRecipient(db, latest) ?? "") !== hash) {
+      // 외부 접수는 되돌릴 수 없으므로 변경된 초안을 발송됨으로 표시하지 않고 접수 근거를 남긴다.
+      recordEvent(db, request.board_id, "transition_rejected", {
+        from: latest.status, to: "sent", actor: "system", reason: "send_accepted_after_change",
+        message_id: result.message_id, mode: result.mode, recipient: to, approved_hash: hash,
+      }, requestId);
+      throw new ApprovalError("발송 처리 중 초안이나 수신처가 바뀌었습니다. 다시 보내지 말고 발송 기록을 확인해 주세요.");
+    }
     const sent = { at: new Date().toISOString(), message_id: result.message_id, mode: result.mode, to };
     transition(db, requestId, "sent", "system", { patch: { sent, channel: "email" } });
     return transition(db, requestId, "awaiting_reply", "system");
@@ -136,6 +151,7 @@ export async function approveAndSend(db: Db, requestId: string, mailer: Mailer, 
 
 export function requestChanges(db: Db, requestId: string, note: string): Request {
   const request = load(db, requestId);
+  requireIdle(db, request);
   recordEvent(db, request.board_id, "user_action", { action: "request_changes" }, requestId);
   return transition(db, requestId, "draft", "user", { note: note || undefined });
 }
@@ -144,8 +160,14 @@ export function requestChanges(db: Db, requestId: string, note: string): Request
 // 한국어 원문은 그대로라 승인용 해시도 바뀌지 않는다.
 export async function retranslateDraft(db: Db, llm: LlmClient, requestId: string, language: string): Promise<Request> {
   const request = load(db, requestId);
+  requireIdle(db, request);
   if (request.status !== "pending_approval" || !request.draft) throw new ApprovalError("승인 대기 중인 초안이 아니다");
   const back_translation = await backTranslate(llm, request.draft.subject_ko, request.draft.body_ko, language);
+  const latest = load(db, requestId);
+  requireIdle(db, latest);
+  if (latest.status !== "pending_approval" || latest.draft?.hash !== request.draft.hash) {
+    throw new ApprovalError("번역 중 초안이 바뀌었습니다. 최신 초안을 확인해 주세요.");
+  }
   const draft = { ...request.draft, back_translation, back_translation_language: language };
   db.update(requests).set({ draft }).where(eq(requests.id, requestId)).run();
   recordEvent(db, request.board_id, "user_action", { action: "retranslate", language }, requestId);

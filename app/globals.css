@@ -2575,6 +2575,16 @@ ul {
   padding: 0 16px 40px;
   font-size: 13px;
 }
+.demo-loader {
+  max-width: 1240px;
+  margin: 20px auto 0;
+  padding: 0 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.demo-loader p {
+  margin: 6px 0 0;
+}
 .platform-footer a {
   color: var(--ink-2);
   text-underline-offset: 3px;

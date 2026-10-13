@@ -6,7 +6,7 @@ import { seedDemoBoard } from "../board/demo";
 import { saveStayForm } from "../board/forms";
 import { listEvents } from "../board/store";
 import { openDb } from "../db/client";
-import { createMockMailer, createRealMailer, getMailer, MailError } from "../mail/mailer";
+import { createMockMailer, createRealMailer, getMailer, MailError, type Mail, type Mailer, type SendResult } from "../mail/mailer";
 import { fakeLlm } from "../agent/testing";
 import { eq } from "drizzle-orm";
 import { requests } from "../db/schema";
@@ -219,5 +219,103 @@ describe("실제 메일 어댑터 (모의 HTTP, 실제 발송 없음)", () => {
     const unknown = { mode: "real" as const, send: async () => Promise.reject(new MailError("no answer", "unknown")) };
     await expect(approveAndSend(db, requestId, unknown, seen(db, requestId))).rejects.toThrow(/확인할 수 없다/);
     expect(getRequest(db, requestId)!.status).toBe("pending_approval");
+  });
+});
+
+describe("발송 처리 중 승인·초안 보존 (모의 메일러, 외부 발송 없음)", () => {
+  function deferredMailer() {
+    const calls: Mail[] = [];
+    let resolve!: (result: SendResult) => void;
+    const mailer: Mailer = {
+      mode: "mock",
+      send(mail) {
+        calls.push(mail);
+        return new Promise<SendResult>((done) => { resolve = done; });
+      },
+    };
+    return { mailer, calls, finish: () => resolve({ mode: "mock", message_id: "mock-in-flight" }) };
+  }
+
+  it("발송 중 재승인·수정·재번역을 거절하고 첫 승인과 발송 본문을 그대로 보존한다", async () => {
+    const { db, requestId } = setup();
+    const delivery = deferredMailer();
+    const sending = approveAndSend(db, requestId, delivery.mailer, seen(db, requestId));
+    const approved = getRequest(db, requestId)!.approval;
+    const llm = fakeLlm([], () => ({ subject: "New translation", body: "New translation" }));
+
+    expect(() => approveRequest(db, requestId, seen(db, requestId))).toThrow(/처리 중/);
+    expect(() => requestChanges(db, requestId, "Change the message")).toThrow(/처리 중/);
+    await expect(retranslateDraft(db, llm, requestId, "ja")).rejects.toThrow(/처리 중/);
+    expect(llm.structured).not.toHaveBeenCalled();
+    expect(getRequest(db, requestId)!.approval).toEqual(approved);
+    expect(delivery.calls).toHaveLength(1);
+
+    delivery.finish();
+    expect((await sending).status).toBe("awaiting_reply");
+    expect(getRequest(db, requestId)!.draft?.body_ko).toBe(delivery.calls[0].body);
+  });
+
+  it.each(["draft", "recipient"])("다른 경로로 %s가 바뀌면 접수 근거를 남기고 바뀐 내용을 발송됨으로 표시하지 않는다", async (changed) => {
+    const { db, boardId, requestId } = setup();
+    const delivery = deferredMailer();
+    const sending = approveAndSend(db, requestId, delivery.mailer, seen(db, requestId));
+    const approved = getRequest(db, requestId)!.approval;
+    if (changed === "draft") {
+      const body = "This different draft was never sent";
+      const draft = { subject_ko: SUBJECT, body_ko: body, back_translation: "Changed", hash: hashDraft(SUBJECT, body) };
+      db.update(requests).set({ draft }).where(eq(requests.id, requestId)).run();
+    } else {
+      db.$client.prepare("UPDATE stays SET email = 'changed@example.test'").run();
+    }
+    await expect(approveAndSend(db, requestId, delivery.mailer, seen(db, requestId))).rejects.toThrow(/처리 중/);
+    expect(getRequest(db, requestId)!.approval).toEqual(approved);
+
+    delivery.finish();
+    await expect(sending).rejects.toThrow(/다시 보내지 말고/);
+    expect(delivery.calls).toHaveLength(1);
+    expect(delivery.calls[0]).toMatchObject({ body: BODY, to: "front@hotel-example.test" });
+    expect(getRequest(db, requestId)!.status).toBe("pending_approval");
+    expect(getRequest(db, requestId)!.sent).toBeUndefined();
+    expect(listEvents(db, boardId)).toContainEqual(expect.objectContaining({ detail: expect.objectContaining({
+      reason: "send_accepted_after_change", recipient: "front@hotel-example.test", message_id: "mock-in-flight", approved_hash: approved!.draft_hash,
+    }) }));
+  });
+
+  it("재번역을 먼저 시작했어도 발송이 진행되면 늦게 돌아온 번역으로 초안을 덮어쓰지 않는다", async () => {
+    const { db, requestId } = setup();
+    let finishTranslation!: (result: { subject: string; body: string }) => void;
+    const llm = fakeLlm([], () => new Promise((resolve) => { finishTranslation = resolve; }));
+    const translating = retranslateDraft(db, llm, requestId, "ja");
+    const delivery = deferredMailer();
+    const sending = approveAndSend(db, requestId, delivery.mailer, seen(db, requestId));
+    finishTranslation({ subject: "遅い翻訳", body: "新しい翻訳" });
+    await expect(translating).rejects.toThrow(/처리 중/);
+    delivery.finish();
+    expect((await sending).draft?.back_translation).toBe("Subject: Late check-in");
+  });
+
+  it("같은 요청의 재시도는 같은 멱등키를 쓰고 동일 내용의 새 시연 요청은 다른 키를 쓴다", async () => {
+    const { db, boardId, requestId } = setup();
+    const keys: string[] = [];
+    const mailer: Mailer = {
+      mode: "real",
+      async send(mail) {
+        keys.push(mail.idempotencyKey!);
+        if (keys.length === 1) throw new MailError("response unavailable", "unknown");
+        return { mode: "real", message_id: `fake-provider-${keys.length}` };
+      },
+    };
+    await expect(approveAndSend(db, requestId, mailer, seen(db, requestId))).rejects.toThrow(/확인할 수 없다/);
+    await approveAndSend(db, requestId, mailer, seen(db, requestId));
+    const original = getRequest(db, requestId)!;
+    const another = createRequest(db, { boardId, typeId: "late_checkin", targetId: original.target_id, slots: {} }, "agent");
+    transition(db, another.id, "pending_approval", "agent", { patch: { draft: original.draft } });
+    await approveAndSend(db, another.id, mailer, seen(db, another.id));
+
+    expect(keys).toHaveLength(3);
+    expect(keys[0]).toBe(keys[1]);
+    expect(keys[0]).toBe(`${requestId}:${original.approval!.draft_hash}`);
+    expect(keys[2]).toBe(`${another.id}:${original.approval!.draft_hash}`);
+    expect(keys[2]).not.toBe(keys[0]);
   });
 });

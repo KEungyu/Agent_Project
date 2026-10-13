@@ -8,6 +8,7 @@ import { createLlmClient } from "@/lib/agent/provider";
 import { GeminiApiError } from "@/lib/agent/gemini";
 import { runTurn, type TurnResult } from "@/lib/agent/turn";
 import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport, startNewTrip } from "@/lib/board/forms";
+import { loadPresentationDemo } from "@/lib/board/demo";
 import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
@@ -54,6 +55,19 @@ export async function addItinerary(form: FormData) {
 export async function startNewTripAction() {
   startNewTrip(getDb());
   revalidatePath("/", "layout");
+}
+
+export async function loadDemoAction(previousBoardId: string | null): Promise<{ ok: boolean; error?: string }> {
+  if (previousBoardId !== null && (typeof previousBoardId !== "string" || !/^trip_[0-9a-f-]{36}$/.test(previousBoardId))) {
+    return { ok: false, error: "여행 정보를 확인할 수 없습니다. 새로고침해 주세요." };
+  }
+  try {
+    loadPresentationDemo(getDb(), previousBoardId);
+  } catch {
+    return { ok: false, error: "불러오지 못했습니다. 메일 설정을 확인하고 새로고침 후 다시 눌러 주세요." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }
 
 // 노선도의 역 하나(같은 도시에 머무는 날들)를 일정에서 뺀다

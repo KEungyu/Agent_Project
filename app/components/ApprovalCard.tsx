@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { approveAndSendAction, requestChangesAction, retranslateAction } from "@/app/actions";
 import type { Draft } from "@/lib/board/types";
 import { getLanguage, type Language } from "@/lib/i18n/languages";
-import { fmt, type Messages } from "@/lib/i18n/messages";
+import { fmt, getMessages, type Messages } from "@/lib/i18n/messages";
 import type { Fact } from "@/lib/requests/facts";
 import { CopyButton } from "./CopyButton";
 import { EnvelopeIcon } from "./icons";
@@ -40,19 +40,25 @@ export function ApprovalCard({
 
   // 스크린도어가 닫히는 동안 실제 발송이 함께 진행된다 (연출 때문에 발송을 늦추지 않는다)
   const approve = () => {
+    setError(undefined);
     setDeparting(true);
     startTransition(async () => {
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const [result] = await Promise.all([
-        // 이 카드가 보여 준 원문 버전과 수신처를 함께 보낸다. 서버의 최신 값과 다르면 처리하지 않고 최신 내용으로 다시 그린다
-        approveAndSendAction(requestId, { hash: draft.hash, to: to ?? "" }),
-        new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 520)),
-      ]);
-      if (result.ok) {
-        showToast(fmt(m.sentToast, { to: to ?? "" }));
-      } else {
+      try {
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const [result] = await Promise.all([
+          // 이 카드가 보여 준 원문 버전과 수신처를 함께 보낸다. 서버의 최신 값과 다르면 처리하지 않는다.
+          approveAndSendAction(requestId, { hash: draft.hash, to: to ?? "" }),
+          new Promise((resolve) => setTimeout(resolve, reduced ? 0 : 520)),
+        ]);
+        if (result.ok) {
+          showToast(realMail ? getMessages(language.code).sent.accepted : fmt(m.sentToast, { to: to ?? "" }));
+        } else {
+          setError(result.error);
+        }
+      } catch {
+        setError(m.sendUnknown);
+      } finally {
         setDeparting(false);
-        setError(result.error);
       }
     });
   };
