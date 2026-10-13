@@ -9,7 +9,7 @@ import { GeminiApiError } from "@/lib/agent/gemini";
 import { runTurn, type TurnResult } from "@/lib/agent/turn";
 import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport, startNewTrip } from "@/lib/board/forms";
 import { loadPresentationDemo } from "@/lib/board/demo";
-import { getStay, recordEvent, updateBoard } from "@/lib/board/store";
+import { getCurrentBoard, getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isLanguageCode } from "@/lib/i18n/languages";
 import { fmt, getMessages } from "@/lib/i18n/messages";
@@ -376,8 +376,8 @@ export async function placeStationsAction(query: string, language: string): Prom
 
 // 인천공항 실시간 운항 현황 (공공데이터포털). 보드의 항공편 번호·날짜로만 조회하고, 운항 당일에만 부른다
 export async function flightStatusAction(direction: "arrival" | "departure", language: string): Promise<FlightStatusResult> {
-  const board = ensureBoard(getDb());
-  const flight = direction === "arrival" ? board.arrival : board.departure;
+  const board = getCurrentBoard(getDb());
+  const flight = direction === "arrival" ? board?.arrival : board?.departure;
   if (!flight?.flight_no || !flight.datetime || flight.airport !== "ICN") return { status: "empty" };
   return icnFlightStatus(direction, flight.flight_no, flight.datetime, isLanguageCode(language) ? language : "en");
 }
@@ -391,5 +391,6 @@ export async function recordExternalResultAction(action: unknown, result: string
 
 export async function externalResultsAction(): Promise<Record<string, ExternalResult>> {
   const db = getDb();
-  return externalResults(db, ensureBoard(db).id);
+  const board = getCurrentBoard(db);
+  return board ? externalResults(db, board.id) : {};
 }

@@ -126,6 +126,16 @@ export const boardUpdate = defineTool({
         next_step: `Nothing was saved. Reply now with exactly one question asking whether their hotel arrival is ${proposed}. Use only that absolute date and time; do not repeat today or ask about drafting/check-in. Do not call other tools until they answer.`,
       };
     }
+    if (!stay_id && stay?.booking_ref && stay.check_in_date) {
+      const stays = getBoard(db, boardId)?.stays ?? [];
+      const sameName = stays.some((candidate) => candidate.name.trim().toLowerCase() === stay.name?.trim().toLowerCase());
+      const sameBooking = stays.find((candidate) => candidate.booking_ref === stay.booking_ref && candidate.check_in_date === stay.check_in_date);
+      if (!sameName && sameBooking) {
+        throw new Error(
+          `Nothing was saved. This booking is already on the board as ${sameBooking.name}. Use its existing stay_id (${sameBooking.id}) to update it, or target_id (${sameBooking.id}) for a request; do not add another stay.`,
+        );
+      }
+    }
     // 날짜가 다른 숙소와 겹치면 저장 전에 이용자에게 확인한다 (B07). 중복 예약인지, 일정이 바뀐 것인지 앱이 단정하지 않는다
     if (stay && (stay.check_in_date || stay.check_out_date) && !confirm_overlap) {
       const stays = getBoard(db, boardId)?.stays ?? [];
