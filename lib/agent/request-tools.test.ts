@@ -10,7 +10,7 @@ import { runAgent } from "./loop";
 import { runTurn } from "./turn";
 import { createTools } from "./registry";
 import { fakeLlm, message, schemaHas, toolUse } from "./testing";
-import { needsDateConfirmation } from "./tools";
+import { boardUpdate, needsDateConfirmation } from "./tools";
 
 const lateCheckin = loadRequestTypes().types.find((type) => type.id === "late_checkin")!;
 
@@ -266,6 +266,36 @@ describe("board_update — 기존 숙소를 새 숙소로 만들지 않기 (T07)
     expect(ok).toBe(true);
     expect(stays).toHaveLength(1);
     expect(stays[0]).toMatchObject({ booking_ref: "BK123456", expected_arrival: "2026-10-20T03:00+09:00" });
+  });
+
+  it.each([false, true])("같은 예약번호·체크인 날짜를 다른 이름으로 추가하지 않고 모든 보드 값을 보존한다 (confirm_overlap=%s)", (confirm_overlap) => {
+    const { db, boardId, stayId } = setup();
+    const before = getBoard(db, boardId)!;
+    const ctx = { db, boardId, llm: fakeLlm() };
+    const input = {
+      source: "user",
+      stay: { name: "Hotel Example", booking_ref: "BK123456", check_in_date: "2026-10-19" },
+      arrival: { datetime: "2026-10-20T03:00+09:00", airport: "GMP" },
+      confirm_overlap,
+    };
+
+    expect(() => boardUpdate.run(input, ctx)).toThrow(`existing stay_id (${stayId})`);
+    expect(getBoard(db, boardId)).toEqual(before);
+
+    expect(boardUpdate.run({ source: "user", stay_id: stayId, stay: { expected_arrival: "2026-10-20T03:00+09:00" } }, ctx)).toMatchObject({ saved: true, stay_id: stayId });
+    expect(getBoard(db, boardId)!.stays).toEqual([
+      { ...before.stays[0], expected_arrival: "2026-10-20T03:00+09:00" },
+    ]);
+  });
+
+  it("이름도 같은 예약은 stay_id가 없어도 기존 숙소를 갱신한다", async () => {
+    const { ok, stays } = await run({
+      source: "user",
+      stay: { name: "HOTEL EXAMPLE MYEONGDONG", booking_ref: "BK123456", check_in_date: "2026-10-19", expected_arrival: "2026-10-20T03:00+09:00" },
+    });
+    expect(ok).toBe(true);
+    expect(stays).toHaveLength(1);
+    expect(stays[0]).toMatchObject({ email: "front@hotel-example.test", expected_arrival: "2026-10-20T03:00+09:00" });
   });
 
   it("숙소가 있는데 체크인 날짜 없는 다른 이름을 넣으면 거부하고 stay_id를 알려 준다", async () => {
