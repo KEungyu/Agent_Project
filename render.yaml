@@ -16,4 +16,4 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: MAIL_MODE
-        value: mock
+        sync: false
