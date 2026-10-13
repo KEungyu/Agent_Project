@@ -75,8 +75,11 @@ export function createRealMailer(env: Record<string, string | undefined> = proce
         throw new MailError("mail service did not answer; delivery status unknown", "unknown");
       }
       if (!response.ok) throw new MailError(`mail service rejected the message (HTTP ${response.status})`, "rejected");
-      const data = (await response.json().catch(() => ({}))) as { id?: string };
-      return { message_id: data.id ?? `accepted-${randomUUID()}`, mode: "real" };
+      const data: unknown = await response.json().catch(() => undefined);
+      if (!data || typeof data !== "object" || Array.isArray(data) || !("id" in data) || typeof data.id !== "string" || !data.id.trim()) {
+        throw new MailError("mail service returned no receipt ID; delivery status unknown", "unknown");
+      }
+      return { message_id: data.id, mode: "real" };
     },
   };
 }

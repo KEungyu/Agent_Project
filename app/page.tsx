@@ -3,6 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { connection } from "next/server";
 import { getConversation } from "@/lib/agent/conversation";
 import { hasTripData } from "@/lib/board/forms";
+import { presentationDemoRecipient } from "@/lib/board/demo";
 import { getCurrentBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
 import { isExternalAction, type ExternalAction } from "@/lib/external/links";
@@ -22,6 +23,7 @@ import { Chat, type ChatLine } from "./components/Chat";
 import { LanguagePicker } from "./components/LanguagePicker";
 import { RequestList } from "./components/RequestList";
 import { TripPanel } from "./components/TripPanel";
+import { DemoLoader } from "./components/DemoLoader";
 
 // 대화 기록에서 화면에 보일 문장만 꺼낸다. 도구 호출·결과 블록은 숨기되, 마중이의 답에는
 // 그 답을 내기까지 쓴 도구 이름을 붙여 둔다(출구 번호판 표와 "초안 보기" 버튼이 새로 그려도 남게).
@@ -111,7 +113,8 @@ export default async function Home() {
           <LanguagePicker current={language} title={m.language} />
         </div>
       </header>
-      <main className="platform" key={language.code}>
+      {presentationDemoRecipient() && <DemoLoader boardId={board?.id ?? null} realMail={realMail} />}
+      <main className="platform" key={`${board?.id ?? "empty"}-${language.code}`}>
         <div className="platform-main">
           <ArrivalBoard model={hero} m={m} locale={language.code} realMail={realMail} />
           <AlertList alerts={alerts} m={m} />

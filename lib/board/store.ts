@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq, desc } from "drizzle-orm";
+import { asc, eq, desc, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { events, requests, stays, tripBoards } from "../db/schema";
 import type {
@@ -70,7 +70,8 @@ export function getBoard(db: Db, boardId: string): TripBoard | null {
 // 이용자 1명이 한 번에 보드 1개를 쓴다 (ARCHITECTURE A1). "새 여행 시작"을 하면 새 보드를 만들므로,
 // 가장 최근에 만든 보드를 돌려준다. 예전 보드는 지우지 않고 남겨 둔다.
 export function getCurrentBoard(db: Db): TripBoard | null {
-  const latest = db.select({ id: tripBoards.id }).from(tripBoards).orderBy(desc(tripBoards.created_at)).get();
+  // 같은 밀리초에 만든 보드도 마지막으로 삽입한 여행이 현재 보드가 된다.
+  const latest = db.select({ id: tripBoards.id }).from(tripBoards).orderBy(desc(tripBoards.created_at), sql`rowid desc`).get();
   return latest ? getBoard(db, latest.id) : null;
 }
 
