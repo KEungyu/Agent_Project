@@ -79,6 +79,7 @@ export function Chat({
     startTransition(async () => {
       try {
         const result = await sendChat(message);
+        if (result.diagnostic) console.info(`[majungi-ai] ${result.diagnostic}`);
         // 초안이 생기면 새로 그려진 요청 카드로 화면을 옮긴다
         if (result.ok && "tools" in result && result.tools.some((tool) => tool.name === "draft_request" && tool.ok)) {
           setTimeout(focusDraft, 450);

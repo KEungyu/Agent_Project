@@ -10,10 +10,10 @@ import { MissingApiKeyError, type LlmClient } from "./llm";
 import { runAgent } from "./loop";
 import { createTools } from "./registry";
 
-export type TurnResult =
+export type TurnResult = { diagnostic?: string } & (
   | { ok: true; reply: string; tools: { name: string; ok: boolean }[]; actions?: ExternalAction[] }
   | { ok: true; safety: "emergency" | "check" | "out_of_scope" }
-  | { ok: false; error: string };
+  | { ok: false; error: string });
 
 // 채팅 한 턴: 안전 가드 → (통과하면) 에이전트 루프. 긴급·긴급 확인("Help!")·행정 질문이면 루프를 실행하지 않는다.
 export async function runTurn({
@@ -39,9 +39,11 @@ export async function runTurn({
 
   // 모든 모델 재시도와 초안 작성이 한 턴의 같은 시간 제한을 공유한다.
   const signal = AbortSignal.timeout(45_000);
+  let llm: LlmClient | undefined;
   try {
+    llm = createLlm(signal);
     const result = await runAgent({
-      llm: createLlm(signal),
+      llm,
       signal,
       tools: createTools(),
       ctx: { db, boardId, latestUserText: text },
@@ -61,11 +63,12 @@ export async function runTurn({
       const action = call.ok ? (call.output as { action?: unknown } | null)?.action : undefined;
       return isExternalAction(action) ? [action] : [];
     });
-    return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })), ...(actions.length ? { actions } : {}) };
+    return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })), ...(actions.length ? { actions } : {}), ...(llm.diagnostics ? { diagnostic: llm.diagnostics() } : {}) };
   } catch (error) {
+    const diagnostic = llm?.diagnostics ? { diagnostic: llm.diagnostics() } : {};
     if (signal.aborted) {
       console.error("[agent] chat exceeded its 45s deadline");
-      return { ok: false, error: getMessages(language).chat.unavailable };
+      return { ok: false, error: getMessages(language).chat.unavailable, ...diagnostic };
     }
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) {
@@ -76,9 +79,9 @@ export async function runTurn({
     if (error instanceof GeminiApiError) {
       console.error(`[agent] ${error.message}`);
       const chat = getMessages(language).chat;
-      return { ok: false, error: error.busy ? chat.busy : chat.unavailable };
+      return { ok: false, error: error.busy ? chat.busy : chat.unavailable, ...diagnostic };
     }
     console.error(`[agent] unexpected failure (${error instanceof Error ? error.name : "unknown"})`);
-    return { ok: false, error: getMessages(language).chat.unavailable };
+    return { ok: false, error: getMessages(language).chat.unavailable, ...diagnostic };
   }
 }
