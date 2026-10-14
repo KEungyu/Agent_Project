@@ -33,4 +33,17 @@ describe("provider receipt validation (mock HTTP, no external email)", () => {
     const mailer = createRealMailer(env, async () => new Response("{}", { status: 429 }));
     await expect(mailer.send(mail)).rejects.toMatchObject({ code: "rejected" });
   });
+
+  it.each([
+    ["You can only send testing emails to your own email address (private@example.test).", "Resend account owner's email"],
+    ["The private.example.test domain is not verified.", "sender domain is not verified"],
+    ["API key is not active: private-secret", "sending API key is invalid"],
+    ["Unexpected private-secret", "Check the sending service logs"],
+  ])("explains a provider rejection without exposing its private details", async (message, expected) => {
+    const mailer = createRealMailer(env, async () => new Response(JSON.stringify({ name: "validation_error", message }), { status: 403 }));
+    const error = await Promise.resolve(mailer.send(mail)).catch((error) => error);
+    expect(error.code).toBe("rejected");
+    expect(error.message).toContain(expected);
+    expect(error.message).not.toContain("private");
+  });
 });

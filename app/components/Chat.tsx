@@ -77,25 +77,29 @@ export function Chat({
     setLines((current) => [...current, { role: "user", text: message }]);
     if (inputRef.current) inputRef.current.value = "";
     startTransition(async () => {
-      const result = await sendChat(message);
-      // 초안이 생기면 새로 그려진 요청 카드로 화면을 옮긴다
-      if (result.ok && "tools" in result && result.tools.some((tool) => tool.name === "draft_request" && tool.ok)) {
-        setTimeout(focusDraft, 450);
-      }
-      setLines((current) => [
-        ...current,
-        !result.ok
-          ? { role: "error", text: result.error }
-          : "safety" in result
-            ? { role: "safety", text: "", safety: result.safety }
-            : { role: "assistant", text: result.reply, tools: result.tools, actions: result.actions },
-      ]);
-      // 식당 예약처럼 바로 열기로 한 외부 화면은 이 응답에서 한 번만 연다. 막히면 카드의 버튼을 쓰게 한다
-      if (result.ok && "actions" in result && result.actions) {
-        for (const action of result.actions) {
-          const opened = openExternalOnce(action);
-          if (opened !== undefined) setOpenedById((current) => ({ ...current, [action.id]: opened }));
+      try {
+        const result = await sendChat(message);
+        // 초안이 생기면 새로 그려진 요청 카드로 화면을 옮긴다
+        if (result.ok && "tools" in result && result.tools.some((tool) => tool.name === "draft_request" && tool.ok)) {
+          setTimeout(focusDraft, 450);
         }
+        setLines((current) => [
+          ...current,
+          !result.ok
+            ? { role: "error", text: result.error }
+            : "safety" in result
+              ? { role: "safety", text: "", safety: result.safety }
+              : { role: "assistant", text: result.reply, tools: result.tools, actions: result.actions },
+        ]);
+        // 식당 예약처럼 바로 열기로 한 외부 화면은 이 응답에서 한 번만 연다. 막히면 카드의 버튼을 쓰게 한다
+        if (result.ok && "actions" in result && result.actions) {
+          for (const action of result.actions) {
+            const opened = openExternalOnce(action);
+            if (opened !== undefined) setOpenedById((current) => ({ ...current, [action.id]: opened }));
+          }
+        }
+      } catch {
+        setLines((current) => [...current, { role: "error", text: m.unavailable }]);
       }
     });
   }

@@ -74,8 +74,16 @@ export function createRealMailer(env: Record<string, string | undefined> = proce
         // 응답을 못 받으면 접수됐는지 알 수 없다: 성공으로도 실패로도 단정하지 않는다
         throw new MailError("mail service did not answer; delivery status unknown", "unknown");
       }
-      if (!response.ok) throw new MailError(`mail service rejected the message (HTTP ${response.status})`, "rejected");
       const data: unknown = await response.json().catch(() => undefined);
+      if (!response.ok) {
+        // 서비스 원문에는 계정 주소가 포함될 수 있어 알려진 원인만 화면에 전달한다.
+        const detail = data && typeof data === "object" && "message" in data && typeof data.message === "string" ? data.message : "";
+        let reason = "Check the sending service logs.";
+        if (/only send testing emails to your own email address/i.test(detail)) reason = "The test sender can only send to the Resend account owner's email. Use that team-owned address or a verified sender domain.";
+        else if (/domain is not verified/i.test(detail)) reason = "The sender domain is not verified in this Resend account. Check MAIL_FROM and the verified domain.";
+        else if (/api key/i.test(detail)) reason = "The sending API key is invalid, inactive, or restricted. Check the Resend key settings.";
+        throw new MailError(`mail service rejected the message (HTTP ${response.status}). ${reason}`, "rejected");
+      }
       if (!data || typeof data !== "object" || Array.isArray(data) || !("id" in data) || typeof data.id !== "string" || !data.id.trim()) {
         throw new MailError("mail service returned no receipt ID; delivery status unknown", "unknown");
       }

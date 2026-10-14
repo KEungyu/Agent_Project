@@ -1,11 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { seedDemoBoard } from "../board/demo";
 import { openDb } from "../db/client";
 import { getConversation } from "./conversation";
 import { fakeLlm, message, toolUse } from "./testing";
 import { runTurn } from "./turn";
+import { getMessages } from "../i18n/messages";
 
 describe("runTurn", () => {
+  it("passes one 45s deadline to the client and turns an interrupted connection into a retryable answer", async () => {
+    const db = openDb(":memory:");
+    const board = seedDemoBoard(db);
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    let received: AbortSignal | undefined;
+    try {
+      const result = await runTurn({ db, boardId: board.id, language: "en", text: "Tell my hotel I arrive at 1:30 AM.", createLlm: (signal) => {
+        received = signal;
+        return fakeLlm([() => { throw new TypeError("fetch failed"); }]);
+      } });
+      expect(timeout).toHaveBeenCalledWith(45_000);
+      expect(received).toBeInstanceOf(AbortSignal);
+      expect(result).toEqual({ ok: false, error: getMessages("en").chat.unavailable });
+    } finally {
+      timeout.mockRestore();
+      db.$client.close();
+    }
+  });
   it("keeps a reply that came from a tool or a stop in the conversation, so it survives a re-render", async () => {
     const db = openDb(":memory:");
     const board = seedDemoBoard(db);

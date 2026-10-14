@@ -27,7 +27,7 @@ export async function runTurn({
   boardId: string;
   language: string;
   text: string;
-  createLlm: () => LlmClient;
+  createLlm: (signal?: AbortSignal) => LlmClient;
 }): Promise<TurnResult> {
   recordEvent(db, boardId, "user_action", { action: "chat" });
 
@@ -37,9 +37,12 @@ export async function runTurn({
     return { ok: true, safety: verdict };
   }
 
+  // 모든 모델 재시도와 초안 작성이 한 턴의 같은 시간 제한을 공유한다.
+  const signal = AbortSignal.timeout(45_000);
   try {
     const result = await runAgent({
-      llm: createLlm(),
+      llm: createLlm(signal),
+      signal,
       tools: createTools(),
       ctx: { db, boardId, latestUserText: text },
       language,
@@ -60,6 +63,10 @@ export async function runTurn({
     });
     return { ok: true, reply: result.reply, tools: result.toolCalls.map(({ name, ok }) => ({ name, ok })), ...(actions.length ? { actions } : {}) };
   } catch (error) {
+    if (signal.aborted) {
+      console.error("[agent] chat exceeded its 45s deadline");
+      return { ok: false, error: getMessages(language).chat.unavailable };
+    }
     if (error instanceof MissingApiKeyError) return { ok: false, error: error.message };
     if (error instanceof Anthropic.APIError) {
       // 여행자에게는 이용자 언어 안내와 다음 행동만 보이고, 원인(요금·인증 등)은 서버 로그에만 남긴다
@@ -71,6 +78,7 @@ export async function runTurn({
       const chat = getMessages(language).chat;
       return { ok: false, error: error.busy ? chat.busy : chat.unavailable };
     }
-    throw error;
+    console.error(`[agent] unexpected failure (${error instanceof Error ? error.name : "unknown"})`);
+    return { ok: false, error: getMessages(language).chat.unavailable };
   }
 }

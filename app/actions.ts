@@ -7,7 +7,7 @@ import { MissingApiKeyError } from "@/lib/agent/llm";
 import { createLlmClient } from "@/lib/agent/provider";
 import { GeminiApiError } from "@/lib/agent/gemini";
 import { runTurn, type TurnResult } from "@/lib/agent/turn";
-import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport, startNewTrip } from "@/lib/board/forms";
+import { addItineraryForm, ensureBoard, removeItineraryItem, saveStayForm, saveTripForm, setLegTransport } from "@/lib/board/forms";
 import { loadPresentationDemo } from "@/lib/board/demo";
 import { getCurrentBoard, getStay, recordEvent, updateBoard } from "@/lib/board/store";
 import { getDb } from "@/lib/db/client";
@@ -52,22 +52,17 @@ export async function addItinerary(form: FormData) {
   revalidatePath("/");
 }
 
-export async function startNewTripAction() {
-  startNewTrip(getDb());
-  revalidatePath("/", "layout");
-}
-
-export async function loadDemoAction(previousBoardId: string | null): Promise<{ ok: boolean; error?: string }> {
+export async function loadDemoAction(previousBoardId: string | null): Promise<{ ok: true; boardId: string } | { ok: false; error: string }> {
   if (previousBoardId !== null && (typeof previousBoardId !== "string" || !/^trip_[0-9a-f-]{36}$/.test(previousBoardId))) {
     return { ok: false, error: "여행 정보를 확인할 수 없습니다. 새로고침해 주세요." };
   }
   try {
-    loadPresentationDemo(getDb(), previousBoardId);
+    const board = loadPresentationDemo(getDb(), previousBoardId);
+    revalidatePath("/", "layout");
+    return { ok: true, boardId: board.id };
   } catch {
     return { ok: false, error: "불러오지 못했습니다. 메일 설정을 확인하고 새로고침 후 다시 눌러 주세요." };
   }
-  revalidatePath("/", "layout");
-  return { ok: true };
 }
 
 // 노선도의 역 하나(같은 도시에 머무는 날들)를 일정에서 뺀다

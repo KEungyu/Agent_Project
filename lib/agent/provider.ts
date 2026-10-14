@@ -12,11 +12,11 @@ export function llmProvider(env: Record<string, string | undefined> = process.en
   return env.GEMINI_API_KEY ? "gemini" : "anthropic";
 }
 
-export function createLlmClient(): LlmClient {
+export function createLlmClient(signal?: AbortSignal): LlmClient {
   if (llmProvider() === "gemini") {
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new MissingApiKeyError("GEMINI_API_KEY");
-    return createGeminiClient(key);
+    return createGeminiClient(key, undefined, fetch, { signal });
   }
-  return createClaudeClient();
+  return createClaudeClient(signal);
 }

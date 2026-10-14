@@ -36,6 +36,7 @@ type RunOptions = {
   system?: string;
   language?: string; // 이용자 언어 코드 (중단 안내 문구와 기본 시스템 프롬프트에 쓴다)
   log?: (line: string) => void;
+  signal?: AbortSignal;
 };
 
 export async function runAgent({
@@ -46,6 +47,7 @@ export async function runAgent({
   language,
   system = systemPrompt(language),
   log = console.log,
+  signal,
 }: RunOptions): Promise<AgentRunResult> {
   const stopMessages = getMessages(language).agent.stop;
   const history = [...messages];
@@ -60,7 +62,9 @@ export async function runAgent({
   };
 
   while (true) {
+    signal?.throwIfAborted();
     const response = await llm.create({ system, tools: apiTools, messages: history });
+    signal?.throwIfAborted();
     // 응답 내용(thinking 블록 포함)은 그대로 이어 붙인다
     history.push({ role: "assistant", content: response.content });
     const text = response.content
@@ -85,6 +89,7 @@ export async function runAgent({
     let stop: StopReason | undefined = response.stop_reason === "max_tokens" ? "max_tokens" : undefined;
 
     for (const use of uses) {
+      signal?.throwIfAborted();
       const key = `${use.name}:${JSON.stringify(use.input)}`;
       if (!stop && toolCalls.length >= LOOP_LIMITS.maxToolCalls) stop = "max_tool_calls";
       if (!stop && key === lastOkCallKey) stop = "repeated_call";
