@@ -148,7 +148,7 @@ export function createGeminiClient(
   apiKey: string,
   model = process.env.GEMINI_MODEL || GEMINI_MODEL_DEFAULT,
   fetchImpl: typeof fetch = fetch,
-  options: { models?: string[]; delays?: number[]; timeoutMs?: number } = {},
+  options: { models?: string[]; delays?: number[]; timeoutMs?: number; signal?: AbortSignal } = {},
 ): LlmClient {
   const models = options.models ?? fallbackModels(model);
   const delays = options.delays ?? RETRY_DELAYS_MS;
@@ -162,20 +162,21 @@ export function createGeminiClient(
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify(body),
         // 서버가 답을 안 주면 하염없이 기다리지 않고, 붐빔(504)으로 보고 다음 모델로 넘어간다
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
       });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        if (response.status === 429) cooldowns.set(name, Date.now() + cooldownMs(detail));
+        throw new GeminiApiError(response.status, detail.slice(0, 300));
+      }
+      return (await response.json()) as GeminiResponse;
     } catch (error) {
+      options.signal?.throwIfAborted();
       if ((error as Error).name === "TimeoutError" || (error as Error).name === "AbortError") {
         throw new GeminiApiError(504, `${name} did not answer within ${timeoutMs / 1000}s`);
       }
       throw error;
     }
-    if (!response.ok) {
-      const detail = await response.text().catch(() => "");
-      if (response.status === 429) cooldowns.set(name, Date.now() + cooldownMs(detail));
-      throw new GeminiApiError(response.status, detail.slice(0, 300));
-    }
-    return (await response.json()) as GeminiResponse;
   };
 
   // 한도 초과(429)면 바로 다음 모델로, 붐빔(5xx)이면 잠깐 기다렸다 한 번 더 한 뒤 다음 모델로 넘어간다.
@@ -186,12 +187,13 @@ export function createGeminiClient(
     const ready = models.filter((name) => (cooldowns.get(name) ?? 0) <= now);
     for (const name of ready.length ? ready : models) {
       for (let attempt = 0; attempt <= delays.length; attempt++) {
+        options.signal?.throwIfAborted();
         try {
           return await once(name, body);
         } catch (error) {
           last = error;
           if (!(error instanceof GeminiApiError)) throw error;
-          if (error.status === 404 || error.status === 429) break; // 쓸 수 없거나 한도를 넘긴 모델은 바로 다음 모델로
+          if (error.status === 404 || error.status === 429 || error.status === 504) break; // 시간 초과도 같은 모델에서 다시 기다리지 않는다
           if (!error.busy) throw error;
           console.warn(`[gemini] ${name} busy (${error.status}), ${attempt < delays.length ? "retrying" : "trying next model"}`);
           if (attempt < delays.length) await sleep(delays[attempt]);

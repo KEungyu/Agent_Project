@@ -42,7 +42,7 @@ export class LlmRefusalError extends Error {
 // 안전 분류기가 거절하면 서버가 다른 모델로 이어서 처리한다
 const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } as const;
 
-export function createClaudeClient(): LlmClient {
+export function createClaudeClient(signal?: AbortSignal): LlmClient {
   if (!process.env.ANTHROPIC_API_KEY) throw new MissingApiKeyError("ANTHROPIC_API_KEY");
   const client = new Anthropic();
   return {
@@ -56,7 +56,7 @@ export function createClaudeClient(): LlmClient {
         output_config: { effort: "medium" },
         ...FALLBACK,
         betas: [...FALLBACK.betas],
-      }),
+      }, { signal }),
 
     structured: async ({ system, prompt, schema, effort = "medium" }) => {
       const response = await client.beta.messages.parse({
@@ -67,7 +67,7 @@ export function createClaudeClient(): LlmClient {
         output_config: { effort, format: betaZodOutputFormat(schema) },
         ...FALLBACK,
         betas: [...FALLBACK.betas],
-      });
+      }, { signal });
       if (response.stop_reason === "refusal") throw new LlmRefusalError();
       if (response.parsed_output == null) throw new Error(`structured output missing (stop_reason: ${response.stop_reason})`);
       return response.parsed_output;

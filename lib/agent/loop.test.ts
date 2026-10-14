@@ -31,6 +31,21 @@ const silent = () => {};
 describe("runAgent", () => {
   afterEach(() => vi.unstubAllEnvs());
 
+  it("does not execute a late model response after the turn has been cancelled", async () => {
+    const { db, ctx } = setup();
+    const controller = new AbortController();
+    const run = vi.fn(() => ({ ok: true }));
+    const mutation = defineTool({ name: "mutate", description: "test", input: z.object({}), run });
+    const llm = scriptedLlm(() => {
+      controller.abort(new DOMException("Turn deadline exceeded", "TimeoutError"));
+      return message([toolUse("t1", "mutate", {})], "tool_use");
+    });
+    await expect(runAgent({ llm, tools: [mutation], ctx, messages: [], signal: controller.signal, log: silent })).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(run).not.toHaveBeenCalled();
+    expect(listEvents(db, ctx.boardId).filter((event) => event.kind === "tool_call")).toHaveLength(0);
+    db.$client.close();
+  });
+
   it("board_get을 호출하고 그 결과로 숙소명을 답한다", async () => {
     const { db, ctx } = setup();
     const llm = scriptedLlm(

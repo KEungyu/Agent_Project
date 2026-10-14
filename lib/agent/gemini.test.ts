@@ -86,6 +86,24 @@ describe("gemini busy handling", () => {
     await expect(client.structured({ system: "s", prompt: "p", schema: z.object({ ok: z.boolean() }) })).resolves.toEqual({ ok: true });
   });
 
+  it("shares cancellation across calls and stops fallback requests when the turn deadline expires", async () => {
+    const controller = new AbortController();
+    const urls: string[] = [];
+    const fakeFetch = (async (url: string, init: RequestInit) => {
+      urls.push(url);
+      if (urls.length === 1) return new Response(JSON.stringify(ok));
+      const waiting = new Promise<Response>((_, reject) => init.signal!.addEventListener("abort", () => reject(init.signal!.reason)));
+      controller.abort(new DOMException("Turn deadline exceeded", "TimeoutError"));
+      return waiting;
+    }) as typeof fetch;
+    const client = createGeminiClient("k", "main", fakeFetch, { models: ["main", "backup"], delays: [0], signal: controller.signal });
+    await client.create({ system: "s", tools: [], messages: [] });
+    await expect(client.structured({ system: "s", prompt: "p", schema: z.object({ ok: z.boolean() }) })).rejects.toMatchObject({ name: "TimeoutError" });
+    await expect(client.create({ system: "s", tools: [], messages: [] })).rejects.toMatchObject({ name: "TimeoutError" });
+    expect(urls).toHaveLength(2);
+    expect(urls.every((url) => url.includes("/main:"))).toBe(true);
+  });
+
   it("retries a busy model, then falls back to the next model", async () => {
     const urls: string[] = [];
     const responses = [busy(), busy(), new Response(JSON.stringify(ok))];

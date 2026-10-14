@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { startNewTripAction } from "@/app/actions";
 import type { Messages } from "@/lib/i18n/messages";
 import { Taegukgi } from "./Taegukgi";
 import { VehicleArt } from "./VehicleArt";
@@ -12,7 +11,7 @@ import { VehicleArt } from "./VehicleArt";
 export const INTRO_SEEN_KEY = "majungi-intro-seen";
 export const INTRO_REPLAY_EVENT = "majungi:intro";
 
-// hasTrip: 이미 등록된 여행이 있으면 "입국하기"는 빈 보드로 새 여행을 시작하고, "이전 여행 이어 보기"도 보여준다
+// 오프닝을 보거나 닫는 동작은 여행 데이터를 바꾸지 않는다.
 // languagePicker: 메인 화면 헤더와 같은 자리(오른쪽 위)에 둘 언어 선택 (들어가기 전에 언어를 고를 수 있게)
 type Props = {
   m: Messages["intro"];
@@ -61,12 +60,6 @@ export function EntryIntro({ m, ko, language, stamp, hasTrip, languagePicker }: 
     setState("leaving");
     setTimeout(() => setState("gone"), 760);
   }, []);
-
-  // 입국하기 = 새 여행 시작 (등록된 것이 없으면 그냥 들어간다)
-  const enter = useCallback(() => {
-    if (hasTrip) void startNewTripAction();
-    close();
-  }, [hasTrip, close]);
 
   useEffect(() => {
     if (state !== "show") return;
@@ -118,17 +111,10 @@ export function EntryIntro({ m, ko, language, stamp, hasTrip, languagePicker }: 
             <strong>{stamp.airport}</strong>
             <span className="tabular">{stamp.date}</span>
           </p>
-          <button ref={enterRef} type="button" className="button intro-enter" onClick={enter}>
-            {m.enter}
+          <button ref={enterRef} type="button" className="button intro-enter" onClick={close}>
+            {hasTrip ? m.resume : m.enter}
             <span className="intro-arrow" aria-hidden="true" />
           </button>
-          {/* 입국하기는 지금 보드를 비우고 새 여행을 시작하므로, 기존 여행이 있으면 미리 알린다 */}
-          {hasTrip && <p className="intro-warn">{m.newTripNote}</p>}
-          {hasTrip && (
-            <button type="button" className="intro-resume" onClick={close}>
-              {m.resume}
-            </button>
-          )}
           {/* 이어지는 범위를 정직하게: 여행 보드는 서버 DB에, 채팅은 서버 메모리에 있다 */}
           {hasTrip && <p className="intro-note">{m.resumeNote}</p>}
         </section>

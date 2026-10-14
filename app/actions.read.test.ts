@@ -40,7 +40,7 @@ describe("read actions before the first presentation load (isolated DB, no exter
     expect(getCurrentBoard(db)).toBeNull();
     expect(icnFlightStatus).not.toHaveBeenCalled();
     expect(revalidatePath).not.toHaveBeenCalled();
-    expect(await loadDemoAction(null)).toEqual({ ok: true });
+    expect(await loadDemoAction(null)).toEqual({ ok: true, boardId: getCurrentBoard(db)!.id });
     expect(getCurrentBoard(db)?.stays[0].booking_ref).toBe("DEMO-20261019");
     expect(db.$client.prepare("SELECT COUNT(*) AS count FROM trip_boards").get()).toEqual({ count: 1 });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
