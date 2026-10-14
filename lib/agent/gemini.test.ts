@@ -58,6 +58,14 @@ describe("gemini busy handling", () => {
   const ok = { candidates: [{ content: { parts: [{ text: '{"ok":true}' }] }, finishReason: "STOP" }] };
   const busy = () => new Response('{"error":{"code":503}}', { status: 503 });
 
+  it.each(["gemini-test", "private-config-value"])("exports only bounded request metadata for %s", async (model) => {
+    const client = createGeminiClient("private-api-key", model, (async () => new Response('{"error":{"message":"private-provider-detail"}}', { status: 403 })) as typeof fetch, { models: [model], delays: [] });
+    await expect(client.create({ system: "private-system", tools: [], messages: [{ role: "user", content: "private-traveler-input" }] })).rejects.toMatchObject({ status: 403 });
+    const diagnostic = client.diagnostics!();
+    expect(diagnostic).not.toContain("private");
+    expect(JSON.parse(diagnostic)).toEqual([{ stage: "chat", model: model === "gemini-test" ? model : "configured-model", status: 403, ms: expect.any(Number) }]);
+  });
+
   it("skips a model that hit its quota, now and on the next call", async () => {
     resetGeminiCooldowns();
     const urls: string[] = [];

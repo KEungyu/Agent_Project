@@ -19,6 +19,8 @@ export type StructuredRequest<T> = {
 
 // 테스트에서 가짜 LLM을 끼울 수 있도록 필요한 호출만 노출한다
 export type LlmClient = {
+  // 모델·상태·소요 시간만. 프롬프트, 키, 응답 원문은 포함하지 않는다.
+  diagnostics?(): string;
   // 에이전트 루프용 (도구 호출)
   create(request: LlmRequest): Promise<Anthropic.Beta.BetaMessage>;
   // 요청문 작성·역번역·회신 해석처럼 정해진 JSON을 돌려받는 단일 호출

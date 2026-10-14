@@ -153,8 +153,11 @@ export function createGeminiClient(
   const models = options.models ?? fallbackModels(model);
   const delays = options.delays ?? RETRY_DELAYS_MS;
   const timeoutMs = options.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const attempts: { stage: string; model: string; status: number | string; ms: number }[] = [];
 
   const once = async (name: string, body: Record<string, unknown>): Promise<GeminiResponse> => {
+    const started = Date.now();
+    let status: number | string = "network";
     let response: Response;
     try {
       response = await fetchImpl(`${ENDPOINT}/${name}:generateContent`, {
@@ -164,6 +167,7 @@ export function createGeminiClient(
         // 서버가 답을 안 주면 하염없이 기다리지 않고, 붐빔(504)으로 보고 다음 모델로 넘어간다
         signal: options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
       });
+      status = response.status;
       if (!response.ok) {
         const detail = await response.text().catch(() => "");
         if (response.status === 429) cooldowns.set(name, Date.now() + cooldownMs(detail));
@@ -171,11 +175,16 @@ export function createGeminiClient(
       }
       return (await response.json()) as GeminiResponse;
     } catch (error) {
+      if (options.signal?.aborted) status = "turn_timeout";
+      else if ((error as Error).name === "TimeoutError" || (error as Error).name === "AbortError") status = "request_timeout";
       options.signal?.throwIfAborted();
       if ((error as Error).name === "TimeoutError" || (error as Error).name === "AbortError") {
         throw new GeminiApiError(504, `${name} did not answer within ${timeoutMs / 1000}s`);
       }
       throw error;
+    } finally {
+      attempts.push({ stage: "tools" in body ? "chat" : "structured", model: /^gemini-[a-z0-9.-]{1,64}$/.test(name) ? name : "configured-model", status, ms: Date.now() - started });
+      if (attempts.length > 24) attempts.shift();
     }
   };
 
@@ -204,6 +213,7 @@ export function createGeminiClient(
   };
 
   return {
+    diagnostics: () => JSON.stringify(attempts),
     create: async ({ system, tools, messages }: LlmRequest) => {
       const data = await call({
         systemInstruction: { parts: [{ text: system }] },
